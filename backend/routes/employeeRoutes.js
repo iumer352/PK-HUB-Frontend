@@ -1,83 +1,27 @@
 import express from 'express';
-import Employee from '../models/Employee.js';
+import {
+    getEmployees,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+    getEmployeeById
+} from '../controllers/employeeController.js';
 
 const router = express.Router();
 
-// Get all employees
-router.get('/', async (req, res) => {
-  try {
-    const { name, role, day } = req.query;
-    let query = {};
-
-    if (name) {
-      query.name = { $regex: name, $options: 'i' };
-    }
-    if (role) {
-      query.role = role;
-    }
-    if (day) {
-      query['availability.day'] = day;
-    }
-
-    const employees = await Employee.find(query);
-    res.json(employees);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// Get all employees with optional filtering
+router.get('/', getEmployees);
 
 // Add a new employee
-router.post('/', async (req, res) => {
-  try {
-    const employee = new Employee(req.body);
-    const savedEmployee = await employee.save();
-    res.status(201).json(savedEmployee);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+router.post('/', addEmployee);
 
-// Get employee by ID
-router.get('/:id', async (req, res) => {
-  try {
-    const employee = await Employee.findById(req.params.id);
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-    res.json(employee);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// Update an employee
+router.put('/:id', updateEmployee);
 
-// Update employee
-router.put('/:id', async (req, res) => {
-  try {
-    const employee = await Employee.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-    res.json(employee);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+// Delete an employee
+router.delete('/:id', deleteEmployee);
 
-// Delete employee
-router.delete('/:id', async (req, res) => {
-  try {
-    const employee = await Employee.findByIdAndDelete(req.params.id);
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-    res.json({ message: 'Employee deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// Get a single employee by ID
+router.get('/:id', getEmployeeById);
 
 export default router;
