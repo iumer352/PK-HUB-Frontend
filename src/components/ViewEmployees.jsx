@@ -1,11 +1,35 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { format, addDays, startOfWeek, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 
-const TODAY = new Date('2024-12-16T01:10:07+05:00');
+const TODAY = new Date();
 
 const ViewEmployees = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isMonthView, setIsMonthView] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filters, setFilters] = useState({
+    name: '',
+    role: '',
+    department: '',
+    date: null
+  });
+
+  const tableStyles = {
+    container: {
+      maxWidth: '100%',
+      overflowX: 'auto',
+      position: 'relative'
+    },
+    stickyColumn: {
+      position: 'sticky',
+      left: 0,
+      zIndex: 20,
+      backgroundColor: 'white',
+      boxShadow: '2px 0 5px rgba(0,0,0,0.1)'
+    }
+  };
 
   const handleDateChange = (direction) => {
     setCurrentDate(prevDate => {
@@ -41,88 +65,6 @@ const ViewEmployees = () => {
     }
   }, [currentDate, isMonthView]);
 
-  // Static employee data
-  const [employees] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      role: 'Developer',
-      projects: [
-        {
-          name: 'E-commerce Platform',
-          startDate: '2024-12-16',
-          endDate: '2024-12-20'
-        }
-      ],
-      availability: [
-        { date: '2024-12-16', startTime: '09:00', endTime: '17:00' },
-        { date: '2024-12-17', startTime: '09:00', endTime: '17:00' },
-        { date: '2024-12-18', startTime: '09:00', endTime: '17:00' },
-        { date: '2024-12-19', startTime: '09:00', endTime: '17:00' },
-        { date: '2024-12-20', startTime: '09:00', endTime: '17:00' }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      role: 'Designer',
-      projects: [
-        {
-          name: 'Mobile App Redesign',
-          startDate: '2024-12-16',
-          endDate: '2024-12-20'
-        }
-      ],
-      availability: [
-        { date: '2024-12-16', startTime: '10:00', endTime: '18:00' },
-        { date: '2024-12-18', startTime: '10:00', endTime: '18:00' },
-        { date: '2024-12-20', startTime: '10:00', endTime: '18:00' }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      role: 'Manager',
-      projects: [
-        {
-          name: 'Project Management System',
-          startDate: '2024-12-16',
-          endDate: '2024-12-20'
-        }
-      ],
-      availability: [
-        { date: '2024-12-16', startTime: '08:00', endTime: '16:00' },
-        { date: '2024-12-17', startTime: '08:00', endTime: '16:00' },
-        { date: '2024-12-19', startTime: '08:00', endTime: '16:00' },
-        { date: '2024-12-20', startTime: '08:00', endTime: '16:00' }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Sarah Wilson',
-      role: 'QA',
-      projects: [
-        {
-          name: 'Testing Framework Implementation',
-          startDate: '2024-12-17',
-          endDate: '2024-12-20'
-        }
-      ],
-      availability: [
-        { date: '2024-12-17', startTime: '09:00', endTime: '17:00' },
-        { date: '2024-12-18', startTime: '09:00', endTime: '17:00' },
-        { date: '2024-12-19', startTime: '09:00', endTime: '17:00' },
-        { date: '2024-12-20', startTime: '09:00', endTime: '17:00' }
-      ]
-    }
-  ]);
-
-  const [filters, setFilters] = useState({
-    name: '',
-    role: '',
-    date: null
-  });
-
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
@@ -135,144 +77,223 @@ const ViewEmployees = () => {
     setFilters({
       name: '',
       role: '',
+      department: '',
       date: null
     });
   };
 
   // Filter employees based on search criteria
-  const filteredEmployees = employees.filter(employee => {
-    const nameMatch = employee.name.toLowerCase().includes(filters.name.toLowerCase());
-    const roleMatch = !filters.role || employee.role === filters.role;
-    const dateMatch = !filters.date || employee.availability.some(a => 
-      isSameDay(parseISO(a.date), parseISO(filters.date))
-    );
-    return nameMatch && roleMatch && dateMatch;
-  });
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(employee => {
+      const nameMatch = employee.name?.toLowerCase().includes(filters.name.toLowerCase());
+      const roleMatch = !filters.role || employee.role === filters.role;
+      const departmentMatch = !filters.department || employee.department === filters.department;
+      return nameMatch && roleMatch && departmentMatch;
+    });
+  }, [employees, filters]);
 
-  // Get unique roles for filter dropdown
-  const uniqueRoles = [...new Set(employees.map(emp => emp.role))];
+  // Fetch employees from backend
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/employees');
+        if (!response.ok) {
+          throw new Error('Failed to fetch employees');
+        }
+        const data = await response.json();
+        setEmployees(data);
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
+
+  // Get unique departments and roles for filters
+  const departments = [...new Set(employees.map(emp => emp.department))];
+  const roles = [...new Set(employees.map(emp => emp.role))];
+
+  const isDateInProject = (date, projects) => {
+    return projects.some(project => {
+      const startDate = new Date(project.startDate);
+      const endDate = new Date(project.endDate);
+      const checkDate = new Date(date);
+      return checkDate >= startDate && checkDate <= endDate;
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Employee Schedule</h1>
-        <p className="text-gray-600 mt-2">View and manage employee schedules and projects</p>
+    <div className="px-4 sm:px-6 lg:px-8 py-8">
+      {/* Filters */}
+      <div className="mb-8 bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+            <input
+              type="text"
+              name="name"
+              id="name"
+              value={filters.name}
+              onChange={handleFilterChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Search by name"
+            />
+          </div>
+          <div>
+            <label htmlFor="department" className="block text-sm font-medium text-gray-700">Department</label>
+            <select
+              name="department"
+              id="department"
+              value={filters.department}
+              onChange={handleFilterChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option key="all-departments" value="">All Departments</option>
+              {departments.map(dept => (
+                <option key={`dept-${dept}`} value={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700">Role</label>
+            <select
+              name="role"
+              id="role"
+              value={filters.role}
+              onChange={handleFilterChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option key="all-roles" value="">All Roles</option>
+              {roles.map(role => (
+                <option key={`role-${role}`} value={role}>{role}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={resetFilters}
+              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              Reset Filters
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        {/* Toggle Switch */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center space-x-4">
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={isMonthView}
-                onChange={() => setIsMonthView(!isMonthView)}
-              />
-              <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
-              <span className="ml-3 text-sm font-medium text-gray-700">
-                {isMonthView ? 'Month View' : 'Week View'}
-              </span>
-            </label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleDateChange('prev')}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span className="text-lg font-semibold text-gray-700">
-              {format(currentDate, isMonthView ? 'MMMM yyyy' : "'Week of' MMM d, yyyy")}
-            </span>
-            <button
-              onClick={() => handleDateChange('next')}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+      {/* Calendar Controls */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => handleDateChange('prev')}
+            className="p-2 rounded-full hover:bg-gray-100"
+          >
+            <svg className="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h2 className="text-xl font-semibold text-gray-900">
+            {format(currentDate, isMonthView ? 'MMMM yyyy' : "'Week of' MMM d, yyyy")}
+          </h2>
+          <button
+            onClick={() => handleDateChange('next')}
+            className="p-2 rounded-full hover:bg-gray-100"
+          >
+            <svg className="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
+        <button
+          onClick={() => setIsMonthView(!isMonthView)}
+          className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          {isMonthView ? 'Week View' : 'Month View'}
+        </button>
+      </div>
 
-        {/* Calendar Table */}
-        <div className="overflow-x-auto">
-          <div className="inline-block min-w-full align-middle">
-            <div className="overflow-hidden border border-gray-200 rounded-lg shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                      Employee
-                    </th>
-                    {dates.map((date, index) => (
-                      <th
-                        key={index}
-                        className={`px-4 py-3 text-center text-sm font-semibold text-gray-900 min-w-[150px] ${
-                          isSameDay(date, TODAY) ? 'bg-blue-50' : ''
-                        }`}
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-gray-600">{format(date, 'EEE')}</span>
-                          <span className={`text-lg ${isSameDay(date, TODAY) ? 'text-blue-600' : ''}`}>
-                            {format(date, 'd')}
-                          </span>
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {filteredEmployees.map((employee, empIndex) => (
-                    <tr key={empIndex} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="sticky left-0 z-10 bg-white whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                        <div className="flex items-center space-x-3">
-                          <div className="h-10 w-10 flex-shrink-0">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
-                              <span className="text-white font-medium text-sm">
-                                {employee.name.split(' ').map(n => n[0]).join('')}
-                              </span>
-                            </div>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{employee.name}</div>
-                            <div className="text-gray-500 text-xs">{employee.role}</div>
-                          </div>
-                        </div>
-                      </td>
-                      {dates.map((date, dateIndex) => {
-                        const daySchedule = employee.availability.find(a => 
-                          isSameDay(parseISO(a.date), date)
-                        );
-                        
-                        return (
-                          <td
-                            key={dateIndex}
-                            className={`px-4 py-4 text-sm text-gray-900 ${
-                              isSameDay(date, TODAY) ? 'bg-blue-50' : ''
-                            }`}
-                          >
-                            {daySchedule ? (
-                              <div className="p-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 shadow-sm hover:shadow-md transition-shadow duration-200">
-                                <div className="font-medium text-blue-800">{daySchedule.startTime} - {daySchedule.endTime}</div>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-xs">-</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+      {/* Calendar */}
+      <div className="bg-white rounded-lg shadow overflow-x-auto" style={tableStyles.container}>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={tableStyles.stickyColumn}>
+                Employee
+              </th>
+              {dates.map((date, index) => (
+                <th
+                  key={index}
+                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-gray-600">{format(date, 'EEE')}</span>
+                    <span className={`text-lg ${isSameDay(date, TODAY) ? 'text-blue-600' : ''}`}>
+                      {format(date, 'd')}
+                    </span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {filteredEmployees.map((employee, empIndex) => (
+              <tr key={employee._id || `emp-${empIndex}`} className="hover:bg-gray-50 transition-colors duration-150">
+                <td className="sticky left-0 z-10 bg-white whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900" style={tableStyles.stickyColumn}>
+                  <div className="flex items-center space-x-3">
+                    <div className="h-10 w-10 flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                        <span className="text-white font-medium text-sm">
+                          {employee.name ? employee.name.split(' ').map(n => n[0]).join('') : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{employee.name}</div>
+                      <div className="text-gray-500 text-xs">
+                        {employee.role} • {employee.department}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                {dates.map((date, dateIndex) => {
+                  const isBusy = isDateInProject(date, employee.projects || []);
+                  return (
+                    <td
+                      key={`${employee._id || empIndex}-${format(date, 'yyyy-MM-dd')}`}
+                      className="whitespace-nowrap px-6 py-4 text-sm text-center"
+                    >
+                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                        isBusy 
+                          ? 'bg-red-100 text-red-800 border border-red-200' 
+                          : 'bg-green-100 text-green-800 border border-green-200'
+                      }`}>
+                        {isBusy ? 'Busy' : 'Free'}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
