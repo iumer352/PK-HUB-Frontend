@@ -1,68 +1,34 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const employeeSchema = new mongoose.Schema({
+const Employee = sequelize.define('Employee', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
   name: {
-    type: String,
-    required: true,
-    trim: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   department: {
-    type: String,
-    required: true,
-    enum: ['Engineering', 'Design', 'Marketing', 'Sales', 'HR', 'Finance']
+    type: DataTypes.ENUM('Engineering', 'Design', 'Marketing', 'Sales', 'HR', 'Finance'),
+    allowNull: false
   },
   role: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
-  projects: [{
-    title: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    description: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    startDate: {
-      type: Date,
-      required: true
-    },
-    endDate: {
-      type: Date,
-      required: true
-    }
-  }],
-  workSchedule: {
-    startTime: {
-      type: String,
-      default: '9:00 AM'
-    },
-    endTime: {
-      type: String,
-      default: '5:00 PM'
-    }
+  status: {
+    type: DataTypes.ENUM('active', 'inactive'),
+    defaultValue: 'active'
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  joinDate: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
 }, {
   timestamps: true
 });
-
-// Update the updatedAt timestamp before saving
-employeeSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
-
-const Employee = mongoose.model('Employee', employeeSchema);
 
 module.exports = Employee;

@@ -10,10 +10,8 @@ const AddEmployee = () => {
     name: '',
     department: '',
     role: '',
-    projectTitle: '',
-    projectDescription: '',
-    projectStartDate: '',
-    projectEndDate: ''
+    status: 'active',
+    joinDate: new Date()
   });
 
   const [successMessage, setSuccessMessage] = useState('');
@@ -52,16 +50,8 @@ const AddEmployee = () => {
           name: formData.name,
           department: formData.department,
           role: formData.role,
-          projects: [{
-            title: formData.projectTitle,
-            description: formData.projectDescription,
-            startDate: formData.projectStartDate,
-            endDate: formData.projectEndDate
-          }],
-          workSchedule: {
-            startTime: '9:00 AM',
-            endTime: '5:00 PM'
-          }
+          status: formData.status,
+          joinDate: formData.joinDate
         }),
       });
 
@@ -75,15 +65,13 @@ const AddEmployee = () => {
         name: '',
         department: '',
         role: '',
-        projectTitle: '',
-        projectDescription: '',
-        projectStartDate: '',
-        projectEndDate: ''
+        status: 'active',
+        joinDate: new Date()
       });
 
       // Navigate back after successful submission
       setTimeout(() => {
-        navigate('/dashboard/view-data');
+        navigate('/employees');
       }, 2000);
     } catch (error) {
       setErrorMessage(error.message);
@@ -101,7 +89,7 @@ const AddEmployee = () => {
             {/* Left Panel - Form Header */}
             <div className="p-8 bg-blue-600 rounded-t-xl lg:rounded-l-xl lg:rounded-tr-none text-white">
               <h2 className="text-3xl font-bold mb-4">Add New Employee</h2>
-              <p className="text-blue-100">Enter employee information and project details to create a new employee record.</p>
+              <p className="text-blue-100">Enter employee information to create a new employee record.</p>
             </div>
 
             {/* Right Panel - Form Content */}
@@ -188,88 +176,54 @@ const AddEmployee = () => {
                         </select>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Project Details Section */}
-                  <div className="bg-gray-50 p-6 rounded-lg space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Details</h3>
-                    
-                    <div>
-                      <label htmlFor="projectTitle" className="block text-sm font-medium text-gray-700 mb-1">
-                        Project Title
-                      </label>
-                      <input
-                        type="text"
-                        id="projectTitle"
-                        name="projectTitle"
-                        value={formData.projectTitle}
-                        onChange={handleInputChange}
-                        required
-                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        placeholder="Enter project title"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="projectDescription" className="block text-sm font-medium text-gray-700 mb-1">
-                        Project Description
-                      </label>
-                      <textarea
-                        id="projectDescription"
-                        name="projectDescription"
-                        value={formData.projectDescription}
-                        onChange={handleInputChange}
-                        required
-                        rows="4"
-                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        placeholder="Enter project description"
-                      />
-                    </div>
-
+                    {/* Join Date and Status Fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Start Date
+                        <label htmlFor="joinDate" className="block text-sm font-medium text-gray-700 mb-1">
+                          Join Date
                         </label>
                         <DatePicker
-                          selected={formData.projectStartDate}
-                          onChange={(date) => handleInputChange({ target: { name: 'projectStartDate', value: date } })}
+                          selected={formData.joinDate}
+                          onChange={(date) => setFormData(prev => ({ ...prev, joinDate: date }))}
                           className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                          dateFormat="MMMM d, yyyy"
-                          minDate={new Date()}
-                          required
+                          dateFormat="yyyy-MM-dd"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          End Date
+                        <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                          Status
                         </label>
-                        <DatePicker
-                          selected={formData.projectEndDate}
-                          onChange={(date) => handleInputChange({ target: { name: 'projectEndDate', value: date } })}
-                          className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                          dateFormat="MMMM d, yyyy"
-                          minDate={formData.projectStartDate || new Date()}
+                        <select
+                          id="status"
+                          name="status"
+                          value={formData.status}
+                          onChange={handleInputChange}
                           required
-                        />
+                          className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-4 pt-6">
+                {/* Submit Button */}
+                <div className="flex justify-end space-x-4">
                   <button
                     type="button"
-                    onClick={() => navigate('/dashboard/view-data')}
-                    className="px-6 py-3 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 shadow-sm transition-all duration-200"
+                    onClick={() => navigate('/employees')}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md hover:shadow-lg transition-all duration-200"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:opacity-50"
                   >
                     {isSubmitting ? 'Adding...' : 'Add Employee'}
                   </button>

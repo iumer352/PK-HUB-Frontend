@@ -1,24 +1,45 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
+const sequelize = require('./config/database');
+
+// Import routes
+const applicantRoutes = require('./routes/applicantRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
+const jobRoutes = require('./routes/jobRoutes');
+const interviewRoutes = require('./routes/interviewRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+
+// Import model associations
+require('./models/associations');
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((error) => console.error('MongoDB connection error:', error));
-
 // Routes
 app.use('/api/employees', employeeRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/applicant', applicantRoutes);
+app.use('/api/interview', interviewRoutes);
+app.use('/api/projects', projectRoutes);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Sync database and start server
+const startServer = async () => {
+  try {
+    // Drop all tables and recreate them
+    await sequelize.sync();
+    console.log('Database synchronized - all tables dropped and recreated');
+    
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Error syncing database:', error);
+  }
+};
+
+startServer();

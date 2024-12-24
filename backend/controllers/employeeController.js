@@ -1,11 +1,25 @@
 const Employee = require('../models/Employee');
+const { Op } = require('sequelize');
 
 // Get all employees
 exports.getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find();
-    res.status(200).json(employees);
+    const employees = await Employee.findAll({
+      attributes: ['id', 'name', 'role', 'department', 'createdAt', 'updatedAt']
+    });
+    
+    // Transform to ensure consistent ID format
+    const transformedEmployees = employees.map(emp => {
+      const plainEmp = emp.get({ plain: true });
+      return {
+        ...plainEmp,
+        _id: plainEmp.id // Add _id for consistency
+      };
+    });
+    
+    res.status(200).json(transformedEmployees);
   } catch (error) {
+    console.error('Error fetching employees:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -13,10 +27,10 @@ exports.getEmployees = async (req, res) => {
 // Create new employee
 exports.createEmployee = async (req, res) => {
   try {
-    const employee = new Employee(req.body);
-    const savedEmployee = await employee.save();
-    res.status(201).json(savedEmployee);
+    const employee = await Employee.create(req.body);
+    res.status(201).json(employee);
   } catch (error) {
+    console.error('Error creating employee:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -25,12 +39,18 @@ exports.createEmployee = async (req, res) => {
 exports.updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    const employee = await Employee.findByIdAndUpdate(id, req.body, { new: true });
-    if (!employee) {
+    const [updatedRowsCount, [updatedEmployee]] = await Employee.update(req.body, {
+      where: { id }, 
+      returning: true, 
+    });
+
+    if (updatedRowsCount === 0) {
       return res.status(404).json({ message: 'Employee not found' });
     }
-    res.status(200).json(employee);
+
+    res.status(200).json(updatedEmployee);
   } catch (error) {
+    console.error('Error updating employee:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -39,28 +59,23 @@ exports.updateEmployee = async (req, res) => {
 exports.deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    const employee = await Employee.findByIdAndDelete(id);
-    if (!employee) {
+    const deletedRowsCount = await Employee.destroy({ where: { id } });
+
+    if (deletedRowsCount === 0) {
       return res.status(404).json({ message: 'Employee not found' });
     }
+
     res.status(200).json({ message: 'Employee deleted successfully' });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error deleting employee:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Add project to employee
-exports.addProject = async (req, res) => {
+exports.getEmployeeStats = async (req, res) => {
   try {
-    const { id } = req.params;
-    const employee = await Employee.findById(id);
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-    employee.projects.push(req.body);
-    const updatedEmployee = await employee.save();
-    res.status(200).json(updatedEmployee);
+    // Your existing stats code
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
