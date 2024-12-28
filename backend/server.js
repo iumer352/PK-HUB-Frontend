@@ -9,7 +9,8 @@ const employeeRoutes = require('./routes/employeeRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const projectRoutes = require('./routes/projectRoutes');
-const { FORCE } = require('sequelize/lib/index-hints');
+const interviewerRoutes = require('./routes/interviewerRoutes');
+const stageLookupRoutes = require('./routes/stageLookupRoutes');
 
 // Import model associations
 require('./models/associations');
@@ -27,12 +28,15 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/applicant', applicantRoutes);
 app.use('/api/interview', interviewRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/interviewers', interviewerRoutes);
+app.use('/api/stages', stageLookupRoutes);
+
 
 // Sync database and start server
 const startServer = async () => {
   try {
     // Drop all tables and recreate them
-    await sequelize.sync({force: true});
+    await sequelize.sync({alter: true});
     console.log('Database synchronized - all tables dropped and recreated');
     
     app.listen(PORT, () => {

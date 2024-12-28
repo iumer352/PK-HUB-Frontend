@@ -33,6 +33,8 @@ const Applicant = sequelize.define('Applicant', {
     defaultValue: 'applied'
   }
 }, {
+  tableName: 'applicants',
+  underscored: true,
   timestamps: true
 });
 

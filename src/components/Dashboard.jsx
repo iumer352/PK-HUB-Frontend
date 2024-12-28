@@ -1,49 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, TrendingUp, Users, Briefcase, Calendar } from 'lucide-react';
+import axios from 'axios';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
+  PointElement,
+  LineElement,
   BarElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
+  RadialLinearScale
 } from 'chart.js';
-import { Bar, Pie } from 'react-chartjs-2';
-import { ChevronDown } from 'lucide-react';
+import { Line, Bar, Doughnut, Radar } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  PointElement,
+  LineElement,
   BarElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
+  RadialLinearScale
 );
-
-// Dummy data for testing
-const dummyEmployees = [
-  { _id: '1', name: 'John Doe', role: 'Software Engineer', department: 'Engineering', projects: [{ title: 'Project A' }, { title: 'Project B' }] },
-  { _id: '2', name: 'Jane Smith', role: 'Product Manager', department: 'Product', projects: [{ title: 'Project C' }] },
-  { _id: '3', name: 'Mike Johnson', role: 'UI Designer', department: 'Design', projects: [{ title: 'Project A' }] },
-  { _id: '4', name: 'Sarah Williams', role: 'Software Engineer', department: 'Engineering', projects: [{ title: 'Project D' }] },
-  { _id: '5', name: 'Tom Brown', role: 'DevOps Engineer', department: 'Engineering', projects: [{ title: 'Project E' }] },
-  { _id: '6', name: 'Emily Davis', role: 'Product Manager', department: 'Product', projects: [{ title: 'Project F' }] },
-  { _id: '7', name: 'David Wilson', role: 'UX Designer', department: 'Design', projects: [{ title: 'Project G' }] },
-  { _id: '8', name: 'Lisa Anderson', role: 'Software Engineer', department: 'Engineering', projects: [{ title: 'Project H' }] },
-];
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState({
+    projectStats: {
+      total: 0,
+      active: 0,
+      completed: 0,
+      upcoming: 0,
+      monthlyProgress: []
+    },
+    jobStats: {
+      total: 0,
+      open: 0,
+      filled: 0,
+      inProgress: 0,
+      byDepartment: {}
+    },
+    interviewStats: {
+      scheduled: 0,
+      completed: 0,
+      upcoming: 0
+    }
+  });
+  const [loading, setLoading] = useState(true);
 
   // Dashboard navigation options
   const dashboardOptions = [
@@ -53,73 +65,86 @@ const Dashboard = () => {
   ];
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchDashboardData = async () => {
       try {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Try to fetch from API first
-        try {
-          const response = await axios.get('http://localhost:5000/api/employees');
-          setEmployees(response.data);
-        } catch {
-          // If API fails, use dummy data
-          setEmployees(dummyEmployees);
-        }
-        setLoading(false);
-      } catch (err) {
-        setError('Error fetching employees');
+        // In a real app, these would be actual API endpoints
+        const [projectsRes, jobsRes, interviewsRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/projects/stats'),
+          axios.get('http://localhost:5000/api/jobs/stats'),
+          axios.get('http://localhost:5000/api/interviews/stats')
+        ]);
+
+        setDashboardData({
+          projectStats: projectsRes.data,
+          jobStats: jobsRes.data,
+          interviewStats: interviewsRes.data
+        });
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        // Use dummy data for demonstration
+        setDashboardData({
+          projectStats: {
+            total: 25,
+            active: 12,
+            completed: 8,
+            upcoming: 5,
+            monthlyProgress: [
+              { month: 'Jan', count: 5 },
+              { month: 'Feb', count: 8 },
+              { month: 'Mar', count: 12 },
+              { month: 'Apr', count: 15 },
+              { month: 'May', count: 10 },
+              { month: 'Jun', count: 18 }
+            ]
+          },
+          jobStats: {
+            total: 45,
+            open: 15,
+            filled: 20,
+            inProgress: 10,
+            byDepartment: {
+              Engineering: 20,
+              Marketing: 8,
+              Sales: 7,
+              Design: 5,
+              HR: 5
+            }
+          },
+          interviewStats: {
+            scheduled: 12,
+            completed: 25,
+            upcoming: 8
+          }
+        });
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchEmployees();
+    fetchDashboardData();
   }, []);
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          rotate: [0, 180, 360],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-        className="h-16 w-16 border-4 border-blue-500 rounded-full border-t-transparent"
-      />
-    </div>
-  );
-
-  if (error) return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="text-red-500 text-center p-4"
-    >
-      {error}
-    </motion.div>
-  );
-
-  // Calculate summary statistics
-  const departmentStats = employees.reduce((acc, emp) => {
-    acc[emp.department] = (acc[emp.department] || 0) + 1;
-    return acc;
-  }, {});
-
-  const roleStats = employees.reduce((acc, emp) => {
-    acc[emp.role] = (acc[emp.role] || 0) + 1;
-    return acc;
-  }, {});
-
-  // Chart data for departments (Pie Chart)
-  const departmentChartData = {
-    labels: Object.keys(departmentStats),
+  // Chart configurations
+  const projectProgressData = {
+    labels: dashboardData.projectStats.monthlyProgress.map(item => item.month),
     datasets: [
       {
-        data: Object.values(departmentStats),
+        label: 'Project Progress',
+        data: dashboardData.projectStats.monthlyProgress.map(item => item.count),
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.4,
+        fill: true,
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      }
+    ]
+  };
+
+  const jobsByDepartmentData = {
+    labels: Object.keys(dashboardData.jobStats.byDepartment),
+    datasets: [
+      {
+        label: 'Jobs by Department',
+        data: Object.values(dashboardData.jobStats.byDepartment),
         backgroundColor: [
           'rgba(255, 99, 132, 0.8)',
           'rgba(54, 162, 235, 0.8)',
@@ -127,81 +152,62 @@ const Dashboard = () => {
           'rgba(75, 192, 192, 0.8)',
           'rgba(153, 102, 255, 0.8)',
         ],
-        borderColor: [
-          'rgba(255, 99, 132, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(153, 102, 255, 1)',
-        ],
-        borderWidth: 1,
-      },
-    ],
+      }
+    ]
   };
 
-  // Chart data for roles (Bar Chart)
-  const roleChartData = {
-    labels: Object.keys(roleStats),
+  const projectStatusData = {
+    labels: ['Active', 'Completed', 'Upcoming'],
     datasets: [
       {
-        label: 'Number of Employees',
-        data: Object.values(roleStats),
-        backgroundColor: 'rgba(75, 192, 192, 0.8)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-      },
-    ],
+        data: [
+          dashboardData.projectStats.active,
+          dashboardData.projectStats.completed,
+          dashboardData.projectStats.upcoming
+        ],
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+        ],
+      }
+    ]
   };
 
-  const barOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Employee Roles Distribution',
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1,
-        },
-      },
-    },
-    animation: {
-      duration: 2000,
-      easing: 'easeInOutQuart',
-    },
+  const recruitmentMetricsData = {
+    labels: ['Job Openings', 'Interview Success', 'Hiring Speed', 'Candidate Quality', 'Offer Acceptance'],
+    datasets: [
+      {
+        label: 'Current Period',
+        data: [90, 85, 75, 80, 88],
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgb(54, 162, 235)',
+        pointBackgroundColor: 'rgb(54, 162, 235)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgb(54, 162, 235)'
+      }
+    ]
   };
 
-  const pieOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'right',
-      },
-      title: {
-        display: true,
-        text: 'Department Distribution',
-      },
-    },
-    animation: {
-      animateRotate: true,
-      animateScale: true,
-      duration: 2000,
-      easing: 'easeInOutQuart',
-    },
-  };
-
-  const filteredEmployees = selectedDepartment
-    ? employees.filter(emp => emp.department === selectedDepartment)
-    : employees;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="h-16 w-16 border-4 border-blue-500 rounded-full border-t-transparent"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -241,164 +247,161 @@ const Dashboard = () => {
         </AnimatePresence>
       </div>
 
-      {/* Rest of the dashboard content */}
+      {/* Main Dashboard Content */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="container mx-auto px-4 py-8"
+        className="space-y-6"
       >
-        <motion.h1
-          initial={{ y: -20 }}
-          animate={{ y: 0 }}
-          className="text-3xl font-bold text-gray-900 mb-8"
-        >
-          Dashboard
-        </motion.h1>
-        
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Quick Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
-            { title: 'Total Employees', value: employees.length, color: 'blue' },
-            { title: 'Departments', value: Object.keys(departmentStats).length, color: 'green' },
-            { title: 'Roles', value: Object.keys(roleStats).length, color: 'purple' }
-          ].map((card, index) => (
+            { 
+              title: 'Total Projects',
+              value: dashboardData.projectStats.total,
+              icon: Briefcase,
+              color: 'blue',
+              trend: '+12%'
+            },
+            {
+              title: 'Open Positions',
+              value: dashboardData.jobStats.open,
+              icon: Users,
+              color: 'green',
+              trend: '+5%'
+            },
+            {
+              title: 'Upcoming Interviews',
+              value: dashboardData.interviewStats.upcoming,
+              icon: Calendar,
+              color: 'yellow',
+              trend: '+8%'
+            },
+            {
+              title: 'Hiring Rate',
+              value: '85%',
+              icon: TrendingUp,
+              color: 'purple',
+              trend: '+3%'
+            }
+          ].map((stat, index) => (
             <motion.div
-              key={card.title}
+              key={stat.title}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.05 }}
-              className={`bg-white rounded-lg shadow p-6 transform transition-all duration-200`}
+              className="bg-white p-6 rounded-lg shadow-lg"
             >
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">{card.title}</h2>
-              <p className={`text-3xl font-bold text-${card.color}-600`}>{card.value}</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">{stat.title}</p>
+                  <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
+                </div>
+                <div className={`p-3 rounded-full bg-${stat.color}-100`}>
+                  <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center">
+                <span className="text-green-500 text-sm font-semibold">{stat.trend}</span>
+                <span className="text-gray-500 text-sm ml-2">vs last month</span>
+              </div>
             </motion.div>
           ))}
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Charts Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Project Progress Line Chart */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-lg shadow p-6"
+            className="bg-white p-6 rounded-lg shadow-lg"
           >
-            <div className="h-[400px]">
-              <Pie data={departmentChartData} options={pieOptions} />
+            <h3 className="text-lg font-semibold mb-4">Project Progress</h3>
+            <div className="h-[300px]">
+              <Line
+                data={projectProgressData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { position: 'top' }
+                  }
+                }}
+              />
             </div>
           </motion.div>
+
+          {/* Jobs by Department Doughnut Chart */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-lg shadow p-6"
+            className="bg-white p-6 rounded-lg shadow-lg"
           >
-            <div className="h-[400px]">
-              <Bar data={roleChartData} options={barOptions} />
+            <h3 className="text-lg font-semibold mb-4">Jobs by Department</h3>
+            <div className="h-[300px]">
+              <Doughnut
+                data={jobsByDepartmentData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { position: 'right' }
+                  }
+                }}
+              />
+            </div>
+          </motion.div>
+
+          {/* Project Status Bar Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white p-6 rounded-lg shadow-lg"
+          >
+            <h3 className="text-lg font-semibold mb-4">Project Status Overview</h3>
+            <div className="h-[300px]">
+              <Bar
+                data={projectStatusData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: false }
+                  }
+                }}
+              />
+            </div>
+          </motion.div>
+
+          {/* Recruitment Metrics Radar Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white p-6 rounded-lg shadow-lg"
+          >
+            <h3 className="text-lg font-semibold mb-4">Recruitment Metrics</h3>
+            <div className="h-[300px]">
+              <Radar
+                data={recruitmentMetricsData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    r: {
+                      beginAtZero: true,
+                      max: 100,
+                      ticks: {
+                        stepSize: 20
+                      }
+                    }
+                  }
+                }}
+              />
             </div>
           </motion.div>
         </div>
-
-        {/* Department Filter */}
-        <div className="mb-4">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedDepartment(null)}
-              className={`px-4 py-2 rounded ${!selectedDepartment ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            >
-              All
-            </button>
-            {Object.keys(departmentStats).map(dept => (
-              <button
-                key={dept}
-                onClick={() => setSelectedDepartment(dept)}
-                className={`px-4 py-2 rounded ${selectedDepartment === dept ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-              >
-                {dept}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Employee List */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-lg shadow overflow-hidden"
-        >
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg font-medium leading-6 text-gray-900">Employee Directory</h3>
-          </div>
-          <div className="border-t border-gray-200">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Department
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Projects
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <AnimatePresence>
-                    {filteredEmployees.map((employee, index) => (
-                      <motion.tr
-                        key={employee.id || employee._id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="hover:bg-gray-50"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <motion.div
-                              whileHover={{ scale: 1.1 }}
-                              className="h-10 w-10 flex-shrink-0"
-                            >
-                              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium">
-                                {employee.name.split(' ').map(n => n[0]).join('')}
-                              </div>
-                            </motion.div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{employee.name}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{employee.role}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <motion.span
-                            whileHover={{ scale: 1.1 }}
-                            className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
-                          >
-                            {employee.department}
-                          </motion.span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {employee.projects ? employee.projects.length : 0} projects
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </motion.div>
       </motion.div>
     </div>
   );

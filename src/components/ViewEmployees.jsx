@@ -7,6 +7,7 @@ const ViewEmployees = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isMonthView, setIsMonthView] = useState(false);
   const [employees, setEmployees] = useState([]);
+  const [employeeAvailability, setEmployeeAvailability] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
@@ -112,17 +113,66 @@ const ViewEmployees = () => {
     fetchEmployees();
   }, []);
 
-  // Get unique departments and roles for filters
-  const departments = [...new Set(employees.map(emp => emp.department))];
-  const roles = [...new Set(employees.map(emp => emp.role))];
+  // Fetch availability for each employee when dates change
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (!employees.length) return;
 
-  const isDateInProject = (date, projects) => {
-    return projects.some(project => {
-      const startDate = new Date(project.startDate);
-      const endDate = new Date(project.endDate);
-      const checkDate = new Date(date);
-      return checkDate >= startDate && checkDate <= endDate;
-    });
+      const startDate = dates[0];
+      const endDate = dates[dates.length - 1];
+      
+      const availabilityPromises = employees.map(async (employee) => {
+        try {
+          const response = await fetch(
+            `http://localhost:5000/api/employees/${employee.id}/availability?` +
+            `startDate=${format(startDate, 'yyyy-MM-dd')}&` +
+            `endDate=${format(endDate, 'yyyy-MM-dd')}`
+          );
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch availability for employee ${employee.id}`);
+          }
+          
+          const data = await response.json();
+          return { employeeId: employee.id, availability: data.availability };
+        } catch (err) {
+          console.error(`Error fetching availability for employee ${employee.id}:`, err);
+          return { employeeId: employee.id, availability: [] };
+        }
+      });
+
+      const availabilityResults = await Promise.all(availabilityPromises);
+      const availabilityMap = availabilityResults.reduce((acc, { employeeId, availability }) => {
+        acc[employeeId] = availability;
+        return acc;
+      }, {});
+
+      setEmployeeAvailability(availabilityMap);
+    };
+
+    fetchAvailability();
+  }, [employees, dates]);
+
+  // Check if employee is busy on a specific date
+  const isEmployeeBusy = (employeeId, date) => {
+    const availability = employeeAvailability[employeeId];
+    if (!availability) return false;
+
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const dayAvailability = availability.find(day => day.date === dateStr);
+    
+    return dayAvailability ? !dayAvailability.isAvailable : false;
+  };
+
+  // Get projects that make employee busy on a specific date
+  const getBusyProjects = (employeeId, date) => {
+    const availability = employeeAvailability[employeeId];
+    if (!availability) return [];
+
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const dayAvailability = availability.find(day => day.date === dateStr);
+    
+    return dayAvailability ? dayAvailability.projects : [];
   };
 
   if (loading) {
@@ -168,8 +218,8 @@ const ViewEmployees = () => {
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option key="all-departments" value="">All Departments</option>
-              {departments.map(dept => (
-                <option key={`dept-${dept}`} value={dept}>{dept}</option>
+              {employees.map((employee, index) => (
+                <option key={`dept-${index}`} value={employee.department}>{employee.department}</option>
               ))}
             </select>
           </div>
@@ -183,8 +233,8 @@ const ViewEmployees = () => {
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option key="all-roles" value="">All Roles</option>
-              {roles.map(role => (
-                <option key={`role-${role}`} value={role}>{role}</option>
+              {employees.map((employee, index) => (
+                <option key={`role-${index}`} value={employee.role}>{employee.role}</option>
               ))}
             </select>
           </div>
@@ -274,19 +324,32 @@ const ViewEmployees = () => {
                   </div>
                 </td>
                 {dates.map((date, dateIndex) => {
-                  const isBusy = isDateInProject(date, employee.projects || []);
+                  const isBusy = isEmployeeBusy(employee.id, date);
+                  const busyProjects = getBusyProjects(employee.id, date);
                   return (
                     <td
                       key={`${employee._id || empIndex}-${format(date, 'yyyy-MM-dd')}`}
                       className="whitespace-nowrap px-6 py-4 text-sm text-center"
                     >
-                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        isBusy 
-                          ? 'bg-red-100 text-red-800 border border-red-200' 
-                          : 'bg-green-100 text-green-800 border border-green-200'
-                      }`}>
-                        {isBusy ? 'Busy' : 'Free'}
-                      </div>
+                      {isBusy ? (
+                        <div className="flex flex-col gap-1 items-center justify-center">
+                          {busyProjects.map((project, idx) => (
+                            <div
+                              key={`${project.id}-${idx}`}
+                              className="inline-flex items-center justify-center w-full px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200"
+                              title={`Project: ${project.name}\nStatus: ${project.status}`}
+                            >
+                              {project.name}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div 
+                          className="inline-flex items-center justify-center w-full px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+                        >
+                          Free
+                        </div>
+                      )}
                     </td>
                   );
                 })}

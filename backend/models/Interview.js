@@ -1,3 +1,4 @@
+// models/Interview.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -7,45 +8,32 @@ const Interview = sequelize.define('Interview', {
     autoIncrement: true,
     primaryKey: true
   },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
   applicant_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
   },
-  employee_id: {
+
+  interviewer_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
   },
+  
   date_time: {
     type: DataTypes.DATE,
     allowNull: false
   },
-  // Add new stage column
-  stage: {
-    type: DataTypes.ENUM('HR', 'TECHNICAL', 'CULTURAL', 'FINAL'),
-    allowNull: false,
-    defaultValue: 'HR'  // Provide default for existing records
-  },
   status: {
     type: DataTypes.ENUM('pending', 'scheduled', 'completed', 'cancelled'),
     defaultValue: 'scheduled'
-  },
-  result: {
-    type: DataTypes.ENUM('pending', 'pass', 'fail'),
-    defaultValue: 'pending'
-  },
-  feedback: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
-  notes: {
-    type: DataTypes.TEXT,
-    allowNull: true
   }
 }, {
   tableName: 'interviews',
   timestamps: true,
   underscored: true
 });
-
 
 module.exports = Interview;

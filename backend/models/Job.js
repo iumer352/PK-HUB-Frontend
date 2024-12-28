@@ -36,6 +36,10 @@ const Job = sequelize.define('Job', {
         type: DataTypes.ENUM('Active', 'Paused', 'Closed'),
         defaultValue: 'Active'
     }
+}, {
+    tableName: 'jobs',
+    underscored: true,
+    timestamps: true
 });
 
 module.exports = Job;
