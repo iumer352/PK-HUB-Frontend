@@ -18,16 +18,6 @@ const ManageJobPostings = () => {
         try {
             const response = await axios.get('http://localhost:5000/api/jobs');
             console.log(response.data);
-            /*const jobsWithApplicants = await Promise.all(
-                response.data.map(async (job) => {
-                    const applicantsResponse = await axios.get(`http://localhost:5000/api/applicants/job/${job._id}`);
-                    return {
-                        ...job,
-                        applicants: applicantsResponse.data.length,
-                        postedDate: new Date(job.createdAt).toISOString().split('T')[0]
-                    };
-                })
-            );*/
             setJobs(response.data);
         } catch (err) {
             setError('Failed to fetch jobs');
@@ -136,7 +126,7 @@ const ManageJobPostings = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-200">
                                 {filteredJobs.map((job) => (
-                                    <tr key={job.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleJobClick(job._id)}>
+                                    <tr key={job.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleJobClick(job.id)}>
                                         <td className="px-6 py-4">
                                             <div className="font-medium text-gray-900">{job.title}</div>
                                         </td>
@@ -156,7 +146,7 @@ const ManageJobPostings = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">{job.applicants}</td>
-                                        <td className="px-6 py-4 text-gray-600">{formatDate(job.postedDate)}</td>
+                                        <td className="px-6 py-4 text-gray-600">{formatDate(job.createdAt)}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex space-x-2">
                                                 <button className="text-blue-600 hover:text-blue-800" onClick={(e) => {

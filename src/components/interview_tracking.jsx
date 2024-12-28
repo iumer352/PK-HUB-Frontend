@@ -257,6 +257,7 @@ const RecruitingDashboard = () => {
         axios.get('http://localhost:5000/api/employees')
       ]);
 
+      console.log("applican res is ", applicantsRes)
       // Get interviews for each applicant
       const applicantsWithInterviews = await Promise.all(
         applicantsRes.data.map(async (applicant) => {
@@ -275,6 +276,7 @@ const RecruitingDashboard = () => {
           }
         })
       );
+
 
       setApplicants(applicantsWithInterviews);
       setInterviewers(employeesRes.data);

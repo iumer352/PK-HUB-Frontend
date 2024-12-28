@@ -5,7 +5,7 @@ import axios from 'axios';
 const JobPosting = () => {
     const [jobTitle, setJobTitle] = useState('');
     const [jobDescription, setJobDescription] = useState('');
-    const [companyName, setCompanyName] = useState('');
+    const [companyName, setCompanyName] = useState('KPMG');
     const [jobType, setJobType] = useState('');
     const [location, setLocation] = useState('');
     const [salary, setSalary] = useState('');

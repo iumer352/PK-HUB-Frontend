@@ -23,7 +23,7 @@ exports.getInterviews = async (req, res) => {
       include: [{
         model: Employee,
         as: 'interviewer',
-        attributes: ['id', 'name', 'position']
+        attributes: ['id', 'name', 'role']
       }],
       order: [['date_time', 'DESC']]
     });
@@ -80,7 +80,7 @@ exports.scheduleInterview = async (req, res) => {
     res.status(201).json(interview);
   } catch (error) {
     console.error('Error in scheduleInterview:', error);
-    res.status(500).json({ message: 'Error scheduling interview' });
+    res.status(500).json({ error });
   }
 };
 
