@@ -1,4 +1,6 @@
 const Interviewer = require('../models/Interviewer');
+const Interview = require('../models/Interview');
+const { Op } = require('sequelize');
 
 // Get all interviewers
 exports.getInterviewers = async (req, res) => {
@@ -140,6 +142,46 @@ exports.deleteInterviewer = async (req, res) => {
         console.error('Error deleting interviewer:', error);
         res.status(500).json({ 
             message: 'Error deleting interviewer',
+            error: error.message 
+        });
+    }
+};
+
+// Get interview timeline data
+exports.getInterviewTimeline = async (req, res) => {
+    try {
+        const { candidateId } = req.params;
+        
+        const interviews = await Interview.findAll({
+            where: { candidateId },
+            include: [{
+                model: Interviewer,
+                attributes: ['name', 'interview_type']
+            }],
+            order: [['scheduledDate', 'DESC']],
+            attributes: [
+                'id',
+                'scheduledDate',
+                'status',
+                'interview_type',
+                'notes'
+            ]
+        });
+
+        const timelineData = interviews.map(interview => ({
+            id: interview.id,
+            type: interview.interview_type,
+            interviewer: interview.Interviewer.name,
+            scheduledDate: interview.scheduledDate,
+            status: interview.status,
+            notes: interview.notes
+        }));
+
+        res.status(200).json(timelineData);
+    } catch (error) {
+        console.error('Error fetching interview timeline:', error);
+        res.status(500).json({ 
+            message: 'Error fetching interview timeline',
             error: error.message 
         });
     }

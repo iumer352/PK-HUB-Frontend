@@ -36,7 +36,7 @@ app.use('/api/stages', stageLookupRoutes);
 const startServer = async () => {
   try {
     // Drop all tables and recreate them
-    await sequelize.sync({alter: true});
+    await sequelize.sync();
     console.log('Database synchronized - all tables dropped and recreated');
     
     app.listen(PORT, () => {

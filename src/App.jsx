@@ -10,6 +10,7 @@ import JobPostingForm from './components/joblisting';
 import RecruitingDashboard from './components/interview_tracking';
 import ProjectDashboard from './components/projectDashboard';
 import EmployeeDashboard from './components/EmployeeDashboard';
+import EmployeeMonthlyView from './components/EmployeeMonthlyView';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="/add-employee" element={<AddEmployee />} />
           <Route path="/view-employees" element={<ViewEmployees />} />
           <Route path="/interview-status/:jobId" element={<RecruitingDashboard />} />
+          <Route path="/employees/:employeeId/monthly" element={<EmployeeMonthlyView />} />
         </Routes>
       </Layout>
     </Router>

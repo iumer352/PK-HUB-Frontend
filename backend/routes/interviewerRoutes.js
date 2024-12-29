@@ -5,6 +5,9 @@ const interviewerController = require('../controllers/interviewerController');
 // Get all interviewers (with optional filter by interview_type)
 router.get('/', interviewerController.getInterviewers);
 
+// Get interview timeline data
+router.get('/timeline/:candidateId', interviewerController.getInterviewTimeline);
+
 // Get a single interviewer
 router.get('/:id', interviewerController.getInterviewer);
 

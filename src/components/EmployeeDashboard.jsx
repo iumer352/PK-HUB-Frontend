@@ -93,7 +93,7 @@ const EmployeeDashboard = () => {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="h-16 w-16 border-4 border-blue-500 rounded-full border-t-transparent"
+          className="h-16 w-16 border-4 border-[#1e40af] rounded-full border-t-transparent"
         />
       </div>
     );
@@ -112,80 +112,107 @@ const EmployeeDashboard = () => {
   }
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-lg">
+    <div className="p-6 bg-white rounded-lg shadow">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Employee Dashboard</h1>
-        <div className="space-x-4">
+        <h1 className="text-2xl font-bold text-[#1e40af]">Employee Dashboard</h1>
+        <div className="space-x-3">
           <button
             onClick={() => navigate('/add-employee')}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-[#1e40af] hover:bg-[#3b82f6] text-white px-4 py-2 rounded-lg transition-colors"
           >
             Add Employee
           </button>
           <button
             onClick={() => navigate('/view-employees')}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+            className="bg-[#1e40af] hover:bg-[#3b82f6] text-white px-4 py-2 rounded-lg transition-colors"
           >
-            See Employee Schedule
+            View Schedule
           </button>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Total Employees</h3>
-          <p className="text-2xl font-bold">{employeeStats.totalEmployees}</p>
+        <div className="bg-white p-4 rounded-lg border border-[#3b82f6] shadow-sm">
+          <h3 className="text-sm font-medium text-[#1e40af]">Total Employees</h3>
+          <p className="text-2xl font-bold text-[#3b82f6]">{employeeStats.totalEmployees}</p>
         </div>
-        <div className="bg-green-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">Active Employees</h3>
-          <p className="text-2xl font-bold">{employeeStats.activeEmployees}</p>
+        <div className="bg-white p-4 rounded-lg border border-[#10b981] shadow-sm">
+          <h3 className="text-sm font-medium text-[#1e40af]">Active Employees</h3>
+          <p className="text-2xl font-bold text-[#10b981]">{employeeStats.activeEmployees}</p>
         </div>
-        <div className="bg-yellow-100 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold">New Hires (This Month)</h3>
-          <p className="text-2xl font-bold">{employeeStats.newHires}</p>
+        <div className="bg-white p-4 rounded-lg border border-[#f59e0b] shadow-sm">
+          <h3 className="text-sm font-medium text-[#1e40af]">New Hires (This Month)</h3>
+          <p className="text-2xl font-bold text-[#f59e0b]">{employeeStats.newHires}</p>
         </div>
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold mb-4">Employees by Department</h3>
-          <ResponsiveContainer width="100%" height={300}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-3 rounded-lg border border-[#3b82f6] shadow-sm">
+          <h3 className="text-sm font-medium text-[#1e40af] mb-2">Department Distribution</h3>
+          <ResponsiveContainer width="100%" height={180}>
             <BarChart
               data={employeeStats.departmentData || []}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="value" fill="#8884d8" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis 
+                dataKey="name" 
+                fontSize={10} 
+                angle={-45} 
+                textAnchor="end" 
+                height={60} 
+                stroke="#1e40af"
+                tick={{ fill: '#1e40af' }}
+              />
+              <YAxis 
+                fontSize={10} 
+                stroke="#1e40af"
+                tick={{ fill: '#1e40af' }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #3b82f6',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
+              />
+              <Bar dataKey="value" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold mb-4">Employees by Role</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="bg-white p-3 rounded-lg border border-[#3b82f6] shadow-sm">
+          <h3 className="text-sm font-medium text-[#1e40af] mb-2">Role Distribution</h3>
+          <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie
                 data={employeeStats.roleData || []}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                outerRadius={80}
-                fill="#8884d8"
+                outerRadius={45}
+                fill="#3b82f6"
                 dataKey="value"
                 label={({ name, value }) => `${name}: ${value}`}
               >
                 {(employeeStats.roleData || []).map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill="#0088FE" />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={index % 3 === 0 ? '#1e40af' : index % 3 === 1 ? '#10b981' : '#f59e0b'} 
+                  />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #3b82f6',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -202,7 +229,7 @@ const EmployeeDashboard = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setSelectedDepartment(null)}
-              className={`px-4 py-2 rounded ${!selectedDepartment ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              className={`px-4 py-2 rounded ${!selectedDepartment ? 'bg-[#1e40af] text-white' : 'bg-[#3b82f6]'}`}
             >
               All
             </button>
@@ -210,7 +237,7 @@ const EmployeeDashboard = () => {
               <button
                 key={name}
                 onClick={() => setSelectedDepartment(name)}
-                className={`px-4 py-2 rounded ${selectedDepartment === name ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                className={`px-4 py-2 rounded ${selectedDepartment === name ? 'bg-[#1e40af] text-white' : 'bg-[#3b82f6]'}`}
               >
                 {name}
               </button>
@@ -264,7 +291,7 @@ const EmployeeDashboard = () => {
                               whileHover={{ scale: 1.1 }}
                               className="h-10 w-10 flex-shrink-0"
                             >
-                              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium">
+                              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-[#1e40af] to-[#3b82f6] flex items-center justify-center text-white font-medium">
                                 {employee.name.split(' ').map(n => n[0]).join('')}
                               </div>
                             </motion.div>
@@ -279,7 +306,7 @@ const EmployeeDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <motion.span
                             whileHover={{ scale: 1.1 }}
-                            className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800"
+                            className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#10b981] text-white"
                           >
                             {employee.department}
                           </motion.span>

@@ -23,35 +23,6 @@ const INTERVIEW_STAGES = [
   { id: 'FINAL', name: 'Final Round', color: 'orange', icon: Award }
 ];
 
-const Card = ({ children, className = "" }) => (
-  <div className={`bg-white shadow rounded-lg ${className}`}>
-    {children}
-  </div>
-);
-
-const CardHeader = ({ children, className = "" }) => (
-  <div className={`p-4 border-b ${className}`}>
-    {children}
-  </div>
-);
-
-const CardTitle = ({ children, className = "" }) => (
-  <h2 className={`text-lg font-semibold ${className}`}>
-    {children}
-  </h2>
-);
-
-const CardDescription = ({ children, className = "" }) => (
-  <p className={`text-sm text-gray-500 ${className}`}>
-    {children}
-  </p>
-);
-
-const CardContent = ({ children, className = "" }) => (
-  <div className={`p-4 ${className}`}>
-    {children}
-  </div>
-);
 
 const Modal = ({ isOpen, onClose, children, title }) => {
   if (!isOpen) return null;
@@ -291,26 +262,26 @@ const RecruitingDashboard = () => {
   const handleScheduleInterview = async (stageId, date, time, interviewerId) => {
     try {
       const dateTime = new Date(`${date}T${time}`);
-      const response = await axios.post('http://localhost:5000/api/interview', {
-        ApplicantId: selectedApplicant.id,
-        interviewerId,
-        type: stageId,
-        dateTime: dateTime.toISOString(),
-        status: 'scheduled'
-      });
-
-      // Update local state
-      setApplicants(prev => prev.map(applicant => {
-        if (applicant.id === selectedApplicant.id) {
-          return {
-            ...applicant,
-            interviews: [...applicant.interviews, response.data]
-          };
-        }
-        return applicant;
-      }));
-
-      setShowScheduler(false);
+      let response;
+      
+      // Check if this is the first interview for the applicant
+      if (!selectedApplicant.interviews || selectedApplicant.interviews.length === 0) {
+        response = await axios.post('http://localhost:5000/api/interview/schedule-first', {
+          applicant_id: selectedApplicant.id,
+          interviewer_id: interviewerId,
+          date_time: dateTime.toISOString()
+        });
+      } else {
+        // For subsequent interviews, use schedule-next or schedule-stage
+        response = await axios.post('http://localhost:5000/api/interview/schedule-stage', {
+          applicant_id: selectedApplicant.id,
+          interviewer_id: interviewerId,
+          date_time: dateTime.toISOString(),
+          stage_id: stageId
+        });
+      }
+      
+      // Update local state...
     } catch (error) {
       console.error('Error scheduling interview:', error);
     }
@@ -341,9 +312,34 @@ const RecruitingDashboard = () => {
     }
   };
 
+  const [stages, setStages] = useState([]);
+
+// Add this to fetchData
+  const fetchStages = async () => {
+    try {
+      const stagesRes = await axios.get('/api/interview-stages');
+      setStages(stagesRes.data);
+    } catch (error) {
+      console.error('Error fetching stages:', error);
+    }
+  };
+
+  const handleUpdateStatus = async (interviewId, status) => {
+    try {
+      await axios.patch(`/api/interview/${interviewId}/status`, { status });
+      fetchData();
+    } catch (error) {
+      console.error('Error updating interview status:', error);
+    }
+  };
+
   const handleUpdateResult = async (interviewId, resultData) => {
     try {
-      await axios.put(`/api/interviews/${interviewId}/result`, resultData);
+      await axios.post(`/api/interview/stages/${interviewId}/feedback`, {
+        result: resultData.result,
+        feedback: resultData.feedback,
+        notes: resultData.notes
+      });
       // Refresh applicant data
       fetchData();
     } catch (error) {

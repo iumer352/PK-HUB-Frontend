@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { format, addDays, startOfWeek, isSameDay, parseISO, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 const TODAY = new Date();
 
@@ -31,6 +32,29 @@ const ViewEmployees = () => {
       boxShadow: '2px 0 5px rgba(0,0,0,0.1)'
     }
   };
+
+  const monthViewStyles = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, 1fr)',
+    gridGap: '1px',
+    backgroundColor: '#e5e7eb',
+    padding: '10px',
+    borderRadius: '8px'
+  };
+
+  const dayCellStyles = {
+    backgroundColor: '#ffffff',
+    padding: '5px',
+    minHeight: '80px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: '4px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+  };
+
+  const navigate = useNavigate();
 
   const handleDateChange = (direction) => {
     setCurrentDate(prevDate => {
@@ -281,83 +305,116 @@ const ViewEmployees = () => {
       </div>
 
       {/* Calendar */}
-      <div className="bg-white rounded-lg shadow overflow-x-auto" style={tableStyles.container}>
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={tableStyles.stickyColumn}>
-                Employee
-              </th>
-              {dates.map((date, index) => (
-                <th
-                  key={index}
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-gray-600">{format(date, 'EEE')}</span>
-                    <span className={`text-lg ${isSameDay(date, TODAY) ? 'text-blue-600' : ''}`}>
-                      {format(date, 'd')}
-                    </span>
-                  </div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {filteredEmployees.map((employee, empIndex) => (
-              <tr key={employee._id || `emp-${empIndex}`} className="hover:bg-gray-50 transition-colors duration-150">
-                <td className="sticky left-0 z-10 bg-white whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900" style={tableStyles.stickyColumn}>
-                  <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 flex-shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
-                        <span className="text-white font-medium text-sm">
-                          {employee.name ? employee.name.split(' ').map(n => n[0]).join('') : ''}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{employee.name}</div>
-                      <div className="text-gray-500 text-xs">
-                        {employee.role} • {employee.department}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                {dates.map((date, dateIndex) => {
-                  const isBusy = isEmployeeBusy(employee.id, date);
-                  const busyProjects = getBusyProjects(employee.id, date);
-                  return (
-                    <td
-                      key={`${employee._id || empIndex}-${format(date, 'yyyy-MM-dd')}`}
-                      className="whitespace-nowrap px-6 py-4 text-sm text-center"
-                    >
-                      {isBusy ? (
-                        <div className="flex flex-col gap-1 items-center justify-center">
-                          {busyProjects.map((project, idx) => (
-                            <div
-                              key={`${project.id}-${idx}`}
-                              className="inline-flex items-center justify-center w-full px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200"
-                              title={`Project: ${project.name}\nStatus: ${project.status}`}
-                            >
-                              {project.name}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div 
-                          className="inline-flex items-center justify-center w-full px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+      {isMonthView ? (
+        <div style={monthViewStyles}>
+          {dates.map((date, index) => (
+            <div key={index} style={dayCellStyles}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{format(date, 'd')}</span>
+              {filteredEmployees.map((employee, empIndex) => (
+                <div key={employee._id || `emp-${empIndex}`}>
+                  {isEmployeeBusy(employee.id, date) ? (
+                    <div className="flex flex-col gap-1 items-center justify-center">
+                      {getBusyProjects(employee.id, date).map((project, idx) => (
+                        <div
+                          key={`${project.id}-${idx}`}
+                          className="inline-flex items-center justify-center w-full px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200"
+                          title={`Project: ${project.name}\nStatus: ${project.status}`}
                         >
-                          Free
+                          {project.name}
                         </div>
-                      )}
-                    </td>
-                  );
-                })}
+                      ))}
+                    </div>
+                  ) : (
+                    <div 
+                      className="inline-flex items-center justify-center w-full px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+                    >
+                      Free
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-x-auto" style={tableStyles.container}>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={tableStyles.stickyColumn}>
+                  Employee
+                </th>
+                {dates.map((date, index) => (
+                  <th
+                    key={index}
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-gray-600">{format(date, 'EEE')}</span>
+                      <span className={`text-lg ${isSameDay(date, TODAY) ? 'text-blue-600' : ''}`}>
+                        {format(date, 'd')}
+                      </span>
+                    </div>
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {filteredEmployees.map((employee, empIndex) => (
+                <tr key={employee._id || `emp-${empIndex}`} className="hover:bg-gray-50 transition-colors duration-150">
+                  <td className="sticky left-0 z-10 bg-white whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900" style={tableStyles.stickyColumn}>
+                    <div className="flex items-center space-x-3">
+                      <div className="h-10 w-10 flex-shrink-0">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+                          <span className="text-white font-medium text-sm">
+                            {employee.name ? employee.name.split(' ').map(n => n[0]).join('') : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 cursor-pointer" onClick={() => navigate(`/employees/${employee.id}/monthly`)}>{employee.name}</div>
+                        <div className="text-gray-500 text-xs">
+                          {employee.role} • {employee.department}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  {dates.map((date, dateIndex) => {
+                    const isBusy = isEmployeeBusy(employee.id, date);
+                    const busyProjects = getBusyProjects(employee.id, date);
+                    return (
+                      <td
+                        key={`${employee._id || empIndex}-${format(date, 'yyyy-MM-dd')}`}
+                        className="whitespace-nowrap px-6 py-4 text-sm text-center"
+                      >
+                        {isBusy ? (
+                          <div className="flex flex-col gap-1 items-center justify-center">
+                            {busyProjects.map((project, idx) => (
+                              <div
+                                key={`${project.id}-${idx}`}
+                                className="inline-flex items-center justify-center w-full px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200"
+                                title={`Project: ${project.name}\nStatus: ${project.status}`}
+                              >
+                                {project.name}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div 
+                            className="inline-flex items-center justify-center w-full px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+                          >
+                            Free
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
