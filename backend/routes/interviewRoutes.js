@@ -7,6 +7,9 @@ const interviewStageController = require('../controllers/interviewStageControlle
 // Get all interviews for an applicant
 router.get('/applicant/:applicantId', interviewController.getInterviews);
 
+// Get all interviews for a job
+router.get('/job/:jobId', interviewController.getInterviewsByJobId);
+
 // Get a single interview
 router.get('/:id', interviewController.getInterview);
 

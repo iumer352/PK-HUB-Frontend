@@ -276,15 +276,22 @@ exports.scheduleNextInterview = async (req, res) => {
 // Schedule specific interview stage
 exports.scheduleSpecificStage = async (req, res) => {
   try {
-    const { applicant_id, interviewer_id, date_time, stage_name } = req.body;
+    const { applicant_id, interviewer_id, date_time, stage_id, stage_name } = req.body;
+    console.log('Received request body:', req.body);
+    
+    if (!stage_name || !stage_id) {
+      return res.status(400).json({ message: 'Stage name and ID are required' });
+    }
 
     // Find the stage by name
+    console.log('Looking for stage with name:', stage_name);
     const stage = await StageLookup.findOne({
       where: { name: stage_name }
     });
+    console.log('Found stage:', stage);
 
     if (!stage) {
-      return res.status(404).json({ message: 'Stage not found' });
+      return res.status(404).json({ message: `Stage not found with name: ${stage_name}` });
     }
 
     // Get applicant details
@@ -305,17 +312,23 @@ exports.scheduleSpecificStage = async (req, res) => {
       return res.status(404).json({ message: 'Interviewer not found' });
     }
 
-    // Map stage names to interview types
+    // Map stage IDs to interview types
     const stageToInterviewerType = {
-      'HR Interview': 'HR',
-      'Technical Round': 'Technical',
-      'Cultural Fit': 'Cultural',
-      'Final Round': 'Final'
+      'HR': 'HR',
+      'TECHNICAL': 'Technical',
+      'CULTURAL': 'Cultural',
+      'FINAL': 'Final'
     };
 
-    if (interviewer.interview_type !== stageToInterviewerType[stage.name]) {
+    console.log('Stage ID:', stage_id);
+    console.log('Stage name:', stage_name);
+    console.log('Interviewer type:', interviewer.interview_type);
+    console.log('Expected type:', stageToInterviewerType[stage_id]);
+
+    // Validate interviewer type using stage_id
+    if (interviewer.interview_type !== stageToInterviewerType[stage_id]) {
       return res.status(400).json({ 
-        message: `This stage requires a ${stageToInterviewerType[stage.name]} interviewer` 
+        message: `This stage requires a ${stageToInterviewerType[stage_id]} interviewer, but got ${interviewer.interview_type}` 
       });
     }
 
@@ -331,7 +344,7 @@ exports.scheduleSpecificStage = async (req, res) => {
 
     if (existingInterview) {
       return res.status(400).json({ 
-        message: `${stage.name} was already conducted for this applicant` 
+        message: `${stage_name} was already conducted for this applicant` 
       });
     }
 
@@ -341,7 +354,7 @@ exports.scheduleSpecificStage = async (req, res) => {
       interviewer_id,
       date_time,
       status: 'scheduled',
-      name: `${stage.name} - ${applicant.name}`
+      name: stage_name
     });
 
     // Create interview stage
@@ -385,6 +398,24 @@ exports.scheduleSpecificStage = async (req, res) => {
     console.error('Error scheduling specific stage interview:', error);
     res.status(500).json({ message: 'Error scheduling interview', error: error.message });
   }
+};
+
+// Get all interviews for a job
+exports.getInterviewsByJobId = async (req, res) => {
+    const { jobId } = req.params;
+    try {
+        const interviews = await Interview.findAll({
+            include: [{
+                model: Applicant,
+                where: { JobId: jobId },
+                attributes: ['id']
+            }],
+            order: [['date_time', 'DESC']]
+        });
+        res.json(interviews);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 // Update interview status
