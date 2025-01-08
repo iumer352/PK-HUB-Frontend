@@ -26,7 +26,7 @@ router.post('/schedule-stage', interviewController.scheduleSpecificStage);
 router.patch('/:id/status', interviewController.updateStatus);
 
 // Submit interview feedback
-router.post('/stages/:interview_id/feedback', interviewController.submitFeedback);
+router.post('/stages/:interview_id/:stage_id/feedback', interviewController.submitFeedback);
 
 // Interview Stage Routes
 // Get all stages for an interview
@@ -37,5 +37,11 @@ router.post('/stages', interviewStageController.createStage);
 
 // Update stage
 router.patch('/stages/:id', interviewStageController.updateStage);
+
+// Get stage result
+router.get('/stages/:interview_id/:stage_id/result', interviewStageController.getStageResult);
+
+// Update stage result
+router.put('/stages/:stageId/applicant/:applicantId/result', interviewStageController.updateStageResult);
 
 module.exports = router;

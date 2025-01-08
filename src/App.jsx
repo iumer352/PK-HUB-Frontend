@@ -11,6 +11,8 @@ import RecruitingDashboard from './components/interview_tracking';
 import ProjectDashboard from './components/projectDashboard';
 import EmployeeDashboard from './components/EmployeeDashboard';
 import EmployeeMonthlyView from './components/EmployeeMonthlyView';
+import ApplicantInterviewTracking from './components/ApplicantInterviewTracking';
+import OnboardingChecklist from './components/OnboardingChecklist';
 
 function App() {
   return (
@@ -28,7 +30,10 @@ function App() {
           <Route path="/add-employee" element={<AddEmployee />} />
           <Route path="/view-employees" element={<ViewEmployees />} />
           <Route path="/interview-status/:jobId" element={<RecruitingDashboard />} />
+          <Route path="/interview-tracking/:applicantId" element={<RecruitingDashboard />} />
+          <Route path="/applicant-interview" element={<ApplicantInterviewTracking/>} />
           <Route path="/employees/:employeeId/monthly" element={<EmployeeMonthlyView />} />
+          <Route path="/onboarding/:employeeId" element={<OnboardingChecklist />} />
         </Routes>
       </Layout>
     </Router>

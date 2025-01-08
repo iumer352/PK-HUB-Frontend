@@ -6,6 +6,14 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, stageId, intervie
   const [time, setTime] = useState('');
   const [selectedInterviewer, setSelectedInterviewer] = useState('');
 
+  // Filter interviewers based on their interview_type matching the stage
+  const filteredInterviewers = interviewers.filter(interviewer => {
+    const interviewType = interviewer.interview_type?.toUpperCase() || '';
+    const stage = stageId?.toUpperCase() || '';
+    
+    return interviewType === stage;
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSchedule(stageId, date, time, selectedInterviewer);
@@ -52,12 +60,17 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, stageId, intervie
             required
           >
             <option value="">Select an interviewer</option>
-            {interviewers.map((interviewer) => (
+            {filteredInterviewers.map((interviewer) => (
               <option key={interviewer.id} value={interviewer.id}>
-                {interviewer.name}
+                {interviewer.name} - {interviewer.position} ({interviewer.interview_type})
               </option>
             ))}
           </select>
+          {filteredInterviewers.length === 0 && (
+            <p className="mt-2 text-sm text-red-600">
+              No interviewers available for {stageId} round. Please contact HR to assign interviewers.
+            </p>
+          )}
         </div>
 
         <div className="flex justify-end space-x-3 mt-6">
@@ -71,6 +84,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, stageId, intervie
           <button
             type="submit"
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            disabled={filteredInterviewers.length === 0}
           >
             Schedule Interview
           </button>

@@ -104,6 +104,98 @@ exports.createApplicant = async (req, res) => {
     }
 };
 
+// Create applicants from parsed resumes
+exports.createApplicantsFromParsedResumes = async (req, res) => {
+    try {
+        const { successful_parses, failed_files, jobId } = req.body;
+        const results = {
+            created: [],
+            failed: []
+        };
+
+        console.log('Request body:', {
+            jobId,
+            successful_parses_count: successful_parses?.length,
+            failed_files_count: failed_files?.length});
+
+        // Validate jobId
+        if (!jobId) {
+            return res.status(400).json({ message: 'Job ID is required' });
+        }
+
+        // Check if job exists
+        const job = await Job.findByPk(jobId);
+        if (!job) {
+            return res.status(404).json({ message: 'Job not found' });
+        }
+
+        for (const parse of successful_parses) {
+            try {
+                // Prepare resume data with score and score details
+                const resumeData = {
+                    ...parse.content,
+                    score: parse.score || 0,
+                    score_details: parse.score_details || {
+                        Skills_Score: 0,
+                        Experience_Score: 0,
+                        Education_Score: 0,
+                        Certification_Score: 0
+                    }
+                };
+
+                const applicantData = {
+                    name: parse.content.Name,
+                    email: parse.content.Email,
+                    phone: parse.content.Phone,
+                    resume: JSON.stringify(resumeData), // Store the full parsed content with scores
+                    status: 'applied',
+                    job_id: jobId
+                };
+
+                // Basic validation
+                if (!applicantData.name || !applicantData.email || !applicantData.phone) {
+                    results.failed.push({
+                        filename: parse.filename,
+                        reason: 'Missing required fields'
+                    });
+                    continue;
+                }
+
+                // Create the applicant record
+                const applicant = await Applicant.create(applicantData);
+                results.created.push({
+                    filename: parse.filename,
+                    applicantId: applicant.id,
+                    score: parse.score || 0
+                });
+            } catch (error) {
+                results.failed.push({
+                    filename: parse.filename,
+                    reason: error.name === 'SequelizeUniqueConstraintError' ? 
+                           'Email already exists' : 
+                           'Database error'
+                });
+            }
+        }
+
+        // Add any failed files from the parser
+        if (failed_files && Array.isArray(failed_files)) {
+            results.failed.push(...failed_files.map(file => ({
+                filename: file,
+                reason: 'Parser failed to extract data'
+            })));
+        }
+
+        res.status(201).json(results);
+    } catch (error) {
+        console.error('Error creating applicants:', error);
+        res.status(500).json({ 
+            message: 'Error processing parsed resumes',
+            error: error.message 
+        });
+    }
+};
+
 // Update applicant status
 exports.updateStatus = async (req, res) => {
     try {

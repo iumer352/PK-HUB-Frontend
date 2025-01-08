@@ -16,12 +16,10 @@ const Interview = sequelize.define('Interview', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
-
   interviewer_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
-  
   date_time: {
     type: DataTypes.DATE,
     allowNull: false
@@ -29,6 +27,10 @@ const Interview = sequelize.define('Interview', {
   status: {
     type: DataTypes.ENUM('pending', 'scheduled', 'completed', 'cancelled'),
     defaultValue: 'scheduled'
+  },
+  feedback: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
   tableName: 'interviews',

@@ -39,6 +39,8 @@ exports.getStages = async (req, res) => {
     try {
         const { interview_id } = req.params;
         
+        console.log('Fetching stages for interview:', interview_id);
+        
         const stages = await InterviewStage.findAll({
             where: { interview_id },
             include: [{
@@ -49,6 +51,8 @@ exports.getStages = async (req, res) => {
             order: [[{ model: StageLookup, as: 'stage' }, 'order', 'ASC']]
         });
 
+        console.log('Found stages:', stages.map(s => ({ id: s.id, stage_id: s.stage_id })));
+        
         res.status(200).json(stages);
     } catch (error) {
         console.error('Error fetching interview stages:', error);
@@ -105,6 +109,83 @@ exports.updateStage = async (req, res) => {
     } catch (error) {
         console.error('Error updating interview stage:', error);
         res.status(500).json({ message: 'Error updating interview stage', error: error.message });
+    }
+};
+
+// Get stage result
+// Get stage result
+exports.getStageResult = async (req, res) => {
+    const { interview_id, stage_id } = req.params;  // Move this outside try block so it's available in catch
+
+    try {
+        console.log('Fetching stage result for:', { interview_id, stage_id });
+
+        if (!interview_id || !stage_id) {
+            return res.status(400).json({
+                message: 'Missing required parameters',
+                searchParams: { interview_id, stage_id }
+            });
+        }
+
+        const stage = await InterviewStage.findOne({
+            where: {
+                interview_id: parseInt(interview_id),  // Convert to integer
+                stage_id: parseInt(stage_id)          // Convert to integer
+            },
+            include: [{
+                model: StageLookup,
+                as: 'stage',
+                attributes: ['name', 'order']
+            }],
+            attributes: ['id', 'result', 'feedback', 'notes', 'completed_at']
+        });
+
+        if (!stage) {
+            return res.status(404).json({ 
+                message: 'Interview stage not found',
+                searchParams: { interview_id, stage_id }
+            });
+        }
+
+        res.json(stage);
+    } catch (error) {
+        console.error('Error fetching stage result:', error);
+        res.status(500).json({ 
+            message: 'Error fetching stage result',
+            error: error.message,
+            searchParams: { interview_id, stage_id }  // Now interview_id is in scope
+        });
+    }
+};
+
+// Update stage result
+exports.updateStageResult = async (req, res) => {
+    try {
+        const { applicantId, stageId } = req.params;
+        const { result } = req.body;
+
+        const stage = await InterviewStage.findOne({
+            where: {
+                stage_id: stageId
+            }
+        });
+
+        if (!stage) {
+            return res.status(404).json({ message: 'No interview stage found' });
+        }
+
+        await stage.update({
+            result,
+            completed_at: new Date()
+        });
+
+        res.json({
+            result: stage.result,
+            completed_at: stage.completed_at
+        });
+    } catch (error) {
+        console.error('Error updating stage result:', error);
+        res.status(500).json({ message: error.message });
     }
 };
 

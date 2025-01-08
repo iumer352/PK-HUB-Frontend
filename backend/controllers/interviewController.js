@@ -21,14 +21,21 @@ exports.getInterviews = async (req, res) => {
 
     console.log('Found applicant:', applicant.id);
 
-    // Get interviews with interviewer details
+    // Get interviews with interviewer and stage details
     const interviews = await Interview.findAll({
       where: { applicant_id: applicantId },
-      include: [{
-        model: Interviewer,
-        as: 'interviewer',
-        attributes: ['id', 'name', 'position', 'interview_type']
-      }],
+      include: [
+        {
+          model: Interviewer,
+          as: 'interviewer',
+          attributes: ['id', 'name', 'position', 'interview_type']
+        },
+        {
+          model: InterviewStage,
+          as: 'stages',
+          attributes: ['id', 'stage_id', 'result', 'completed_at']
+        }
+      ],
       order: [['date_time', 'DESC']]
     });
 
@@ -387,7 +394,7 @@ exports.scheduleSpecificStage = async (req, res) => {
           include: [{
             model: Job,
             as: 'job',
-            attributes: ['id', 'title', 'company']
+            attributes: ['id', 'title']
           }]
         }
       ]
@@ -440,17 +447,42 @@ exports.updateStatus = async (req, res) => {
 // Submit interview feedback
 exports.submitFeedback = async (req, res) => {
   try {
-    const { interview_id } = req.params;
+    const { interview_id, stage_id } = req.params;
     const { feedback, result, notes } = req.body;
 
+    console.log('Searching for stage with:', { interview_id, stage_id });
+
+    // Find interview stage with all necessary associations
     const interviewStage = await InterviewStage.findOne({
-      where: { interview_id }
+      where: { 
+        interview_id,
+        stage_id
+      },
+      include: [
+        {
+          model: Interview,
+          include: [{ 
+            model: Applicant,
+            as: 'applicant',
+            attributes: ['id', 'status']
+          }]
+        },
+        {
+          model: StageLookup,
+          as: 'stage',
+          attributes: ['name', 'order']
+        }
+      ]
     });
 
     if (!interviewStage) {
-      return res.status(404).json({ message: 'Interview stage not found' });
+      return res.status(404).json({ 
+        message: 'Interview stage not found',
+        searchParams: { interview_id, stage_id }
+      });
     }
 
+    // Update the stage
     await interviewStage.update({
       feedback,
       result,
@@ -458,19 +490,61 @@ exports.submitFeedback = async (req, res) => {
       completed_at: new Date()
     });
 
-    // Get updated stage with associations
+    // Handle applicant status updates based on result
+    if (result === 'pass' || result === 'fail') {
+      const applicant = interviewStage.Interview.applicant;
+      
+      if (result === 'fail') {
+        await applicant.update({ status: 'rejected' });
+      } else {
+        // Check if this was the final stage
+        const nextStage = await StageLookup.findOne({
+          where: {
+            order: { [Op.gt]: interviewStage.stage.order }
+          },
+          order: [['order', 'ASC']]
+        });
+
+        if (!nextStage) {
+          // This was the final stage and candidate passed
+          await applicant.update({ status: 'offered' });
+        } else {
+          // Move to next stage
+          await applicant.update({ status: 'interviewing' });
+        }
+      }
+    }
+
+    // Get and return the updated stage with all associations
     const updatedStage = await InterviewStage.findOne({
-      where: { interview_id },
-      include: [{
-        model: StageLookup,
-        as: 'stage',
-        attributes: ['name', 'order']
-      }]
+      where: { 
+        interview_id,
+        stage_id
+      },
+      include: [
+        {
+          model: Interview,
+          include: [{ 
+            model: Applicant,
+            as: 'applicant',
+            attributes: ['id', 'status', 'name']
+          }]
+        },
+        {
+          model: StageLookup,
+          as: 'stage',
+          attributes: ['name', 'order']
+        }
+      ]
     });
 
     res.status(200).json(updatedStage);
   } catch (error) {
     console.error('Error submitting feedback:', error);
-    res.status(500).json({ message: 'Error submitting feedback' });
+    res.status(500).json({ 
+      message: 'Error submitting feedback',
+      error: error.message,
+      searchParams: { interview_id, stage_id }
+    });
   }
 };

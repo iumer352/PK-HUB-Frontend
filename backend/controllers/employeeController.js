@@ -121,14 +121,45 @@ exports.getEmployees = async (req, res) => {
   }
 };
 
-// Create new employee
+// Create new employee from applicant
 exports.createEmployee = async (req, res) => {
   try {
-    const employee = await Employee.create(req.body);
-    res.status(201).json(employee);
+    const { name, department, role, status, applicantId, email, phone } = req.body;
+
+    // Create new employee with additional fields
+    const employee = await Employee.create({
+      name,
+      department,
+      role,
+      status: status || 'active',
+      email,
+      phone,
+      joinDate: new Date(), // Set join date to current date
+      isOnboarding: true // Flag to indicate employee is in onboarding process
+    });
+
+    // Update applicant status if applicantId is provided
+    if (applicantId) {
+      const Applicant = require('../models/Applicant');
+      await Applicant.update(
+        { status: 'hired' },
+        { where: { id: applicantId } }
+      );
+    }
+
+    // Return the created employee with all fields
+    const createdEmployee = await Employee.findByPk(employee.id, {
+      include: [{
+        model: Project,
+        as: 'projects',
+        through: { attributes: [] }
+      }]
+    });
+
+    res.status(201).json(createdEmployee);
   } catch (error) {
     console.error('Error creating employee:', error);
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: 'Error creating employee', error: error.message });
   }
 };
 

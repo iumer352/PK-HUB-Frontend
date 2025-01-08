@@ -14,6 +14,9 @@ router.get('/:id', applicantController.getApplicant);
 // Create a new job
 router.post('/', applicantController.createApplicant);
 
+// Create applicants from parsed resumes
+router.post('/from-parsed-resumes', applicantController.createApplicantsFromParsedResumes);
+
 // Update a job
 router.put('/:id', applicantController.updateStatus);
 

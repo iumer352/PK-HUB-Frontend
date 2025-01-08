@@ -41,7 +41,18 @@ exports.createJob = async (req, res) => {
 // Update a job
 exports.updateJob = async (req, res) => {
     try {
-        const { title, description, requirements, location, salary, status } = req.body;
+        const { 
+            title, 
+            grade, 
+            hiringManager, 
+            hiringUrgency,
+            roleOverview,
+            keyResponsibilities,
+            keySkillsAndCompetencies,
+            functionType,
+            status 
+        } = req.body;
+        
         const job = await Job.findByPk(req.params.id);
         
         if (!job) {
@@ -50,10 +61,13 @@ exports.updateJob = async (req, res) => {
 
         await job.update({
             title,
-            description,
-            requirements,
-            location,
-            salary,
+            grade,
+            hiringManager,
+            hiringUrgency,
+            roleOverview,
+            keyResponsibilities,
+            keySkillsAndCompetencies,
+            functionType,
             status
         });
 

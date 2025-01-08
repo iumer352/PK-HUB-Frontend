@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import InterviewLeftSidebar from './InterviewLeftSidebar';
 import InterviewRightSidebar from './InterviewRightSidebar';
 import InterviewResultModal from './modals/InterviewResultModal';
@@ -22,13 +23,14 @@ import {
 } from 'lucide-react';
 
 export const INTERVIEW_STAGES = [
-  { id: 'HR', name: 'HR Interview', color: 'blue', icon: UserCheck },
+  { id: 'HR', name: 'HR round', color: 'blue', icon: UserCheck },
   { id: 'TECHNICAL', name: 'Technical Round', color: 'purple', icon: Code },
   { id: 'CULTURAL', name: 'Cultural Fit', color: 'green', icon: Users },
   { id: 'FINAL', name: 'Final Round', color: 'orange', icon: Award }
 ];
 
 const RecruitingDashboard = () => {
+  const { jobId, applicantId } = useParams();
   const [applicants, setApplicants] = useState([]);
   const [interviewers, setInterviewers] = useState([]);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
@@ -42,37 +44,39 @@ const RecruitingDashboard = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [jobId, applicantId]);
 
   const fetchData = async () => {
     try {
-      const [applicantsRes, InterviewerRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/applicant'),
+      const [InterviewerRes] = await Promise.all([
         axios.get('http://localhost:5000/api/interviewers/')
       ]);
 
-      console.log("applican res is ", applicantsRes)
-      // Get interviews for each applicant
-      const applicantsWithInterviews = await Promise.all(
-        applicantsRes.data.map(async (applicant) => {
-          try {
+      if (applicantId) {
+        // If we have an applicantId, fetch just that applicant
+        const applicantRes = await axios.get(`http://localhost:5000/api/applicant/${applicantId}`);
+        const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicantId}`);
+        const applicantWithInterviews = {
+          ...applicantRes.data,
+          interviews: interviewsRes.data
+        };
+        setApplicants([applicantWithInterviews]);
+        setSelectedApplicant(applicantWithInterviews);
+      } else if (jobId) {
+        // If we have a jobId, fetch all applicants for that job
+        const applicantsRes = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
+        const applicantsWithInterviews = await Promise.all(
+          applicantsRes.data.map(async (applicant) => {
             const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
             return {
               ...applicant,
               interviews: interviewsRes.data
             };
-          } catch (error) {
-            console.error(`Error fetching interviews for applicant ${applicant.id}:`, error);
-            return {
-              ...applicant,
-              interviews: []
-            };
-          }
-        })
-      );
+          })
+        );
+        setApplicants(applicantsWithInterviews);
+      }
 
-
-      setApplicants(applicantsWithInterviews);
       setInterviewers(InterviewerRes.data);
       setLoading(false);
     } catch (error) {
@@ -80,6 +84,30 @@ const RecruitingDashboard = () => {
       setError('Failed to load data');
       setLoading(false);
     }
+  };
+
+  // Update selected applicant's data
+  const updateSelectedApplicantData = async (applicant) => {
+    if (!applicant) {
+      setSelectedApplicant(null);
+      return;
+    }
+
+    try {
+      const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
+      const updatedApplicant = {
+        ...applicant,
+        interviews: interviewsRes.data
+      };
+      setSelectedApplicant(updatedApplicant);
+    } catch (error) {
+      console.error('Error fetching applicant interviews:', error);
+      setError('Failed to load applicant interviews');
+    }
+  };
+
+  const handleSelectApplicant = (applicant) => {
+    updateSelectedApplicantData(applicant);
   };
 
   const handleScheduleInterview = async (stageId, date, time, interviewerId) => {
@@ -189,15 +217,16 @@ const RecruitingDashboard = () => {
 
   const handleUpdateResult = async (interviewId, resultData) => {
     try {
-      console.log("result data is ",resultData.result)
-      await axios.post(`http://localhost:5000/api/interview/stages/${interviewId}/feedback`, {
+      await axios.post(`http://localhost:5000/api/interview/stages/${interviewId}/${resultData.stageId}/feedback`, {
         result: resultData.result,
         feedback: resultData.feedback,
         notes: resultData.notes
       });
+      alert('Interview result updated successfully!');
       // Refresh applicant data
       fetchData();
     } catch (error) {
+      alert('Error updating interview result. Please try again.');
       console.error('Error updating interview result:', error);
     }
   };
@@ -262,7 +291,7 @@ const RecruitingDashboard = () => {
       <InterviewLeftSidebar 
         applicants={applicants}
         selectedApplicant={selectedApplicant}
-        setSelectedApplicant={setSelectedApplicant}
+        setSelectedApplicant={handleSelectApplicant}
         getCurrentStage={getCurrentStage}
         getStageStatus={getStageStatus}
       />
@@ -302,7 +331,12 @@ const RecruitingDashboard = () => {
             setSelectedInterview(null);
           }}
           onSave={(resultData) => {
-            handleUpdateResult(selectedInterview.id, resultData);
+            // Use stage_id instead of id
+            const stageId = selectedInterview.stages[0].stage_id;
+            console.log('Selected Interview:', selectedInterview);
+            console.log('Interview ID:', selectedInterview.id);
+            console.log('Stage ID:', stageId);
+            handleUpdateResult(selectedInterview.id, { ...resultData, stageId });
             setShowResultModal(false);
             setSelectedInterview(null);
           }}
