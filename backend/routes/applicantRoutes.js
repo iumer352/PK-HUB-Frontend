@@ -2,23 +2,25 @@ const express = require('express');
 const router = express.Router();
 const applicantController = require('../controllers/applicantController');
 
-// Get all jobs
+// Get all applicants
 router.get('/', applicantController.getApplicants);
 
-// Get applicants by jobid
+// Get applicants by job ID
 router.get('/job/:jobId', applicantController.getApplicantsByJobId);
 
-// Get a single job
+// Get a single applicant
 router.get('/:id', applicantController.getApplicant);
 
-// Create a new job
+// Get resume file
+router.get('/:id/resume', applicantController.getResume);
+
+// Create a new applicant
 router.post('/', applicantController.createApplicant);
 
 // Create applicants from parsed resumes
 router.post('/from-parsed-resumes', applicantController.createApplicantsFromParsedResumes);
 
-// Update a job
-router.put('/:id', applicantController.updateStatus);
-
+// Update applicant status
+router.put('/:id/status', applicantController.updateStatus);
 
 module.exports = router;

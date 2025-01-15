@@ -1,5 +1,39 @@
 const Applicant = require('../models/Applicant');
 const Job = require('../models/Job');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configure multer for resume storage
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = 'uploads/resumes';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['.pdf', '.doc', '.docx'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (allowedTypes.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only PDF, DOC, and DOCX files are allowed.'));
+        }
+    },
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
 
 // Get all applicants
 exports.getApplicants = async (req, res) => {
@@ -113,25 +147,40 @@ exports.createApplicantsFromParsedResumes = async (req, res) => {
             failed: []
         };
 
-        console.log('Request body:', {
-            jobId,
-            successful_parses_count: successful_parses?.length,
-            failed_files_count: failed_files?.length});
-
-        // Validate jobId
         if (!jobId) {
             return res.status(400).json({ message: 'Job ID is required' });
         }
 
-        // Check if job exists
         const job = await Job.findByPk(jobId);
         if (!job) {
             return res.status(404).json({ message: 'Job not found' });
         }
 
+        // Create uploads directory if it doesn't exist
+        const uploadDir = path.join(__dirname, '..', 'uploads', 'resumes');
+        console.log('Creating upload directory:', uploadDir);
+        
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('Created upload directory');
+        }
+
         for (const parse of successful_parses) {
             try {
-                // Prepare resume data with score and score details
+                // Save the resume file if it exists in the request
+                let resumePath = null;
+                if (parse.originalFile && parse.originalFile.data) {
+                    const fileExt = path.extname(parse.originalFile.name);
+                    const fileName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExt}`;
+                    resumePath = path.join(uploadDir, fileName);
+                    console.log('Saving resume to:', resumePath);
+
+                    // Convert base64 to buffer and save file
+                    const fileData = Buffer.from(parse.originalFile.data, 'base64');
+                    fs.writeFileSync(resumePath, fileData);
+                    console.log('Resume file saved successfully');
+                }
+
                 const resumeData = {
                     ...parse.content,
                     score: parse.score || 0,
@@ -140,59 +189,82 @@ exports.createApplicantsFromParsedResumes = async (req, res) => {
                         Experience_Score: 0,
                         Education_Score: 0,
                         Certification_Score: 0
-                    }
+                    },
+                    resumePath: resumePath
                 };
 
-                const applicantData = {
+                console.log('Creating applicant with resume path:', resumePath);
+
+                const applicant = await Applicant.create({
                     name: parse.content.Name,
                     email: parse.content.Email,
                     phone: parse.content.Phone,
-                    resume: JSON.stringify(resumeData), // Store the full parsed content with scores
+                    resume: JSON.stringify(resumeData),
                     status: 'applied',
-                    job_id: jobId
-                };
+                    JobId: jobId
+                });
 
-                // Basic validation
-                if (!applicantData.name || !applicantData.email || !applicantData.phone) {
-                    results.failed.push({
-                        filename: parse.filename,
-                        reason: 'Missing required fields'
-                    });
-                    continue;
-                }
+                console.log('Applicant created successfully:', applicant.id);
 
-                // Create the applicant record
-                const applicant = await Applicant.create(applicantData);
                 results.created.push({
-                    filename: parse.filename,
-                    applicantId: applicant.id,
+                    name: parse.content.Name,
+                    id: applicant.id,
                     score: parse.score || 0
                 });
             } catch (error) {
+                console.error('Error processing applicant:', error);
                 results.failed.push({
-                    filename: parse.filename,
-                    reason: error.name === 'SequelizeUniqueConstraintError' ? 
-                           'Email already exists' : 
-                           'Database error'
+                    name: parse.content.Name,
+                    error: error.message
                 });
             }
         }
 
-        // Add any failed files from the parser
-        if (failed_files && Array.isArray(failed_files)) {
-            results.failed.push(...failed_files.map(file => ({
-                filename: file,
-                reason: 'Parser failed to extract data'
-            })));
+        res.json({
+            message: 'Import completed',
+            results: results
+        });
+    } catch (error) {
+        console.error('Error importing resumes:', error);
+        res.status(500).json({ message: 'Error importing resumes' });
+    }
+};
+
+// Get resume file
+exports.getResume = async (req, res) => {
+    try {
+        console.log('Getting resume for applicant ID:', req.params.id);
+        
+        const applicant = await Applicant.findByPk(req.params.id);
+        if (!applicant) {
+            console.log('Applicant not found');
+            return res.status(404).json({ message: 'Applicant not found' });
         }
 
-        res.status(201).json(results);
+        console.log('Applicant found:', applicant.name);
+        console.log('Resume data:', applicant.resume);
+
+        const resumeData = JSON.parse(applicant.resume);
+        console.log('Parsed resume data:', resumeData);
+        
+        const resumePath = resumeData.resumePath;
+        console.log('Resume path:', resumePath);
+
+        if (!resumePath) {
+            console.log('No resume path found in data');
+            return res.status(404).json({ message: 'Resume path not found' });
+        }
+
+        if (!fs.existsSync(resumePath)) {
+            console.log('Resume file not found at path:', resumePath);
+            return res.status(404).json({ message: 'Resume file not found' });
+        }
+
+        console.log('Sending file from path:', path.resolve(resumePath));
+        res.sendFile(path.resolve(resumePath));
     } catch (error) {
-        console.error('Error creating applicants:', error);
-        res.status(500).json({ 
-            message: 'Error processing parsed resumes',
-            error: error.message 
-        });
+        console.error('Error retrieving resume:', error);
+        res.status(500).json({ message: 'Error retrieving resume' });
     }
 };
 

@@ -5,6 +5,9 @@ const employeeController = require('../controllers/employeeController');
 // GET /api/employees - Get all employees
 router.get('/', employeeController.getEmployees);
 
+// GET /api/employees/:id - Get single employee
+router.get('/:id', employeeController.getEmployeeById);
+
 // GET /api/employees/:employeeId/availability - Get employee availability
 router.get('/:employeeId/availability', employeeController.getEmployeeAvailability);
 

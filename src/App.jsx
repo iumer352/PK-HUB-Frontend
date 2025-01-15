@@ -13,6 +13,7 @@ import EmployeeDashboard from './components/EmployeeDashboard';
 import EmployeeMonthlyView from './components/EmployeeMonthlyView';
 import ApplicantInterviewTracking from './components/ApplicantInterviewTracking';
 import OnboardingChecklist from './components/OnboardingChecklist';
+import MonthlyTimesheet from './components/timesheet';
 
 function App() {
   return (
@@ -34,6 +35,8 @@ function App() {
           <Route path="/applicant-interview" element={<ApplicantInterviewTracking/>} />
           <Route path="/employees/:employeeId/monthly" element={<EmployeeMonthlyView />} />
           <Route path="/onboarding/:employeeId" element={<OnboardingChecklist />} />
+          <Route path="/timesheet/:employeeId" element={<MonthlyTimesheet />} />
+
         </Routes>
       </Layout>
     </Router>

@@ -7,6 +7,7 @@ const InterviewStage = require('./InterviewStage');
 const StageLookup = require('./stage_lookup')
 const Job = require('./Job');
 const Interviewer = require('./Interviewer');
+const Timesheet = require('./Timesheet');
 
 // Project-Employee many-to-many relationship
 Project.belongsToMany(Employee, {
@@ -74,14 +75,37 @@ Job.hasMany(Applicant, {
     as: 'applicants'
 });
 
+// Timesheet associations
+Timesheet.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Timesheet.belongsTo(Project, {
+  foreignKey: 'project_id',
+  as: 'project',
+  onDelete: 'RESTRICT' // Prevent deletion of projects with timesheet entries
+});
+
+Employee.hasMany(Timesheet, {
+  foreignKey: 'employee_id',
+  as: 'timesheets'
+});
+
+Project.hasMany(Timesheet, {
+  foreignKey: 'project_id',
+  as: 'timesheets'
+});
+
 module.exports = {
     Employee,
     Project,
     ProjectAssignee,
     Interview,
-    Applicant,
     InterviewStage,
     StageLookup,
     Interviewer,
-    Job
+    Job,
+    Applicant,
+    Timesheet
 };

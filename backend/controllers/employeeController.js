@@ -121,6 +121,23 @@ exports.getEmployees = async (req, res) => {
   }
 };
 
+// Get a single employee by ID
+exports.getEmployeeById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findByPk(id);
+    
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    console.error('Error fetching employee:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 // Create new employee from applicant
 exports.createEmployee = async (req, res) => {
   try {

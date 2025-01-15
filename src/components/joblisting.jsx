@@ -75,7 +75,7 @@ const JobPostingForm = () => {
     // Get interview status for applicant
     const getApplicantStatus = (applicant) => {
         if (!applicant.interviews || applicant.interviews.length === 0) {
-            return applicant.status === 'interviewing' ? 'HR Round' : applicant.status; // Show HR Round if interviewing
+            return 'No Interview Scheduled';
         }
 
         // Check if any interview has failed
@@ -173,7 +173,11 @@ const JobPostingForm = () => {
             console.log('No files selected');
             return;
         }
-        console.log('Files selected:', files);
+        
+        // Log file sizes
+        Array.from(files).forEach(file => {
+            console.log(`File ${file.name} size:`, file.size / 1024, 'KB');
+        });
 
         setLoading(true);
         try {
@@ -184,6 +188,33 @@ const JobPostingForm = () => {
                 console.log('Appending file:', file.name);
             });
 
+            // Create job description from all job details
+            const jobDescription = `
+Job Title: ${jobPosting.title}
+Grade: ${jobPosting.grade}
+Hiring Urgency: ${jobPosting.hiringUrgency}
+
+Role Overview:
+${jobPosting.roleOverview}
+
+Key Responsibilities:
+${jobPosting.keyResponsibilities}
+
+Key Skills and Competencies:
+${jobPosting.keySkillsAndCompetencies}
+            `.trim();
+
+            // Debug: Log the job description
+            console.log('Job Description being sent:', jobDescription);
+
+            // Add job description to FormData
+            formData.append('job_description', jobDescription);
+
+            // Debug: Log FormData contents
+            for (let pair of formData.entries()) {
+                console.log('FormData entry:', pair[0], pair[1]);
+            }
+
             console.log('Sending to parser API...');
             // Step 1: Send files to the parser API
             const parserResponse = await axios.post('http://127.0.0.1:8000/parse-and-rank', formData, {
@@ -191,37 +222,91 @@ const JobPostingForm = () => {
                     'Content-Type': 'multipart/form-data'
                 }
             });
+            console.log('Parser API Request Details:', {
+                url: 'http://127.0.0.1:8000/parse-and-rank',
+                formDataEntries: Array.from(formData.entries()).map(entry => entry[0]),
+                jobDescriptionLength: jobDescription.length
+            });
             console.log('Parser response:', parserResponse.data);
 
-            // Step 2: Send parsed data to backend to create applicants
-            await axios.post(
-                'http://localhost:5000/api/applicant/from-parsed-resumes',
-                {
-                    ...parserResponse.data,
-                    jobId: jobId // Include the jobId for association
-                  
-                }
-                
+            // Step 2: Process files and add them to parsed data
+            const processedParses = await Promise.all(
+                parserResponse.data.successful_parses.map(async (parse, index) => {
+                    const file = files[index];
+                    const reader = new FileReader();
+                    
+                    // Convert file to base64
+                    const base64File = await new Promise((resolve) => {
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(file);
+                    });
+
+                    console.log(`Base64 size for ${file.name}:`, base64File.length / 1024, 'KB');
+
+                    // Create a more compact version of the file data
+                    const compactData = {
+                        ...parse,
+                        originalFile: {
+                            name: file.name,
+                            // Only include the actual base64 data, not the data URL prefix
+                            data: base64File.split(',')[1]
+                        }
+                    };
+
+                    return compactData;
+                })
             );
 
-            console.log('job id is ', jobId);
+            // Log the size of the final payload
+            const payload = {
+                ...parserResponse.data,
+                successful_parses: processedParses,
+                jobId: jobId
+            };
+            console.log('Final payload size:', JSON.stringify(payload).length / 1024, 'KB');
 
-            console.log('Applicants created successfully');
+            // Step 3: Send parsed data with files to backend
+            const response = await axios.post(
+                'http://localhost:5000/api/applicant/from-parsed-resumes',
+                payload
+            );
 
-            // Step 3: Refresh the applicants list using existing fetchJobData
+            console.log('Import completed:', response.data);
+
+            // Refresh applicants list
             const applicantsResponse = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
             setApplicants(applicantsResponse.data);
             setError(null);
-
-        } catch (err) {
-            console.error('Error processing CVs:', err);
-            setError('Failed to process CVs. Please try again.');
+        } catch (error) {
+            console.error('Error processing files:', error);
+            if (error.response) {
+                console.error('Response error:', error.response.status, error.response.data);
+            }
+            setError('Error processing resumes. Please try again.');
         } finally {
             setLoading(false);
-            // Reset the file input
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
+        }
+    };
+
+    const viewResume = async (applicantId) => {
+        try {
+            const response = await axios.get(
+                `http://localhost:5000/api/applicant/${applicantId}/resume`,
+                { responseType: 'blob' }
+            );
+            
+            // Create blob URL and open in new tab
+            const blob = new Blob([response.data], { 
+                type: response.headers['content-type'] 
+            });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url);
+        } catch (error) {
+            console.error('Error viewing resume:', error);
+            setError('Error viewing resume');
         }
     };
 
@@ -276,7 +361,7 @@ const JobPostingForm = () => {
                             onClick={() => navigate(`/interview-status/${jobId}`)}
                             className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors duration-200"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                                 <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                             </svg>
@@ -544,7 +629,7 @@ const JobPostingForm = () => {
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                // viewResume(applicant.id);
+                                                                viewResume(applicant.id);
                                                             }}
                                                             className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
                                                         >
