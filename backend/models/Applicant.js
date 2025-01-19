@@ -29,7 +29,7 @@ const Applicant = sequelize.define('Applicant', {
     allowNull: false
   },
   status: {
-    type: DataTypes.ENUM('applied', 'screening', 'interviewing', 'offered', 'hired', 'rejected'),
+    type: DataTypes.TEXT,
     defaultValue: 'applied'
   }
 }, {

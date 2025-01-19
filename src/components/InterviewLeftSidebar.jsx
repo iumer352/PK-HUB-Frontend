@@ -88,7 +88,7 @@ const InterviewLeftSidebar = ({
           <div className="space-y-4">
             {INTERVIEW_STAGES.map((stage, index) => {
               // Map stage IDs to numbers
-              const stageIdMap = { 'HR': 4, 'TECHNICAL': 2, 'CULTURAL': 1, 'FINAL': 3 };
+              const stageIdMap = { 'HR': 1, 'TECHNICAL': 2, 'CULTURAL': 3, 'FINAL': 4 };
               const numericStageId = stageIdMap[stage.id];
               
               const interview = applicant.interviews.find(i => 
