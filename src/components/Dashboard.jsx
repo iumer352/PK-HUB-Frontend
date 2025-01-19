@@ -37,7 +37,6 @@ const Dashboard = () => {
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [showPositionsModal, setShowPositionsModal] = useState(false);
-  const [showInterviewsModal, setShowInterviewsModal] = useState(false);
   const [showHiringModal, setShowHiringModal] = useState(false);
   const [onboardedEmployees, setOnboardedEmployees] = useState([]);
   const [dashboardData, setDashboardData] = useState({
@@ -59,11 +58,6 @@ const Dashboard = () => {
       scheduled: 0,
       completed: 0,
       upcoming: 0
-    },
-    onboardingStats: {
-      total: 0,
-      inProgress: 0,
-      completed: 0
     }
   });
   const [loading, setLoading] = useState(true);
@@ -79,24 +73,19 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         // In a real app, these would be actual API endpoints
-        const [projectsRes, jobsRes, interviewsRes, onboardingRes] = await Promise.all([
+        const [projectsRes, jobsRes, interviewsRes, employeesRes] = await Promise.all([
           axios.get('http://localhost:5000/api/projects/stats'),
           axios.get('http://localhost:5000/api/jobs/stats'),
           axios.get('http://localhost:5000/api/interviews/stats'),
-          axios.get('http://localhost:5000/api/employees/onboarding')
+          axios.get('http://localhost:5000/api/employees')
         ]);
 
         setDashboardData({
           projectStats: projectsRes.data,
           jobStats: jobsRes.data,
-          interviewStats: interviewsRes.data,
-          onboardingStats: {
-            total: onboardingRes.data.length,
-            inProgress: onboardingRes.data.filter(emp => !emp.onboardingCompleted).length,
-            completed: onboardingRes.data.filter(emp => emp.onboardingCompleted).length
-          }
+          interviewStats: interviewsRes.data
         });
-        setOnboardedEmployees(onboardingRes.data);
+        setOnboardedEmployees(employeesRes.data);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         // Use dummy data for demonstration
@@ -132,19 +121,14 @@ const Dashboard = () => {
             scheduled: 12,
             completed: 25,
             upcoming: 8
-          },
-          onboardingStats: {
-            total: 10,
-            inProgress: 5,
-            completed: 5
           }
         });
         setOnboardedEmployees([
-          { id: 1, name: 'John Doe', position: 'Software Engineer', onboardingCompleted: true, checklist: [{ task: 'Task 1', completed: true }, { task: 'Task 2', completed: false }] },
-          { id: 2, name: 'Jane Doe', position: 'Marketing Manager', onboardingCompleted: false, checklist: [{ task: 'Task 1', completed: true }, { task: 'Task 2', completed: false }] },
-          { id: 3, name: 'Bob Smith', position: 'Sales Representative', onboardingCompleted: true, checklist: [{ task: 'Task 1', completed: true }, { task: 'Task 2', completed: true }] },
-          { id: 4, name: 'Alice Johnson', position: 'Design Lead', onboardingCompleted: false, checklist: [{ task: 'Task 1', completed: false }, { task: 'Task 2', completed: false }] },
-          { id: 5, name: 'Mike Brown', position: 'HR Generalist', onboardingCompleted: true, checklist: [{ task: 'Task 1', completed: true }, { task: 'Task 2', completed: true }] }
+          { _id: 1, name: 'John Doe', role: 'Software Engineer', joiningDate: '2022-01-01' },
+          { _id: 2, name: 'Jane Doe', role: 'Marketing Manager', joiningDate: '2022-02-01' },
+          { _id: 3, name: 'Bob Smith', role: 'Sales Representative', joiningDate: '2022-03-01' },
+          { _id: 4, name: 'Alice Johnson', role: 'Design Lead', joiningDate: '2022-04-01' },
+          { _id: 5, name: 'Mike Brown', role: 'HR Generalist', joiningDate: '2022-05-01' }
         ]);
       } finally {
         setLoading(false);
@@ -208,7 +192,7 @@ const Dashboard = () => {
             <p className="text-3xl font-bold text-yellow-600">{dashboardData.projectStats.upcoming}</p>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-4 rounded-lg shadow h-[300px]">
           <h3 className="text-lg font-semibold mb-4">Monthly Progress</h3>
           <Line
             data={{
@@ -226,10 +210,19 @@ const Dashboard = () => {
             }}
             options={{
               responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'top' } }
+              maintainAspectRatio: true,
+              plugins: { 
+                legend: { position: 'top' },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    stepSize: 5
+                  }
+                }
+              }
             }}
-            height={300}
           />
         </div>
       </div>
@@ -257,7 +250,7 @@ const Dashboard = () => {
             <p className="text-3xl font-bold text-purple-600">{dashboardData.jobStats.inProgress}</p>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-4 rounded-lg shadow h-[300px]">
           <h3 className="text-lg font-semibold mb-4">Positions by Department</h3>
           <Doughnut
             data={{
@@ -278,67 +271,11 @@ const Dashboard = () => {
             }}
             options={{
               responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'right' } }
-            }}
-            height={300}
-          />
-        </div>
-      </div>
-    </StatModal>
-  );
-
-  const InterviewsModal = () => (
-    <StatModal
-      show={showInterviewsModal}
-      onClose={() => setShowInterviewsModal(false)}
-      title="Interview Statistics"
-    >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-blue-800">Scheduled</h3>
-            <p className="text-3xl font-bold text-blue-600">{dashboardData.interviewStats.scheduled}</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-green-800">Completed</h3>
-            <p className="text-3xl font-bold text-green-600">{dashboardData.interviewStats.completed}</p>
-          </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-yellow-800">Upcoming</h3>
-            <p className="text-3xl font-bold text-yellow-600">{dashboardData.interviewStats.upcoming}</p>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Interview Success Metrics</h3>
-          <Radar
-            data={{
-              labels: ['Job Openings', 'Interview Success', 'Hiring Speed', 'Candidate Quality', 'Offer Acceptance'],
-              datasets: [
-                {
-                  label: 'Current Period',
-                  data: [90, 85, 75, 80, 88],
-                  backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                  borderColor: 'rgb(54, 162, 235)',
-                  pointBackgroundColor: 'rgb(54, 162, 235)',
-                  pointBorderColor: '#fff',
-                  pointHoverBackgroundColor: '#fff',
-                  pointHoverBorderColor: 'rgb(54, 162, 235)'
-                }
-              ]
-            }}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              scales: {
-                r: {
-                  beginAtZero: true,
-                  max: 100,
-                  ticks: { stepSize: 20 }
-                }
+              maintainAspectRatio: true,
+              plugins: { 
+                legend: { position: 'right' }
               }
             }}
-            height={300}
           />
         </div>
       </div>
@@ -364,7 +301,7 @@ const Dashboard = () => {
             <p className="text-sm text-blue-600 mt-2">-2 days vs last month</p>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-4 rounded-lg shadow h-[300px]">
           <h3 className="text-lg font-semibold mb-4">Hiring Metrics</h3>
           <Bar
             data={{
@@ -379,10 +316,20 @@ const Dashboard = () => {
             }}
             options={{
               responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'top' } }
+              maintainAspectRatio: true,
+              plugins: { 
+                legend: { position: 'top' }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 100,
+                  ticks: {
+                    stepSize: 20
+                  }
+                }
+              }
             }}
-            height={300}
           />
         </div>
       </div>
@@ -415,40 +362,24 @@ const Dashboard = () => {
                 ×
               </button>
             </div>
-            
-            <div className="space-y-6">
+            <div className="space-y-4">
               {onboardedEmployees.map((employee) => (
-                <div key={employee.id} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-4">
+                <div key={employee._id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800">{employee.name}</h3>
-                      <p className="text-gray-600">{employee.position}</p>
+                      <h3 className="font-semibold text-lg text-gray-800">{employee.name}</h3>
+                      <p className="text-gray-600">{employee.role}</p>
+                      <p className="text-gray-500 text-sm">{employee.department}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      employee.onboardingCompleted 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {employee.onboardingCompleted ? 'Completed' : 'In Progress'}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-gray-700 mb-2">Onboarding Checklist</h4>
-                    {employee.checklist.map((item, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <CheckSquare 
-                          className={`w-5 h-5 ${
-                            item.completed ? 'text-green-500' : 'text-gray-400'
-                          }`}
-                        />
-                        <span className={`${
-                          item.completed ? 'text-gray-800' : 'text-gray-600'
-                        }`}>
-                          {item.task}
-                        </span>
-                      </div>
-                    ))}
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Joined: {new Date(employee.joiningDate).toLocaleDateString()}</p>
+                      <button
+                        onClick={() => navigate(`/onboarding/${employee._id}`)}
+                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -568,26 +499,6 @@ const Dashboard = () => {
           <motion.div
             whileHover={{ scale: 1.02 }}
             className="bg-white rounded-xl shadow-sm p-6 cursor-pointer"
-            onClick={() => setShowInterviewsModal(true)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Calendar className="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-              {dashboardData.interviewStats.upcoming}
-            </h3>
-            <p className="text-gray-600">Upcoming Interviews</p>
-            <div className="mt-4 flex items-center text-sm">
-              <span className="text-green-600 font-medium">+8%</span>
-              <span className="text-gray-500 ml-2">vs last month</span>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-xl shadow-sm p-6 cursor-pointer"
             onClick={() => setShowHiringModal(true)}
           >
             <div className="flex items-center justify-between mb-4">
@@ -615,18 +526,9 @@ const Dashboard = () => {
               </div>
             </div>
             <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-              {dashboardData.onboardingStats.total}
+              {onboardedEmployees.length}
             </h3>
             <p className="text-gray-600">Newly Onboarded</p>
-            <div className="mt-4 flex items-center text-sm">
-              <span className="text-green-600 font-medium">
-                {dashboardData.onboardingStats.completed} Completed
-              </span>
-              <span className="mx-2 text-gray-400">•</span>
-              <span className="text-yellow-600 font-medium">
-                {dashboardData.onboardingStats.inProgress} In Progress
-              </span>
-            </div>
           </motion.div>
         </div>
         
@@ -636,139 +538,139 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-lg"
+            className="bg-white p-6 rounded-lg shadow-lg h-[300px]"
           >
             <h3 className="text-lg font-semibold mb-4">Project Progress</h3>
-            <div className="h-[300px]">
-              <Line
-                data={{
-                  labels: dashboardData.projectStats.monthlyProgress.map(item => item.month),
-                  datasets: [
-                    {
-                      label: 'Project Progress',
-                      data: dashboardData.projectStats.monthlyProgress.map(item => item.count),
-                      borderColor: 'rgb(75, 192, 192)',
-                      tension: 0.4,
-                      fill: true,
-                      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            <Line
+              data={{
+                labels: dashboardData.projectStats.monthlyProgress.map(item => item.month),
+                datasets: [
+                  {
+                    label: 'Project Progress',
+                    data: dashboardData.projectStats.monthlyProgress.map(item => item.count),
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.4,
+                    fill: true,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      stepSize: 5
                     }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { position: 'top' } }
-                }}
-              />
-            </div>
+                  }
+                }
+              }}
+            />
           </motion.div>
 
           {/* Jobs by Department Doughnut Chart */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-lg"
+            className="bg-white p-6 rounded-lg shadow-lg h-[300px]"
           >
             <h3 className="text-lg font-semibold mb-4">Jobs by Department</h3>
-            <div className="h-[300px]">
-              <Doughnut
-                data={{
-                  labels: Object.keys(dashboardData.jobStats.byDepartment),
-                  datasets: [
-                    {
-                      label: 'Jobs by Department',
-                      data: Object.values(dashboardData.jobStats.byDepartment),
-                      backgroundColor: [
-                        'rgba(255, 99, 132, 0.8)',
-                        'rgba(54, 162, 235, 0.8)',
-                        'rgba(255, 206, 86, 0.8)',
-                        'rgba(75, 192, 192, 0.8)',
-                        'rgba(153, 102, 255, 0.8)',
-                      ],
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { position: 'right' } }
-                }}
-              />
-            </div>
+            <Doughnut
+              data={{
+                labels: Object.keys(dashboardData.jobStats.byDepartment),
+                datasets: [
+                  {
+                    label: 'Jobs by Department',
+                    data: Object.values(dashboardData.jobStats.byDepartment),
+                    backgroundColor: [
+                      'rgba(255, 99, 132, 0.8)',
+                      'rgba(54, 162, 235, 0.8)',
+                      'rgba(255, 206, 86, 0.8)',
+                      'rgba(75, 192, 192, 0.8)',
+                      'rgba(153, 102, 255, 0.8)',
+                    ],
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { position: 'right' } }
+              }}
+            />
           </motion.div>
 
           {/* Project Status Bar Chart */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-lg"
+            className="bg-white p-6 rounded-lg shadow-lg h-[300px]"
           >
             <h3 className="text-lg font-semibold mb-4">Project Status Overview</h3>
-            <div className="h-[300px]">
-              <Bar
-                data={{
-                  labels: ['Active', 'Completed', 'Upcoming'],
-                  datasets: [
-                    {
-                      data: [
-                        dashboardData.projectStats.active,
-                        dashboardData.projectStats.completed,
-                        dashboardData.projectStats.upcoming
-                      ],
-                      backgroundColor: [
-                        'rgba(54, 162, 235, 0.8)',
-                        'rgba(75, 192, 192, 0.8)',
-                        'rgba(255, 206, 86, 0.8)',
-                      ],
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { display: false } }
-                }}
-              />
-            </div>
+            <Bar
+              data={{
+                labels: ['Active', 'Completed', 'Upcoming'],
+                datasets: [
+                  {
+                    data: [
+                      dashboardData.projectStats.active,
+                      dashboardData.projectStats.completed,
+                      dashboardData.projectStats.upcoming
+                    ],
+                    backgroundColor: [
+                      'rgba(54, 162, 235, 0.8)',
+                      'rgba(75, 192, 192, 0.8)',
+                      'rgba(255, 206, 86, 0.8)',
+                    ],
+                  }
+                ]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } }
+              }}
+            />
           </motion.div>
 
           {/* Recruitment Metrics Radar Chart */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-lg"
+            className="bg-white p-6 rounded-lg shadow-lg h-[300px]"
           >
             <h3 className="text-lg font-semibold mb-4">Recruitment Metrics</h3>
-            <div className="h-[300px]">
-              <Radar
-                data={{
-                  labels: ['Job Openings', 'Interview Success', 'Hiring Speed', 'Candidate Quality', 'Offer Acceptance'],
-                  datasets: [
-                    {
-                      label: 'Current Period',
-                      data: [90, 85, 75, 80, 88],
-                      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                      borderColor: 'rgb(54, 162, 235)',
-                      pointBackgroundColor: 'rgb(54, 162, 235)',
-                      pointBorderColor: '#fff',
-                      pointHoverBackgroundColor: '#fff',
-                      pointHoverBorderColor: 'rgb(54, 162, 235)'
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  scales: {
-                    r: {
-                      beginAtZero: true,
-                      max: 100,
-                      ticks: { stepSize: 20 }
-                    }
+            <Radar
+              data={{
+                labels: ['Job Openings', 'Interview Success', 'Hiring Speed', 'Candidate Quality', 'Offer Acceptance'],
+                datasets: [
+                  {
+                    label: 'Current Period',
+                    data: [90, 85, 75, 80, 88],
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    pointBackgroundColor: 'rgb(54, 162, 235)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(54, 162, 235)'
                   }
-                }}
-              />
-            </div>
+                ]
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                  r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { stepSize: 20 }
+                  }
+                }
+              }}
+            />
           </motion.div>
         </div>
       </motion.div>
@@ -776,9 +678,8 @@ const Dashboard = () => {
       {/* Modals */}
       <ProjectsModal />
       <PositionsModal />
-      <InterviewsModal />
-      <HiringModal />
       <OnboardingModal />
+      <HiringModal />
     </div>
   );
 };

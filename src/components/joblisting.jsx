@@ -26,6 +26,9 @@ const JobPostingForm = () => {
 
     const [sortConfig, setSortConfig] = useState({ key: 'score', direction: 'descending' });
 
+    const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+    const [showScoreDetails, setShowScoreDetails] = useState(null);
+
     const requestSort = (key) => {
         let direction = 'ascending';
         if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -134,6 +137,59 @@ const JobPostingForm = () => {
             case 4: return 'In Final Round';
             default: return 'No Interview Scheduled';
         }
+    };
+
+    const handleScoreHover = (event, resumeData) => {
+        if (!resumeData) return;
+        
+        const rect = event.target.getBoundingClientRect();
+        setHoverPosition({
+            x: rect.right + 10,
+            y: rect.top
+        });
+        
+        try {
+            const parsedData = typeof resumeData === 'string' ? JSON.parse(resumeData) : resumeData;
+            setShowScoreDetails(parsedData);
+        } catch (error) {
+            console.error('Error parsing resume data:', error);
+        }
+    };
+
+    const ScoreDetailsModal = ({ resumeData, position }) => {
+        if (!resumeData || !resumeData.score_details) return null;
+
+        const scoreCategories = {
+            'Skills_Score': 'Skills Match',
+            'Experience_Score': 'Experience Match',
+            'Education_Score': 'Education Match',
+            'Certification_Score': 'Certifications Match'
+        };
+
+        return (
+            <div 
+                className="fixed z-50 bg-white shadow-xl rounded-lg p-4 border border-gray-200 w-72"
+                style={{
+                    left: `${position.x}px`,
+                    top: `${position.y}px`,
+                    transform: 'translateY(-25%)'
+                }}
+            >
+                <h3 className="font-medium text-gray-900 mb-3">Score Breakdown</h3>
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center border-b pb-2">
+                        <span className="text-sm font-medium text-gray-900">Overall Match:</span>
+                        <span className="text-sm font-semibold text-indigo-600">{resumeData.score.toFixed(1)}%</span>
+                    </div>
+                    {Object.entries(resumeData.score_details).map(([key, score]) => (
+                        <div key={key} className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">{scoreCategories[key]}:</span>
+                            <span className="text-sm font-medium text-gray-900">{score.toFixed(1)}%</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
     };
 
     useEffect(() => {
@@ -670,9 +726,13 @@ ${jobPosting.keySkillsAndCompetencies}
                                                             {getApplicantStatus(applicant)}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                            {score !== null ? score.toFixed(1) : 'N/A'}
+                                                    <td 
+                                                        className="px-6 py-4 whitespace-nowrap text-sm font-medium cursor-help relative"
+                                                        onMouseEnter={(e) => handleScoreHover(e, applicant.resume)}
+                                                        onMouseLeave={() => setShowScoreDetails(null)}
+                                                    >
+                                                        <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800">
+                                                            {score !== null ? `${score.toFixed(1)}%` : 'N/A'}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -716,6 +776,48 @@ ${jobPosting.keySkillsAndCompetencies}
                         )}
                     </div>
                 )}
+                {showScoreDetails && (
+                    <ScoreDetailsModal 
+                        resumeData={showScoreDetails} 
+                        position={hoverPosition}
+                    />
+                )}
+            </div>
+        </div>
+    );
+};
+
+const ScoreDetailsModal = ({ resumeData, position }) => {
+    if (!resumeData || !resumeData.score_details) return null;
+
+    const scoreCategories = {
+        'Skills_Score': 'Skills Match',
+        'Experience_Score': 'Experience Match',
+        'Education_Score': 'Education Match',
+        'Certification_Score': 'Certifications Match'
+    };
+
+    return (
+        <div 
+            className="fixed z-50 bg-white shadow-xl rounded-lg p-4 border border-gray-200 w-72"
+            style={{
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                transform: 'translateY(-25%)'
+            }}
+        >
+            <h3 className="font-medium text-gray-900 mb-3">Score Breakdown</h3>
+            <div className="space-y-3">
+                <div className="flex justify-between items-center border-b pb-2">
+                    <span className="text-sm font-medium text-gray-900">Overall Match:</span>
+                    <span className="text-sm font-semibold text-indigo-600">{resumeData.score.toFixed(1)}%</span>
+                </div>
+                {Object.entries(resumeData.score_details).map(([key, score]) => (
+                    <div key={key} className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">{scoreCategories[key]}:</span>
+                        <span className="text-sm font-medium text-gray-900">{score.toFixed(1)}%</span>
+                    </div>
+                ))}
             </div>
         </div>
     );
