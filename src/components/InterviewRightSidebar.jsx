@@ -22,6 +22,7 @@ const InterviewRightSidebar = ({
   const [stageResults, setStageResults] = useState({});
   const [activeStage, setActiveStage] = useState('HR');
   const [showOnboardButton, setShowOnboardButton] = useState(false);
+  const [onboardingSuccess, setOnboardingSuccess] = useState(false);
 
   // Map stage names to their corresponding interview types
   const stageToType = {
@@ -74,7 +75,6 @@ const InterviewRightSidebar = ({
   // Handle onboard button click
   const handleOnboard = async () => {
     await checkAndCreateEmployee();
-    setShowOnboardButton(false);
   };
 
   // Handle onboarding column click
@@ -95,7 +95,7 @@ const InterviewRightSidebar = ({
 
     try {
       // Update applicant status to 'hired'
-      await axios.put(`http://localhost:5000/api/applicant/${selectedApplicant.id}`, {
+      await axios.put(`http://localhost:5000/api/applicant/${selectedApplicant.id}/status`, {
         status: 'hired'
       });
 
@@ -120,10 +120,9 @@ const InterviewRightSidebar = ({
       };
 
       console.log('Creating employee with data:', employeeData);
-      const response = await axios.post('http://localhost:5000/api/employees', employeeData);
-
-      // Navigate to onboarding checklist
-      navigate(`/onboarding/${response.data.id}`);
+      await axios.post('http://localhost:5000/api/employees', employeeData);
+      setOnboardingSuccess(true);
+      setShowOnboardButton(false);
     } catch (error) {
       console.error('Error creating employee:', error);
       console.error('Error response:', error.response?.data);
@@ -253,8 +252,7 @@ const InterviewRightSidebar = ({
                 }
               }}
             >
-              <div className={`
-                h-16 flex items-center justify-center
+              <div className={`h-16 flex items-center justify-center
                 ${index === 0 ? 'rounded-l-lg' : ''}
                 ${index === INTERVIEW_STAGES.length - 1 ? 'rounded-r-lg' : ''}
                 relative
@@ -296,6 +294,11 @@ const InterviewRightSidebar = ({
               >
                 Onboard
               </button>
+            )}
+            {onboardingSuccess && (
+              <div className="mt-4 p-4 bg-green-100 text-green-700 rounded-md">
+                Applicant has been successfully onboarded!
+              </div>
             )}
           </div>
         )}

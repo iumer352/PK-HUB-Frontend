@@ -24,14 +24,20 @@ const JobPostingForm = () => {
     const [error, setError] = useState(null);
     const [stageResults, setStageResults] = useState({});
 
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    const [sortConfig, setSortConfig] = useState({ key: 'score', direction: 'descending' });
 
     const requestSort = (key) => {
         let direction = 'ascending';
         if (sortConfig.key === key && sortConfig.direction === 'ascending') {
             direction = 'descending';
         }
-        setSortConfig({ key, direction });
+        // If switching away from score, remember the previous sort
+        if (key !== 'score') {
+            setSortConfig({ key, direction });
+        } else {
+            // For score, always set to descending
+            setSortConfig({ key: 'score', direction: 'descending' });
+        }
     };
 
     const getSortIcon = (columnName) => {
@@ -39,6 +45,14 @@ const JobPostingForm = () => {
             return (
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+            );
+        }
+        // For score column, always show descending icon
+        if (columnName === 'score') {
+            return (
+                <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
             );
         }
@@ -60,7 +74,8 @@ const JobPostingForm = () => {
             if (sortConfig.key === 'score') {
                 const scoreA = JSON.parse(a.resume)?.score || 0;
                 const scoreB = JSON.parse(b.resume)?.score || 0;
-                return sortConfig.direction === 'ascending' ? scoreA - scoreB : scoreB - scoreA;
+                // Always sort score in descending order
+                return scoreB - scoreA;
             }
             if (a[sortConfig.key] < b[sortConfig.key]) {
                 return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -80,34 +95,45 @@ const JobPostingForm = () => {
 
         // Check if any interview has failed
         const hasFailedInterview = applicant.interviews.some(interview => 
-            stageResults[interview.id]?.result === 'fail'
+            interview.stages?.some(stage => stage.result === 'fail')
         );
         if (hasFailedInterview) {
             return 'Rejected';
         }
 
-        // Check if all interviews are passed
-        const allInterviewsPassed = applicant.interviews.every(interview => 
-            stageResults[interview.id]?.result === 'pass'
+        // Check if final round is passed
+        const finalRoundPassed = applicant.interviews.some(interview => 
+            interview.stages?.some(stage => 
+                stage.stage_id === 4 && stage.result === 'pass'
+            )
         );
-        if (allInterviewsPassed) {
+        if (finalRoundPassed) {
             return 'Hired';
         }
 
         // Get the current stage
-        const stageOrder = ['HR', 'TECHNICAL', 'CULTURAL', 'FINAL'];
-        let currentStage = 'HR';
-        for (const stage of stageOrder) {
-            const interview = applicant.interviews.find(i => 
-                i.interviewer.interview_type === stage
-            );
-            if (!interview || stageResults[interview.id]?.result !== 'pass') {
-                currentStage = stage;
-                break;
-            }
-        }
+        let currentStageId = 1; // Start with HR
+        let currentStageName = 'HR';
 
-        return `${currentStage} Round`;
+        // Find the highest stage that's either scheduled or completed
+        applicant.interviews.forEach(interview => {
+            if (interview.stages?.[0]) {
+                const stageId = interview.stages[0].stage_id;
+                if (stageId > currentStageId) {
+                    currentStageId = stageId;
+                    currentStageName = interview.interviewer.interview_type;
+                }
+            }
+        });
+
+        // Map stage IDs to readable names
+        switch (currentStageId) {
+            case 1: return 'In HR Round';
+            case 2: return 'In Technical Round';
+            case 3: return 'In Cultural Round';
+            case 4: return 'In Final Round';
+            default: return 'No Interview Scheduled';
+        }
     };
 
     useEffect(() => {
@@ -117,20 +143,31 @@ const JobPostingForm = () => {
                     const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
                     setJobPosting(response.data);
 
+                    // Get applicants for this job
                     const applicantsResponse = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
-                    setApplicants(applicantsResponse.data);
+                    const applicantsData = applicantsResponse.data;
 
-                    // Fetch interview results for each applicant
-                    const results = {};
-                    for (const applicant of applicantsResponse.data) {
-                        if (applicant.interviews) {
-                            for (const interview of applicant.interviews) {
-                                const resultResponse = await axios.get(`http://localhost:5000/api/interview/stages/${interview.id}/result`);
-                                results[interview.id] = resultResponse.data;
+                    // Fetch interviews for each applicant
+                    const applicantsWithInterviews = await Promise.all(
+                        applicantsData.map(async (applicant) => {
+                            try {
+                                const interviewsResponse = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
+                                return {
+                                    ...applicant,
+                                    interviews: interviewsResponse.data
+                                };
+                            } catch (err) {
+                                console.error(`Error fetching interviews for applicant ${applicant.id}:`, err);
+                                return {
+                                    ...applicant,
+                                    interviews: []
+                                };
                             }
-                        }
-                    }
-                    setStageResults(results);
+                        })
+                    );
+
+                    setApplicants(applicantsWithInterviews);
+
                 } catch (err) {
                     setError('Failed to fetch job data');
                     console.error('Error:', err);
@@ -356,18 +393,6 @@ ${jobPosting.keySkillsAndCompetencies}
                             {jobId ? 'Update the job details and manage applicants' : 'Fill in the details to create a new job posting'}
                         </p>
                     </div>
-                    {jobId && (
-                        <button
-                            onClick={() => navigate(`/interview-status/${jobId}`)}
-                            className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors duration-200"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                            </svg>
-                            View All Interviews
-                        </button>
-                    )}
                 </div>
 
                 {/* Main Form */}
@@ -493,9 +518,9 @@ ${jobPosting.keySkillsAndCompetencies}
                             >
                                 {loading ? (
                                     <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                         </svg>
                                         Saving...
                                     </>
@@ -654,14 +679,20 @@ ${jobPosting.keySkillsAndCompetencies}
                                                         <div className="flex space-x-2">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateApplicantStatus(applicant.id, 'Approved')}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateApplicantStatus(applicant.id, 'Approved');
+                                                                }}
                                                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 transition-colors"
                                                             >
                                                                 Approve
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateApplicantStatus(applicant.id, 'Rejected')}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateApplicantStatus(applicant.id, 'Rejected');
+                                                                }}
                                                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
                                                             >
                                                                 Reject

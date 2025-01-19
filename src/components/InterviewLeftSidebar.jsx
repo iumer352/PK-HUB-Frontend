@@ -26,12 +26,10 @@ const InterviewLeftSidebar = ({
           if (fetchedInterviews.has(key) || !interview.stages?.[0]?.stage_id) continue;
           
           try {
-            console.log('Fetching feedback for:', interview.id, interview.stages[0].stage_id);
             const response = await axios.get(
               `http://localhost:5000/api/interview/stages/${interview.id}/${interview.stages[0].stage_id}/result`
             );
             if (isMounted) {
-              console.log('Feedback response:', response.data);
               feedbackData[key] = response.data;
               fetchedInterviews.add(key);
             }
@@ -50,7 +48,7 @@ const InterviewLeftSidebar = ({
     return () => {
       isMounted = false;
     };
-  }, [selectedApplicant?.id]); // Only re-run when selectedApplicant ID changes
+  }, [selectedApplicant]); // Re-run when selectedApplicant changes, not just ID
 
   const getResultIcon = (result) => {
     switch(result) {

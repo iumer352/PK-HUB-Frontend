@@ -113,40 +113,25 @@ const RecruitingDashboard = () => {
   const handleScheduleInterview = async (stageId, date, time, interviewerId) => {
     try {
       const dateTime = new Date(`${date}T${time}`);
-      let response;
       
-      // Check if this is the first interview for the applicant
-      if (!selectedApplicant.interviews || selectedApplicant.interviews.length === 0) {
-        response = await axios.post('http://localhost:5000/api/interview/schedule-first', {
-          applicant_id: selectedApplicant.id,
-          interviewer_id: interviewerId,
-          date_time: dateTime.toISOString()
-        });
-      } else {
-        // For subsequent interviews, use schedule-next or schedule-stage
-        const stage = INTERVIEW_STAGES.find(s => s.id === stageId);
-        console.log('Selected Stage:', stage);
-        console.log('Stage ID:', stageId);
-        console.log('Stage name:', stage?.name);
-        console.log('INTERVIEW_STAGES:', INTERVIEW_STAGES);
-        
-        if (!stage) {
-          throw new Error(`Stage not found with ID: ${stageId}`);
-        }
-
-        const requestData = {
-          applicant_id: selectedApplicant.id,
-          interviewer_id: interviewerId,
-          date_time: dateTime.toISOString(),
-          stage_id: stageId,         // e.g., "FINAL" - used for interviewer type validation
-          stage_name: stage.name     // e.g., "Final Round" - used to find stage in database
-        };
-        console.log('Sending request data:', requestData);
-        
-        response = await axios.post('http://localhost:5000/api/interview/schedule-stage', requestData);
+      // Get the stage information
+      const stage = INTERVIEW_STAGES.find(s => s.id === stageId);
+      if (!stage) {
+        throw new Error(`Stage not found with ID: ${stageId}`);
       }
+
+      const requestData = {
+        applicant_id: selectedApplicant.id,
+        interviewer_id: interviewerId,
+        date_time: dateTime.toISOString(),
+        stage_id: stageId,
+        stage_name: stage.name
+      };
       
-      // Refresh interview data for the selected applicant
+      // Use schedule-stage for all interviews
+      const response = await axios.post('http://localhost:5000/api/interview/schedule-stage', requestData);
+      
+      // Get updated interview data
       const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${selectedApplicant.id}`);
       
       // Update the applicants state with new interview data
@@ -164,8 +149,17 @@ const RecruitingDashboard = () => {
 
       // Close the scheduler modal
       setShowScheduler(false);
+      alert('Interview scheduled successfully!');
+      
+      return true;
     } catch (error) {
       console.error('Error scheduling interview:', error.response?.data || error);
+      if (error.response?.status === 409) {
+        alert('This interview stage has already been scheduled.');
+      } else {
+        alert('Error scheduling interview. Please try again.');
+      }
+      return false;
     }
   };
 
@@ -217,17 +211,48 @@ const RecruitingDashboard = () => {
 
   const handleUpdateResult = async (interviewId, resultData) => {
     try {
+      // Save the result to backend
       await axios.post(`http://localhost:5000/api/interview/stages/${interviewId}/${resultData.stageId}/feedback`, {
         result: resultData.result,
         feedback: resultData.feedback,
         notes: resultData.notes
       });
+
+      // Get updated interview data
+      const [interviewsRes, feedbackRes] = await Promise.all([
+        axios.get(`http://localhost:5000/api/interview/applicant/${selectedApplicant.id}`),
+        axios.get(`http://localhost:5000/api/interview/stages/${interviewId}/${resultData.stageId}/result`)
+      ]);
+      
+      // Update the applicants state with new interview data
+      setApplicants(prev => prev.map(applicant => 
+        applicant.id === selectedApplicant.id 
+          ? { ...applicant, interviews: interviewsRes.data }
+          : applicant
+      ));
+
+      // Also update selectedApplicant to reflect the changes immediately
+      setSelectedApplicant(prev => ({
+        ...prev,
+        interviews: interviewsRes.data
+      }));
+
+      // Update selectedInterview if it's currently open
+      if (selectedInterview && selectedInterview.id === interviewId) {
+        const updatedInterview = {
+          ...interviewsRes.data.find(interview => interview.id === interviewId),
+          feedback: feedbackRes.data
+        };
+        setSelectedInterview(updatedInterview);
+      }
+
       alert('Interview result updated successfully!');
-      // Refresh applicant data
-      fetchData();
+      setShowResultModal(false);
+      return true;
     } catch (error) {
       alert('Error updating interview result. Please try again.');
       console.error('Error updating interview result:', error);
+      return false;
     }
   };
 
@@ -330,15 +355,16 @@ const RecruitingDashboard = () => {
             setShowResultModal(false);
             setSelectedInterview(null);
           }}
-          onSave={(resultData) => {
-            // Use stage_id instead of id
-            const stageId = selectedInterview.stages[0].stage_id;
-            console.log('Selected Interview:', selectedInterview);
+          onSave={async (resultData) => {
             console.log('Interview ID:', selectedInterview.id);
-            console.log('Stage ID:', stageId);
-            handleUpdateResult(selectedInterview.id, { ...resultData, stageId });
-            setShowResultModal(false);
-            setSelectedInterview(null);
+            console.log('Stage ID:', selectedInterview.stages[0].stage_id);
+            const success = await handleUpdateResult(selectedInterview.id, { ...resultData, stageId: selectedInterview.stages[0].stage_id });
+            if (success) {
+              setShowResultModal(false);
+              setSelectedInterview(null);
+              // Refresh data after modal is closed
+              fetchData();
+            }
           }}
         />
       )}

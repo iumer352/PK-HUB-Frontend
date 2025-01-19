@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BaseModal from './BaseModal';
 
 const NotesModal = ({ isOpen, onClose, interview, onSave, interviewers }) => {
   const [notes, setNotes] = useState(interview?.notes || '');
-  
+
+  // Update notes when interview prop changes
+  useEffect(() => {
+    setNotes(interview?.notes || '');
+  }, [interview]);
+
   const handleSave = () => {
     onSave(notes);
     onClose();

@@ -14,10 +14,12 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSchedule, stageId, intervie
     return interviewType === stage;
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSchedule(stageId, date, time, selectedInterviewer);
-    onClose();
+    const success = await onSchedule(stageId, date, time, selectedInterviewer);
+    if (success) {
+      onClose();
+    }
   };
 
   return (
