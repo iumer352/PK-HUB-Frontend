@@ -19,14 +19,16 @@ import {
   Code,
   Users,
   Award,
-  ChevronRight
+  ChevronRight,
+  DollarSign
 } from 'lucide-react';
 
 export const INTERVIEW_STAGES = [
   { id: 'HR', name: 'HR round', color: 'blue', icon: UserCheck },
   { id: 'TECHNICAL', name: 'Technical Round', color: 'purple', icon: Code },
   { id: 'CULTURAL', name: 'Cultural Fit', color: 'green', icon: Users },
-  { id: 'FINAL', name: 'Final Round', color: 'orange', icon: Award }
+  { id: 'FINAL', name: 'Final Round', color: 'orange', icon: Award },
+  { id: 'OFFER', name: 'Offer', color: 'yellow', icon: DollarSign }
 ];
 
 const RecruitingDashboard = () => {
@@ -278,7 +280,8 @@ const RecruitingDashboard = () => {
       HR: 'border-blue-500 bg-blue-50',
       TECHNICAL: 'border-purple-500 bg-purple-50',
       CULTURAL: 'border-green-500 bg-green-50',
-      FINAL: 'border-orange-500 bg-orange-50'
+      FINAL: 'border-orange-500 bg-orange-50',
+      OFFER: 'border-yellow-500 bg-yellow-50'
     }[stageId] || 'border-gray-500 bg-gray-50';
   };
 

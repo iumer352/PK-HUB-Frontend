@@ -28,6 +28,9 @@ router.patch('/:id/status', interviewController.updateStatus);
 // Submit interview feedback
 router.post('/stages/:interview_id/:stage_id/feedback', interviewController.submitFeedback);
 
+// HR round feedback route
+router.post('/hr/:interviewId/feedback', interviewController.submitHRFeedback);
+
 // Interview Stage Routes
 // Get all stages for an interview
 router.get('/:interview_id/stages', interviewStageController.getStages);
@@ -43,5 +46,9 @@ router.get('/stages/:interview_id/:stage_id/result', interviewStageController.ge
 
 // Update stage result
 router.put('/stages/:stageId/applicant/:applicantId/result', interviewStageController.updateStageResult);
+
+// HR stage result routes
+router.get('/stages/:stage_id/applicant/:applicant_id/hr-result', interviewStageController.getHRStageResult);
+router.post('/stages/:stage_id/applicant/:applicant_id/hr-result', interviewStageController.updateHRStageResult);
 
 module.exports = router;

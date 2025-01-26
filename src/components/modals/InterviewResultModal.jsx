@@ -48,17 +48,6 @@ const InterviewResultModal = ({ isOpen, interview, onClose, onSave }) => {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            rows={3}
-            placeholder="Enter any additional notes..."
-          />
-        </div>
-
         <div className="flex justify-end space-x-3 mt-6">
           <button
             onClick={onClose}

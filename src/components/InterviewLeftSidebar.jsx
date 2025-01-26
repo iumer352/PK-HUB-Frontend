@@ -11,6 +11,7 @@ const InterviewLeftSidebar = ({
   getStageStatus 
 }) => {
   const [stageFeedback, setStageFeedback] = useState({});
+  const [hrData, setHrData] = useState(null);
   const applicantsToShow = selectedApplicant ? [selectedApplicant] : applicants;
 
   useEffect(() => {
@@ -26,6 +27,16 @@ const InterviewLeftSidebar = ({
           if (fetchedInterviews.has(key) || !interview.stages?.[0]?.stage_id) continue;
           
           try {
+            // For HR stage, fetch HR-specific data
+            if (interview.stages[0].stage_id === 1) {
+              const response = await axios.get(
+                `http://localhost:5000/api/interview/stages/${interview.stages[0].stage_id}/applicant/${selectedApplicant.id}/hr-result`
+              );
+              if (isMounted) {
+                setHrData(response.data);
+              }
+            }
+            
             const response = await axios.get(
               `http://localhost:5000/api/interview/stages/${interview.id}/${interview.stages[0].stage_id}/result`
             );
@@ -48,7 +59,7 @@ const InterviewLeftSidebar = ({
     return () => {
       isMounted = false;
     };
-  }, [selectedApplicant]); // Re-run when selectedApplicant changes, not just ID
+  }, [selectedApplicant]);
 
   const getResultIcon = (result) => {
     switch(result) {
@@ -59,6 +70,10 @@ const InterviewLeftSidebar = ({
       default:
         return <Clock className="w-5 h-5 text-gray-400" />;
     }
+  };
+
+  const formatSalary = (salary) => {
+    return salary ? `${Number(salary).toLocaleString()} SAR` : 'Not specified';
   };
 
   return (
@@ -82,10 +97,9 @@ const InterviewLeftSidebar = ({
             <p className="text-sm text-gray-600">{applicant.position || 'Position Not Specified'}</p>
           </div>
 
-          {/* Interview Rounds Feedback */}
+          {/* Interview Rounds */}
           <div className="space-y-4">
             {INTERVIEW_STAGES.map((stage, index) => {
-              // Map stage IDs to numbers
               const stageIdMap = { 'HR': 1, 'TECHNICAL': 2, 'CULTURAL': 3, 'FINAL': 4 };
               const numericStageId = stageIdMap[stage.id];
               
@@ -94,8 +108,7 @@ const InterviewLeftSidebar = ({
               );
               const feedback = interview ? stageFeedback[`${interview.id}-${numericStageId}`] : null;
               const status = getStageStatus(applicant.interviews, stage.id);
-
-              console.log('Stage:', stage.name, 'NumericID:', numericStageId, 'Feedback:', feedback);
+              const isHRStage = stage.id === 'HR';
 
               return (
                 <div 
@@ -122,18 +135,35 @@ const InterviewLeftSidebar = ({
                     )}
                   </div>
 
-                  {feedback && (
-                    <div className="mt-2 space-y-2">
-                      {feedback.feedback && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Feedback:</span> {feedback.feedback}
-                        </p>
-                      )}
-                      {feedback.notes && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Notes:</span> {feedback.notes}
-                        </p>
-                      )}
+                  {feedback && feedback.feedback && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      <span className="font-medium">Feedback:</span> {feedback.feedback}
+                    </p>
+                  )}
+
+                  {/* HR Stage Details */}
+                  {isHRStage && hrData && (
+                    <div className="mt-3 space-y-2 text-sm text-gray-600 border-t border-gray-200 pt-3">
+                      <div className="flex items-center justify-between">
+                        <span>Current Salary:</span>
+                        <span className="font-medium">{formatSalary(hrData.current_salary)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Expected Salary:</span>
+                        <span className="font-medium">{formatSalary(hrData.expected_salary)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Notice Period:</span>
+                        <span className="font-medium">{hrData.notice_period || 'Not specified'} days</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Willing to Relocate:</span>
+                        <span className="font-medium">{hrData.willing_to_relocate ? 'Yes' : 'No'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Willing to Travel:</span>
+                        <span className="font-medium">{hrData.willing_to_travel_saudi ? 'Yes' : 'No'}</span>
+                      </div>
                     </div>
                   )}
                 </div>

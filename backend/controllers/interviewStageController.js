@@ -269,3 +269,109 @@ exports.getStageStats = async (req, res) => {
         res.status(500).json({ message: 'Error fetching stage statistics', error: error.message });
     }
 };
+
+// Get HR stage result
+exports.getHRStageResult = async (req, res) => {
+    try {
+        const { stage_id, applicant_id } = req.params;
+
+        const hrStage = await InterviewStage.findOne({
+            where: {
+                stage_id,
+                '$Interview.applicant_id$': applicant_id,
+                '$Interview.name$': 'HR round'
+            },
+            include: [{
+                model: Interview,
+                attributes: ['name', 'applicant_id']
+            }],
+            attributes: [
+                'id', 'result', 'feedback', 'completed_at',
+                'current_salary', 'expected_salary', 'notice_period',
+                'willing_to_relocate', 'willing_to_travel_saudi'
+            ]
+        });
+
+        if (!hrStage) {
+            return res.status(404).json({ message: 'HR stage not found' });
+        }
+
+        res.status(200).json(hrStage);
+    } catch (error) {
+        console.error('Error getting HR stage result:', error);
+        res.status(500).json({ message: 'Error getting HR stage result', error: error.message });
+    }
+};
+
+// Update HR stage result
+exports.updateHRStageResult = async (req, res) => {
+    try {
+        const { stage_id, applicant_id } = req.params;
+        const {
+            result,
+            feedback,
+            currentSalary,
+            expectedSalary,
+            noticePeriod,
+            willingToRelocate,
+            willingToTravelSaudi
+        } = req.body;
+
+        // First find the interview for this applicant
+        const interview = await Interview.findOne({
+            where: {
+                applicant_id,
+                name: 'HR round'
+            }
+        });
+
+        if (!interview) {
+            return res.status(404).json({ message: 'HR interview not found for this applicant' });
+        }
+
+        // Then find or create the HR stage
+        const [hrStage] = await InterviewStage.findOrCreate({
+            where: {
+                stage_id,
+                interview_id: interview.id
+            },
+            defaults: {
+                result: 'pending',
+                feedback: ''
+            }
+        });
+
+        // Update HR stage with the new data
+        const updatedStage = await hrStage.update({
+            result,
+            feedback,
+            current_salary: currentSalary,
+            expected_salary: expectedSalary,
+            notice_period: noticePeriod,
+            willing_to_relocate: willingToRelocate,
+            willing_to_travel_saudi: willingToTravelSaudi,
+            completed_at: new Date()
+        });
+
+        // Update interview status
+        await interview.update({ status: 'completed' });
+
+        // Update applicant status based on result
+        if (result === 'pass') {
+            await Applicant.update(
+                { status: 'hr_round_passed' },
+                { where: { id: applicant_id } }
+            );
+        } else if (result === 'fail') {
+            await Applicant.update(
+                { status: 'hr_round_failed' },
+                { where: { id: applicant_id } }
+            );
+        }
+
+        res.status(200).json(updatedStage);
+    } catch (error) {
+        console.error('Error updating HR stage result:', error);
+        res.status(500).json({ message: 'Error updating HR stage result', error: error.message });
+    }
+};

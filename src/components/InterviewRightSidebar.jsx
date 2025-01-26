@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Briefcase, Calendar, Clock, User, ChevronDown, Lock } from 'lucide-react';
+import { Mail, Briefcase, Calendar, Clock, User, ChevronDown, Lock, Code, DollarSign } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import HRResultModal from './modals/HRResultModal';
+import OfferLetterModal from './modals/OfferLetterModal';
 
 const InterviewRightSidebar = ({ 
   selectedApplicant,
@@ -23,25 +25,29 @@ const InterviewRightSidebar = ({
   const [activeStage, setActiveStage] = useState('HR');
   const [showOnboardButton, setShowOnboardButton] = useState(false);
   const [onboardingSuccess, setOnboardingSuccess] = useState(false);
+  const [showHRModal, setShowHRModal] = useState(false);
+  const [selectedHRInterview, setSelectedHRInterview] = useState(null);
+  const [showOfferModal, setShowOfferModal] = useState(false);
 
   // Map stage names to their corresponding interview types
   const stageToType = {
     'HR': 'HR',
     'TECHNICAL': 'Technical',
     'CULTURAL': 'Cultural',
-    'FINAL': 'Final'
+    'FINAL': 'Final',
+    'OFFER': 'Offer'
   };
 
   // Stage order mapping (for progression check)
-  const stageOrder = ['HR', 'TECHNICAL', 'CULTURAL', 'FINAL'];
+  const stageOrder = ['HR', 'TECHNICAL', 'CULTURAL', 'FINAL', 'OFFER'];
 
-  // Icons for each stage
+  // Map stage names to their corresponding icons
   const stageIcons = {
-    'HR': <User className="w-5 h-5" />,
-    'TECHNICAL': <></>,
-    'CULTURAL': <User className="w-5 h-5" />,
-    'FINAL': <Lock className="w-5 h-5" />,
-    'ONBOARDING': <Briefcase className="w-5 h-5" />
+    'HR': User,
+    'TECHNICAL': Code,
+    'CULTURAL': ChevronDown,
+    'FINAL': Lock,
+    'OFFER': DollarSign
   };
 
   // Check if we can proceed to this stage
@@ -72,9 +78,35 @@ const InterviewRightSidebar = ({
     return stageResults[finalInterview?.id]?.result === 'pass';
   };
 
+  // Check if offer is accepted
+  const isOfferAccepted = () => {
+    const offerInterview = selectedApplicant?.interviews?.find(interview => 
+      interview.interviewer.interview_type === stageToType['OFFER']
+    );
+    return stageResults[offerInterview?.id]?.result === 'pass';
+  };
+
   // Handle onboard button click
   const handleOnboard = async () => {
-    await checkAndCreateEmployee();
+    try {
+      const response = await axios.post('http://localhost:5000/api/employees/create', {
+        name: selectedApplicant.name,
+        email: selectedApplicant.email,
+        phone: selectedApplicant.phone,
+        department: selectedApplicant.job?.functionType || 'Data Transformation',
+        role: selectedApplicant.job?.title || '' ? `${selectedApplicant.job.title} - ${selectedApplicant.job.grade || 'Analyst'}` : selectedApplicant.job?.grade || 'Analyst'
+      });
+
+      if (response.status === 201) {
+        setOnboardingSuccess(true);
+        // Update applicant status to reflect onboarding completion
+        await axios.patch(`http://localhost:5000/api/applicant/${selectedApplicant.id}/status`, {
+          status: 'onboarded'
+        });
+      }
+    } catch (error) {
+      console.error('Error creating employee:', error);
+    }
   };
 
   // Handle onboarding column click
@@ -89,45 +121,11 @@ const InterviewRightSidebar = ({
     return interview.interviewer.interview_type === stageToType[activeStage];
   }) || [];
 
-  // Check if all stages are passed and create employee if so
-  const checkAndCreateEmployee = async () => {
-    if (!selectedApplicant?.interviews) return;
-
-    try {
-      // Update applicant status to 'hired'
-      await axios.put(`http://localhost:5000/api/applicant/${selectedApplicant.id}/status`, {
-        status: 'hired'
-      });
-
-      // Get the function type from the job or use default
-      const department = selectedApplicant.job?.functionType || 'Data Transformation';
-      
-      // Combine job title and grade for the role if available
-      const jobTitle = selectedApplicant.job?.title || '';
-      const jobGrade = selectedApplicant.job?.grade || 'Analyst';
-      const role = jobTitle ? `${jobTitle} - ${jobGrade}` : jobGrade;
-      
-      // Create new employee with all necessary information
-      const employeeData = {
-        name: selectedApplicant.name,
-        email: selectedApplicant.email,
-        phone: selectedApplicant.phone,
-        department,
-        role,
-        status: 'active',
-        applicantId: selectedApplicant.id,
-        isOnboarding: true
-      };
-
-      console.log('Creating employee with data:', employeeData);
-      await axios.post('http://localhost:5000/api/employees', employeeData);
-      setOnboardingSuccess(true);
-      setShowOnboardButton(false);
-    } catch (error) {
-      console.error('Error creating employee:', error);
-      console.error('Error response:', error.response?.data);
-    }
-  };
+  useEffect(() => {
+    // Show onboard button only if offer is accepted and final round is passed
+    const shouldShowOnboard = isFinalRoundPassed() && isOfferAccepted() && !onboardingSuccess;
+    setShowOnboardButton(shouldShowOnboard);
+  }, [selectedApplicant?.interviews, onboardingSuccess]);
 
   // Process interviews and update stage results
   useEffect(() => {
@@ -238,7 +236,6 @@ const InterviewRightSidebar = ({
       <div className="flex mb-8">
         {INTERVIEW_STAGES.map((stage, index) => {
           const result = getStageResult(stage);
-          const StageIcon = stage.icon;
           const isCurrentStage = stage.id === activeStage;
           const canProceed = canProceedToStage(stage.id);
           
@@ -268,14 +265,17 @@ const InterviewRightSidebar = ({
                 ${canProceed ? 'hover:opacity-90' : ''}
               `}>
                 <div className="flex flex-col items-center z-10 relative">
-                  <StageIcon className="w-6 h-6 mb-1" />
+                  {React.createElement(stageIcons[stage.id], {
+                    className: "w-4 h-4 mb-1",
+                    "aria-hidden": "true"
+                  })}
                   <span className="text-xs font-medium whitespace-nowrap">{stage.name}</span>
                 </div>
               </div>
             </div>
           );
         })}
-        {isFinalRoundPassed() && (
+        {isFinalRoundPassed() && isOfferAccepted() && (
           <div 
             className="flex flex-col items-center relative cursor-pointer"
             onClick={handleOnboardingClick}
@@ -350,12 +350,16 @@ const InterviewRightSidebar = ({
               <p className="text-gray-500 text-lg">No {activeStage} interviews scheduled yet</p>
               <button
                 onClick={() => {
-                  setSelectedStage(activeStage);
-                  setShowScheduler(true);
+                  if (activeStage === 'OFFER') {
+                    setShowOfferModal(true);
+                  } else {
+                    setSelectedStage(activeStage);
+                    setShowScheduler(true);
+                  }
                 }}
                 className="mt-4 text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors"
               >
-                Schedule {activeStage} Interview
+                {activeStage === 'OFFER' ? 'Update Offer Status' : `Schedule ${activeStage} Interview`}
               </button>
             </div>
           ) : (
@@ -411,8 +415,13 @@ const InterviewRightSidebar = ({
                   <div className="flex flex-col space-y-2">  
                     <button
                       onClick={() => {
-                        setSelectedInterview(interview);
-                        setShowResultModal(true);
+                        if (interview.interviewer.interview_type === 'HR') {
+                          setSelectedHRInterview(interview);
+                          setShowHRModal(true);
+                        } else {
+                          setSelectedInterview(interview);
+                          setShowResultModal(true);
+                        }
                       }}
                       className={`font-medium px-4 py-2 rounded-lg transition-colors ${
                         stageResults[interview.id] && stageResults[interview.id].result === 'pass'
@@ -462,6 +471,41 @@ const InterviewRightSidebar = ({
           )}
         </div>
       </div>
+      
+      {/* HR Result Modal */}
+      <HRResultModal
+        isOpen={showHRModal}
+        interview={selectedHRInterview}
+        stageId={1} // HR stage ID is always 1
+        applicantId={selectedApplicant?.id}
+        onClose={() => {
+          setShowHRModal(false);
+          window.location.reload(); // Refresh to show updated data
+        }}
+      />
+
+      {/* Offer Letter Modal */}
+      <OfferLetterModal
+        isOpen={showOfferModal}
+        onClose={() => setShowOfferModal(false)}
+        onSchedule={async (offerData) => {
+          try {
+            // Create a new interview entry for the offer stage
+            const response = await axios.post('http://localhost:5000/api/interview', {
+              applicant_id: selectedApplicant.id,
+              stage_id: 'OFFER',
+              result: offerData.offerAccepted ? 'pass' : 'fail',
+              offerAccepted: offerData.offerAccepted,
+              date_time: new Date().toISOString()
+            });
+            
+            // Refresh the page to show the new status
+            window.location.reload();
+          } catch (error) {
+            console.error('Error updating offer status:', error);
+          }
+        }}
+      />
     </div>
   );
 };
