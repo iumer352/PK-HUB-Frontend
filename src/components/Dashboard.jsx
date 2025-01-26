@@ -410,12 +410,12 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-8">
       {/* Dashboard Navigation */}
-      <div className="mb-6 relative">
+      <div className="mb-8 relative">
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center justify-between w-64 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex items-center justify-between w-72 px-5 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
         >
           <span className="text-gray-700">Select Dashboard</span>
           <ChevronDown className={`w-5 h-5 transition-transform ${isDropdownOpen ? 'transform rotate-180' : ''}`} />
@@ -428,7 +428,7 @@ const Dashboard = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute z-10 w-64 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg"
+              className="absolute z-10 w-72 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg"
             >
               {dashboardOptions.map((option) => (
                 <button
@@ -455,21 +455,21 @@ const Dashboard = () => {
         className="space-y-6"
       >
         {/* Quick Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-xl shadow-sm p-6 cursor-pointer"
+            className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
             onClick={() => setShowProjectsModal(true)}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
+              <div className="p-2 bg-blue-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
                 <Briefcase className="w-6 h-6 text-blue-600" />
               </div>
             </div>
             <h3 className="text-2xl font-semibold text-gray-800 mb-2">
               {dashboardData.projectStats.total}
             </h3>
-            <p className="text-gray-600">Total Projects</p>
+            <p className="text-gray-600 text-base">Total Projects</p>
             <div className="mt-4 flex items-center text-sm">
               <span className="text-green-600 font-medium">+12%</span>
               <span className="text-gray-500 ml-2">vs last month</span>
@@ -478,18 +478,18 @@ const Dashboard = () => {
 
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-xl shadow-sm p-6 cursor-pointer"
+            className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
             onClick={() => setShowPositionsModal(true)}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-green-100 rounded-lg">
+              <div className="p-2 bg-green-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
                 <Users className="w-6 h-6 text-green-600" />
               </div>
             </div>
             <h3 className="text-2xl font-semibold text-gray-800 mb-2">
               {dashboardData.jobStats.open}
             </h3>
-            <p className="text-gray-600">Open Positions</p>
+            <p className="text-gray-600 text-base">Open Positions</p>
             <div className="mt-4 flex items-center text-sm">
               <span className="text-green-600 font-medium">+5%</span>
               <span className="text-gray-500 ml-2">vs last month</span>
@@ -498,16 +498,16 @@ const Dashboard = () => {
 
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-xl shadow-sm p-6 cursor-pointer"
+            className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
             onClick={() => setShowHiringModal(true)}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
                 <TrendingUp className="w-6 h-6 text-purple-600" />
               </div>
             </div>
             <h3 className="text-2xl font-semibold text-gray-800 mb-2">85%</h3>
-            <p className="text-gray-600">Hiring Rate</p>
+            <p className="text-gray-600 text-base">Hiring Rate</p>
             <div className="mt-4 flex items-center text-sm">
               <span className="text-green-600 font-medium">+3%</span>
               <span className="text-gray-500 ml-2">vs last month</span>
@@ -517,30 +517,31 @@ const Dashboard = () => {
           {/* Onboarding Card */}
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-xl shadow-sm p-6 cursor-pointer"
+            className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
             onClick={() => setShowOnboardingModal(true)}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
                 <Users className="w-6 h-6 text-purple-600" />
               </div>
             </div>
             <h3 className="text-2xl font-semibold text-gray-800 mb-2">
               {onboardedEmployees.length}
             </h3>
-            <p className="text-gray-600">Newly Onboarded</p>
+            <p className="text-gray-600 text-base">Newly Onboarded</p>
           </motion.div>
         </div>
         
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Project Progress Line Chart */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-lg h-[300px]"
+            whileHover={{ scale: 1.01 }}
+            className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
           >
-            <h3 className="text-lg font-semibold mb-4">Project Progress</h3>
+            <h3 className="text-xl font-semibold mb-6 text-gray-800">Project Progress</h3>
             <Line
               data={{
                 labels: dashboardData.projectStats.monthlyProgress.map(item => item.month),
@@ -552,18 +553,65 @@ const Dashboard = () => {
                     tension: 0.4,
                     fill: true,
                     backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgb(75, 192, 192)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(75, 192, 192)',
+                    pointHoverBorderWidth: 2
                   }
                 ]
               }}
               options={{
                 responsive: true,
                 maintainAspectRatio: true,
-                plugins: { legend: { position: 'top' } },
+                plugins: { 
+                  legend: { 
+                    position: 'top',
+                    labels: {
+                      padding: 20,
+                      font: {
+                        size: 12,
+                        weight: '500'
+                      }
+                    }
+                  },
+                  tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                      size: 13,
+                      weight: 'bold'
+                    },
+                    bodyFont: {
+                      size: 12
+                    },
+                    displayColors: false
+                  }
+                },
                 scales: {
                   y: {
                     beginAtZero: true,
                     ticks: {
-                      stepSize: 5
+                      stepSize: 5,
+                      font: {
+                        size: 11
+                      }
+                    },
+                    grid: {
+                      color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                  },
+                  x: {
+                    ticks: {
+                      font: {
+                        size: 11
+                      }
+                    },
+                    grid: {
+                      display: false
                     }
                   }
                 }
@@ -575,9 +623,10 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-lg h-[300px]"
+            whileHover={{ scale: 1.01 }}
+            className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
           >
-            <h3 className="text-lg font-semibold mb-4">Jobs by Department</h3>
+            <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Department</h3>
             <Doughnut
               data={{
                 labels: Object.keys(dashboardData.jobStats.byDepartment),
@@ -586,19 +635,56 @@ const Dashboard = () => {
                     label: 'Jobs by Department',
                     data: Object.values(dashboardData.jobStats.byDepartment),
                     backgroundColor: [
-                      'rgba(255, 99, 132, 0.8)',
-                      'rgba(54, 162, 235, 0.8)',
-                      'rgba(255, 206, 86, 0.8)',
-                      'rgba(75, 192, 192, 0.8)',
-                      'rgba(153, 102, 255, 0.8)',
+                      'rgba(255, 99, 132, 0.85)',
+                      'rgba(54, 162, 235, 0.85)',
+                      'rgba(255, 206, 86, 0.85)',
+                      'rgba(75, 192, 192, 0.85)',
+                      'rgba(153, 102, 255, 0.85)',
                     ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverBorderWidth: 0,
+                    hoverOffset: 15
                   }
                 ]
               }}
               options={{
                 responsive: true,
                 maintainAspectRatio: true,
-                plugins: { legend: { position: 'right' } }
+                plugins: { 
+                  legend: { 
+                    position: 'right',
+                    labels: {
+                      padding: 20,
+                      font: {
+                        size: 12,
+                        weight: '500'
+                      },
+                      usePointStyle: true,
+                      pointStyle: 'circle'
+                    }
+                  },
+                  tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                      size: 13,
+                      weight: 'bold'
+                    },
+                    bodyFont: {
+                      size: 12
+                    },
+                    callbacks: {
+                      label: function(context) {
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const value = context.raw;
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${context.label}: ${value} (${percentage}%)`;
+                      }
+                    }
+                  }
+                },
+                cutout: '65%'
               }}
             />
           </motion.div>
@@ -607,9 +693,10 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-lg h-[300px]"
+            whileHover={{ scale: 1.01 }}
+            className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
           >
-            <h3 className="text-lg font-semibold mb-4">Project Status Overview</h3>
+            <h3 className="text-xl font-semibold mb-6 text-gray-800">Project Status Overview</h3>
             <Bar
               data={{
                 labels: ['Active', 'Completed', 'Upcoming'],
@@ -621,17 +708,65 @@ const Dashboard = () => {
                       dashboardData.projectStats.upcoming
                     ],
                     backgroundColor: [
-                      'rgba(54, 162, 235, 0.8)',
-                      'rgba(75, 192, 192, 0.8)',
-                      'rgba(255, 206, 86, 0.8)',
+                      'rgba(54, 162, 235, 0.85)',
+                      'rgba(75, 192, 192, 0.85)',
+                      'rgba(255, 206, 86, 0.85)',
                     ],
+                    borderRadius: 6,
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverBorderWidth: 0
                   }
                 ]
               }}
               options={{
                 responsive: true,
                 maintainAspectRatio: true,
-                plugins: { legend: { display: false } }
+                plugins: { 
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                      size: 13,
+                      weight: 'bold'
+                    },
+                    bodyFont: {
+                      size: 12
+                    },
+                    callbacks: {
+                      label: function(context) {
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const value = context.raw;
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${context.label}: ${value} (${percentage}%)`;
+                      }
+                    }
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    grid: {
+                      color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                      font: {
+                        size: 11
+                      }
+                    }
+                  },
+                  x: {
+                    grid: {
+                      display: false
+                    },
+                    ticks: {
+                      font: {
+                        size: 11
+                      }
+                    }
+                  }
+                }
               }}
             />
           </motion.div>
@@ -640,9 +775,10 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-lg h-[300px]"
+            whileHover={{ scale: 1.01 }}
+            className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
           >
-            <h3 className="text-lg font-semibold mb-4">Recruitment Metrics</h3>
+            <h3 className="text-xl font-semibold mb-6 text-gray-800">Recruitment Metrics</h3>
             <Radar
               data={{
                 labels: ['Job Openings', 'Interview Success', 'Hiring Speed', 'Candidate Quality', 'Offer Acceptance'],

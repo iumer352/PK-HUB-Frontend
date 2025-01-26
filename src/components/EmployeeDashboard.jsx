@@ -296,7 +296,12 @@ const EmployeeDashboard = () => {
                               </div>
                             </motion.div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                              <div 
+                                className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600"
+                                onClick={() => navigate(`/timesheet/${employee._id || employee.id}`)}
+                              >
+                                {employee.name}
+                              </div>
                             </div>
                           </div>
                         </td>

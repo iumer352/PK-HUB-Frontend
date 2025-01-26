@@ -10,6 +10,7 @@ const MonthlyTimesheet = () => {
   const [employeeName, setEmployeeName] = useState('');
   const [grade, setGrade] = useState('');
   const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState([]);
   const [clientEntries, setClientEntries] = useState([
     { clientName: '', clientNo: '', natureOfWork: '', hours: 0, percentage: 0 },
     { clientName: '', clientNo: '', natureOfWork: '', hours: 0, percentage: 0 },
@@ -60,6 +61,21 @@ const MonthlyTimesheet = () => {
 
     fetchEmployeeData();
   }, [employeeId]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/projects');
+      if (!response.ok) throw new Error('Failed to fetch projects');
+      const data = await response.json();
+      setProjects(data || []); 
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
 
   // Fetch timesheet data
   useEffect(() => {
@@ -326,16 +342,28 @@ const MonthlyTimesheet = () => {
                 })}
                 <td className="border border-slate-200 px-2 py-1 text-center text-sm font-medium">{calculateTotalHours(rowIndex)}</td>
                 <td className="border border-slate-200 p-0">
-                  <input
-                    type="text"
+                  <select
                     value={entry.clientName}
                     onChange={(e) => {
                       const newEntries = [...clientEntries];
-                      newEntries[rowIndex].clientName = e.target.value;
+                      const selectedProject = projects.find(p => p.name === e.target.value);
+                      newEntries[rowIndex] = {
+                        ...newEntries[rowIndex],
+                        clientName: e.target.value,
+                        clientNo: selectedProject?.id?.toString() || '',
+                        natureOfWork: selectedProject?.description || ''
+                      };
                       setClientEntries(newEntries);
                     }}
-                    className="w-full h-6 px-1 focus:outline-none focus:bg-blue-50/50 transition-all duration-200 text-sm"
-                  />
+                    className="w-full h-6 px-1 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all duration-200 text-sm border-0 bg-transparent"
+                  >
+                    <option value="">Select Project</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.name}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="border border-slate-200 p-0">
                   <input
