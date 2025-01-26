@@ -38,14 +38,63 @@ const ManageJobPostings = () => {
         }
     }, [successMessage]);
 
+    const fetchJobStatus = async (jobId) => {
+        try {
+            const response = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
+            const applicants = response.data;
+            
+            // If no applicants found, it will throw an error and go to catch block
+            // Check if any applicant is hired
+            const hasHiredApplicant = applicants.some(applicant => applicant.status === 'hired');
+            if (hasHiredApplicant) {
+                return 'completed';
+            }
+            
+            // If there are applicants but none hired, status is interviewing
+            return 'interviewing';
+        } catch (err) {
+            // If no applicants found
+            if (err.response?.data?.message === 'No applicants found for this job') {
+                return 'advertisement';
+            }
+            // For other errors, return a default status
+            return 'advertisement';
+        }
+    };
+
     const fetchJobs = async () => {
         try {
             const response = await axios.get('http://localhost:5000/api/jobs');
-            setJobs(response.data);
+            const jobsData = response.data;
+            
+            // Fetch status for each job
+            const jobsWithStatus = await Promise.all(
+                jobsData.map(async (job) => {
+                    const status = await fetchJobStatus(job.id);
+                    return { ...job, currentStatus: status };
+                })
+            );
+            
+            setJobs(jobsWithStatus);
             setLoading(false);
         } catch (err) {
             setError('Failed to fetch jobs');
             setLoading(false);
+        }
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'advertisement':
+                return 'bg-blue-100 text-blue-800';
+            case 'interviewing':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'offer':
+                return 'bg-purple-100 text-purple-800';
+            case 'completed':
+                return 'bg-green-100 text-green-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
@@ -429,11 +478,8 @@ const ManageJobPostings = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                            ${job.status === 'Active' ? 'bg-green-100 text-green-800' : ''}
-                                            ${job.status === 'Paused' ? 'bg-yellow-100 text-yellow-800' : ''}
-                                            ${job.status === 'Closed' ? 'bg-gray-100 text-gray-800' : ''}`}>
-                                            {job.status}
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.currentStatus)}`}>
+                                            {job.currentStatus}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{formatDate(job.createdAt)}</td>
