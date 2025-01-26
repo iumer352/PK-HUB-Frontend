@@ -19,9 +19,9 @@ const Interviewer = sequelize.define('Interviewer', {
       isEmail: true
     }
   },
-  phone: {
-    type: DataTypes.STRING,
-    allowNull: true
+  function:{
+    type: DataTypes.ENUM('Data Transformation', 'Analytics and AI', 'Low Code', 'Digital Enablement', 'Innovation and Emerging Tech'),
+    allowNull: false,
   },
   position: {
     type: DataTypes.STRING,

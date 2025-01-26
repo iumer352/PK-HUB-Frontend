@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
 const JobPosting = () => {
+    const navigate = useNavigate();
     const [jobTitle, setJobTitle] = useState('');
     const [grade, setGrade] = useState('');
     const [hiringManager, setHiringManager] = useState('');
@@ -13,14 +15,17 @@ const JobPosting = () => {
     const [functionType, setFunctionType] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [hiringManagers, setHiringManagers] = useState([]);
+    const [loadingManagers, setLoadingManagers] = useState(true);
+    const [managerError, setManagerError] = useState(null);
 
     const grades = [
         'Analyst',
         'Associate',
         'Senior Associate',
-        'Assistant',
+        'Assistant Manager',
+        'Manager',
         'Manager-1',
-        'Manager-2',
         'Senior Manager',
         'Director'
     ];
@@ -33,10 +38,7 @@ const JobPosting = () => {
         'Innovation and Emerging Tech'
     ];
 
-    const hiringManagers = ['Simon Irvine'];
-
     const urgencyLevels = [
-        'Urgent - Immediate Hire',
         'High Priority',
         'Normal',
         'Low Priority'
@@ -54,6 +56,21 @@ const JobPosting = () => {
                 return 'text-green-600';
             default:
                 return 'text-gray-700';
+        }
+    };
+
+    useEffect(() => {
+        fetchHiringManagers();
+    }, []);
+
+    const fetchHiringManagers = async () => {
+        try {
+            const response = await axios.get('http://localhost:5000/api/hiring-managers');
+            setHiringManagers(response.data);
+            setLoadingManagers(false);
+        } catch (err) {
+            setManagerError('Failed to fetch hiring managers');
+            setLoadingManagers(false);
         }
     };
 
@@ -77,15 +94,10 @@ const JobPosting = () => {
 
             if (response.status === 201) {
                 setSuccess(true);
-                // Clear form
-                setJobTitle('');
-                setGrade('');
-                setHiringManager('');
-                setHiringUrgency('Normal');
-                setRoleOverview('');
-                setKeyResponsibilities('');
-                setKeySkillsAndCompetencies('');
-                setFunctionType('');
+                // Redirect to JobManagement after a brief delay to show success message
+                setTimeout(() => {
+                    navigate('/manage');
+                }, 0);
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Error creating job posting');
@@ -228,19 +240,25 @@ const JobPosting = () => {
                                         <label className="block text-sm font-medium text-gray-700">
                                             Hiring Manager
                                         </label>
-                                        <select
-                                            value={hiringManager}
-                                            onChange={(e) => setHiringManager(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                                            required
-                                        >
-                                            <option value="">Select Hiring Manager</option>
-                                            {hiringManagers.map((manager) => (
-                                                <option key={manager} value={manager}>
-                                                    {manager}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {loadingManagers ? (
+                                            <div className="animate-pulse bg-gray-200 h-10 rounded"></div>
+                                        ) : managerError ? (
+                                            <div className="text-red-500 text-sm mb-2">{managerError}</div>
+                                        ) : (
+                                            <select
+                                                value={hiringManager}
+                                                onChange={(e) => setHiringManager(e.target.value)}
+                                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                                required
+                                            >
+                                                <option value="">Select Hiring Manager</option>
+                                                {hiringManagers.map((manager) => (
+                                                    <option key={manager.id} value={manager.name}>
+                                                        {manager.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </div>
 
                                     <div className="space-y-1">

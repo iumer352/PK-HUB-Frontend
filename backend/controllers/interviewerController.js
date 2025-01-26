@@ -45,13 +45,22 @@ exports.getInterviewer = async (req, res) => {
 // Create a new interviewer
 exports.createInterviewer = async (req, res) => {
     try {
-        const { name, email, phone, position, interview_type } = req.body;
+        console.log('Received request body:', req.body);
+        const { name, email, phone, position, interview_type, function: functionType } = req.body;
 
         // Validate interview type
         const validTypes = ['HR', 'Technical', 'Cultural', 'Final'];
         if (!validTypes.includes(interview_type)) {
             return res.status(400).json({ 
                 message: 'Invalid interview type. Must be one of: HR, Technical, Cultural, Final' 
+            });
+        }
+
+        // Validate function type
+        const validFunctions = ['Data Transformation', 'Analytics and AI', 'Low Code', 'Digital Enablement', 'Innovation and Emerging Tech'];
+        if (functionType && !validFunctions.includes(functionType)) {
+            return res.status(400).json({ 
+                message: 'Invalid function. Must be one of: Data Transformation, Analytics and AI, Low Code, Digital Enablement, Innovation and Emerging Tech' 
             });
         }
 
@@ -66,7 +75,8 @@ exports.createInterviewer = async (req, res) => {
             email,
             phone,
             position,
-            interview_type
+            interview_type,
+            function: functionType || 'Data Transformation' // Use default if not provided
         });
 
         res.status(201).json(interviewer);
@@ -83,7 +93,7 @@ exports.createInterviewer = async (req, res) => {
 exports.updateInterviewer = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, phone, position, interview_type } = req.body;
+        const { name, email, phone, position, interview_type, function: functionType } = req.body;
 
         const interviewer = await Interviewer.findByPk(id);
         if (!interviewer) {
@@ -108,12 +118,23 @@ exports.updateInterviewer = async (req, res) => {
             }
         }
 
+        // Validate function type if it's being updated
+        if (functionType) {
+            const validFunctions = ['Data Transformation', 'Analytics and AI', 'Low Code', 'Digital Enablement', 'Innovation and Emerging Tech'];
+            if (!validFunctions.includes(functionType)) {
+                return res.status(400).json({ 
+                    message: 'Invalid function. Must be one of: Data Transformation, Analytics and AI, Low Code, Digital Enablement, Innovation and Emerging Tech' 
+                });
+            }
+        }
+
         await interviewer.update({
             name: name || interviewer.name,
             email: email || interviewer.email,
             phone: phone || interviewer.phone,
             position: position || interviewer.position,
-            interview_type: interview_type || interviewer.interview_type
+            interview_type: interview_type || interviewer.interview_type,
+            function: functionType || interviewer.function
         });
 
         res.status(200).json(interviewer);
@@ -125,28 +146,6 @@ exports.updateInterviewer = async (req, res) => {
         });
     }
 };
-
-// Delete an interviewer
-exports.deleteInterviewer = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const interviewer = await Interviewer.findByPk(id);
-        if (!interviewer) {
-            return res.status(404).json({ message: 'Interviewer not found' });
-        }
-
-        await interviewer.destroy();
-        res.status(200).json({ message: 'Interviewer deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting interviewer:', error);
-        res.status(500).json({ 
-            message: 'Error deleting interviewer',
-            error: error.message 
-        });
-    }
-};
-
 // Get interview timeline data
 exports.getInterviewTimeline = async (req, res) => {
     try {
@@ -182,6 +181,26 @@ exports.getInterviewTimeline = async (req, res) => {
         console.error('Error fetching interview timeline:', error);
         res.status(500).json({ 
             message: 'Error fetching interview timeline',
+            error: error.message 
+        });
+    }
+};
+
+exports.deleteInterviewer = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const interviewer = await Interviewer.findByPk(id);
+        if (!interviewer) {
+            return res.status(404).json({ message: 'Interviewer not found' });
+        }
+
+        await interviewer.destroy();
+        res.status(200).json({ message: 'Interviewer deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting interviewer:', error);
+        res.status(500).json({ 
+            message: 'Error deleting interviewer',
             error: error.message 
         });
     }

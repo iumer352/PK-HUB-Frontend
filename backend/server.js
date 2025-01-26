@@ -12,6 +12,7 @@ const projectRoutes = require('./routes/projectRoutes');
 const interviewerRoutes = require('./routes/interviewerRoutes');
 const stageLookupRoutes = require('./routes/stageLookupRoutes');
 const timesheetRoutes = require('./routes/timesheetRoutes');
+const hiringManagerRoutes = require('./routes/hiringManagerRoute');
 
 // Import model associations
 require('./models/associations');
@@ -29,11 +30,12 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api/employees', employeeRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applicant', applicantRoutes);
-app.use('/api/interview', interviewRoutes);
+app.use('/api/interviews', interviewRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/interviewers', interviewerRoutes);
 app.use('/api/stages', stageLookupRoutes);
-app.use('/api/timesheet', timesheetRoutes);
+app.use('/api/timesheets', timesheetRoutes);
+app.use('/api/hiring-managers', hiringManagerRoutes);
 
 // Sync database and start server
 const startServer = async () => {

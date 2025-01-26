@@ -16,7 +16,7 @@ const Job = sequelize.define('Job', {
         allowNull: false,
         validate: {
             isIn: {
-                args: [['Analyst', 'Associate', 'Senior Associate', 'Assistant', 'Manager-1', 'Manager-2', 'Senior Manager', 'Director']],
+                args: [['Analyst', 'Associate', 'Senior Associate', 'Assistant Manager', 'Manager', 'Manager-1', 'Senior Manager', 'Director']],
                 msg: 'Invalid grade value'
             }
         }
