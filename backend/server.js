@@ -30,7 +30,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api/employees', employeeRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applicant', applicantRoutes);
-app.use('/api/interviews', interviewRoutes);
+app.use('/api/interview', interviewRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/interviewers', interviewerRoutes);
 app.use('/api/stages', stageLookupRoutes);

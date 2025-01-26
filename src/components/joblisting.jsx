@@ -16,7 +16,8 @@ const JobPostingForm = () => {
         roleOverview: '',
         keyResponsibilities: '',
         keySkillsAndCompetencies: '',
-        status: 'Active'
+        status: 'Active',
+        function: ''
     });
 
     const [applicants, setApplicants] = useState([]);
@@ -28,6 +29,24 @@ const JobPostingForm = () => {
 
     const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
     const [showScoreDetails, setShowScoreDetails] = useState(null);
+
+    const [successMessage, setSuccessMessage] = useState('');
+
+    const [hiringManagers, setHiringManagers] = useState([]);
+    const [functions, setFunctions] = useState(['Analytics and AI', 'Data Transformation', 'Low Code', 'Digital Enablement', 'Innovation and Emerging Tech']);
+
+    useEffect(() => {
+        const fetchHiringManagers = async () => {
+            try {
+                const response = await axios.get('http://localhost:5000/api/hiring-managers');
+                setHiringManagers(response.data);
+            } catch (err) {
+                console.error('Error fetching hiring managers:', err);
+            }
+        };
+
+        fetchHiringManagers();
+    }, []);
 
     const requestSort = (key) => {
         let direction = 'ascending';
@@ -225,7 +244,6 @@ const JobPostingForm = () => {
                     setApplicants(applicantsWithInterviews);
 
                 } catch (err) {
-                    setError('Failed to fetch job data');
                     console.error('Error:', err);
                 }
             };
@@ -399,7 +417,6 @@ ${jobPosting.keySkillsAndCompetencies}
             window.open(url);
         } catch (error) {
             console.error('Error viewing resume:', error);
-            setError('Error viewing resume');
         }
     };
 
@@ -419,12 +436,13 @@ ${jobPosting.keySkillsAndCompetencies}
         try {
             if (jobId) {
                 await axios.put(`http://localhost:5000/api/jobs/${jobId}`, jobPosting);
+                setSuccessMessage('Job updated successfully');
+                setTimeout(() => setSuccessMessage(''), 3000); // Clear message after 3 seconds
             } else {
                 await axios.post('http://localhost:5000/api/jobs', jobPosting);
+                navigate('/manage');
             }
-            navigate('/manage-jobs');
         } catch (err) {
-            setError('Failed to save job posting');
             console.error('Error:', err);
         } finally {
             setLoading(false);
@@ -439,6 +457,16 @@ ${jobPosting.keySkillsAndCompetencies}
     return (
         <div className="min-h-screen bg-gray-100">
             <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                {/* Success Message */}
+                {successMessage && (
+                    <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg flex items-center">
+                        <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {successMessage}
+                    </div>
+                )}
+
                 {/* Header Section */}
                 <div className="mb-8 flex justify-between items-center">
                     <div>
@@ -487,15 +515,33 @@ ${jobPosting.keySkillsAndCompetencies}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Hiring Manager</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="hiringManager"
                                         value={jobPosting.hiringManager}
                                         onChange={handleInputChange}
-                                        placeholder="e.g., John Smith"
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
                                         required
-                                    />
+                                    >
+                                        <option value="">Select Hiring Manager</option>
+                                        {hiringManagers.map((manager) => (
+                                            <option key={manager.id} value={manager.name}>{manager.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Function</label>
+                                    <select
+                                        name="function"
+                                        value={jobPosting.function}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
+                                        required
+                                    >
+                                        <option value="">Select Function</option>
+                                        {functions.map((func) => (
+                                            <option key={func} value={func}>{func}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Hiring Urgency</label>
@@ -565,24 +611,14 @@ ${jobPosting.keySkillsAndCompetencies}
                                 onClick={() => navigate('/manage')}
                                 className="px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-indigo-500 transition-colors"
                             >
-                                Cancel
+                                Back to Jobs
                             </button>
                             <button
                                 type="submit"
+                                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                                 disabled={loading}
-                                className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {loading ? (
-                                    <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                        </svg>
-                                        Saving...
-                                    </>
-                                ) : (
-                                    jobId ? 'Update Job' : 'Create Job'
-                                )}
+                                {loading ? 'Saving...' : 'Update Job'}
                             </button>
                         </div>
                     </form>
