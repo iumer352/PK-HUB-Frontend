@@ -285,3 +285,98 @@ exports.updateStatus = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Update offer status
+exports.updateOfferStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { offer_status } = req.body;
+
+        // Validate offer status
+        const validStatuses = ['pending','accepted', 'rejected'];
+        if (!validStatuses.includes(offer_status)) {
+            return res.status(400).json({ 
+                message: `Invalid offer status. Must be one of: ${validStatuses.join(', ')}` 
+            });
+        }
+
+        const applicant = await Applicant.findByPk(id);
+        if (!applicant) {
+            return res.status(404).json({ message: 'Applicant not found' });
+        }
+
+        await applicant.update({ offer_status });
+
+        // If offer is accepted or rejected, also update the main status
+        if (offer_status === 'accepted') {
+            await applicant.update({ status: 'offer_accepted' });
+        } else if (offer_status === 'rejected') {
+            await applicant.update({ status: 'offer_rejected' });
+        }
+
+        res.json({ message: 'Offer status updated successfully', applicant });
+    } catch (error) {
+        console.error('Error updating offer status:', error);
+        res.status(500).json({ 
+            message: 'Error updating offer status', 
+            error: error.message 
+        });
+    }
+};
+
+// Get applicants by offer status
+exports.getApplicantsByOfferStatus = async (req, res) => {
+    try {
+        const { offer_status } = req.query;
+        
+        // Build where clause
+        const whereClause = {};
+        if (offer_status) {
+            whereClause.offer_status = offer_status;
+        }
+
+        const applicants = await Applicant.findAll({
+            where: whereClause,
+            include: [{
+                model: Job,
+                attributes: ['id', 'title', 'grade']
+            }],
+            order: [['updatedAt', 'DESC']]
+        });
+
+        res.json(applicants);
+    } catch (error) {
+        console.error('Error fetching applicants by offer status:', error);
+        res.status(500).json({ 
+            message: 'Error fetching applicants', 
+            error: error.message 
+        });
+    }
+};
+
+exports.getOfferStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const applicant = await Applicant.findByPk(id, {
+            attributes: ['id', 'name', 'offer_status', 'status'],
+            include: [{
+                model: Job,
+                attributes: ['id', 'title']
+            }]
+        });
+
+        if (!applicant) {
+            return res.status(404).json({ message: 'Applicant not found' });
+        }
+
+        res.json(applicant);
+    } catch (error) {
+        console.error('Error getting offer status:', error);
+        res.status(500).json({ 
+            message: 'Error getting offer status', 
+            error: error.message 
+        });
+    }
+};
+

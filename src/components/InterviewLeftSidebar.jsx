@@ -12,6 +12,7 @@ const InterviewLeftSidebar = ({
 }) => {
   const [stageFeedback, setStageFeedback] = useState({});
   const [hrData, setHrData] = useState(null);
+  const [offerStatus, setOfferStatus] = useState(null);
   const applicantsToShow = selectedApplicant ? [selectedApplicant] : applicants;
 
   useEffect(() => {
@@ -51,6 +52,20 @@ const InterviewLeftSidebar = ({
         if (isMounted) {
           setStageFeedback(feedbackData);
         }
+
+        // Fetch offer status if applicant is selected
+        if (selectedApplicant?.id) {
+          try {
+            const response = await axios.get(
+              `http://localhost:5000/api/applicant/${selectedApplicant.id}/offer-status`
+            );
+            if (isMounted) {
+              setOfferStatus(response.data.offer_status);
+            }
+          } catch (error) {
+            console.error('Error fetching offer status:', error);
+          }
+        }
       }
     };
 
@@ -69,6 +84,19 @@ const InterviewLeftSidebar = ({
         return <XCircle className="w-5 h-5 text-red-500" />;
       default:
         return <Clock className="w-5 h-5 text-gray-400" />;
+    }
+  };
+
+  const getOfferStatusColor = (status) => {
+    switch(status) {
+      case 'accepted':
+        return 'text-green-600 bg-green-50';
+      case 'rejected':
+        return 'text-red-600 bg-red-50';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -100,7 +128,7 @@ const InterviewLeftSidebar = ({
           {/* Interview Rounds */}
           <div className="space-y-4">
             {INTERVIEW_STAGES.map((stage, index) => {
-              const stageIdMap = { 'HR': 1, 'TECHNICAL': 2, 'CULTURAL': 3, 'FINAL': 4 };
+              const stageIdMap = { 'HR': 1, 'TECHNICAL': 2, 'CULTURAL': 3, 'FINAL': 4, 'OFFER': 5 };
               const numericStageId = stageIdMap[stage.id];
               
               const interview = applicant.interviews.find(i => 
@@ -109,6 +137,7 @@ const InterviewLeftSidebar = ({
               const feedback = interview ? stageFeedback[`${interview.id}-${numericStageId}`] : null;
               const status = getStageStatus(applicant.interviews, stage.id);
               const isHRStage = stage.id === 'HR';
+              const isOfferStage = stage.id === 'OFFER';
 
               return (
                 <div 
@@ -163,6 +192,20 @@ const InterviewLeftSidebar = ({
                       <div className="flex items-center justify-between">
                         <span>Willing to Travel:</span>
                         <span className="font-medium">{hrData.willing_to_travel_saudi ? 'Yes' : 'No'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Offer Stage Details */}
+                  {isOfferStage && offerStatus && (
+                    <div className="mt-3 space-y-2 text-sm border-t border-gray-200 pt-3">
+                      <div className={`px-3 py-2 rounded-lg ${getOfferStatusColor(offerStatus)}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Offer Status:</span>
+                          <span className="font-medium">
+                            {offerStatus.charAt(0).toUpperCase() + offerStatus.slice(1)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}

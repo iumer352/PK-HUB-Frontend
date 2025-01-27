@@ -549,60 +549,28 @@ exports.submitFeedback = async (req, res) => {
   }
 };
 
-// Submit HR round feedback
+// Submit HR feedback
 exports.submitHRFeedback = async (req, res) => {
   try {
     const { interviewId } = req.params;
-    const {
-      result,
-      feedback,
-      currentSalary,
-      expectedSalary,
-      noticePeriod,
-      willingToRelocate,
-      willingToTravelSaudi
-    } = req.body;
+    const { feedback } = req.body;
 
-    // Find the HR interview
-    const interview = await Interview.findOne({
-      where: {
-        id: interviewId,
-        type: 'HR'
-      }
-    });
+    const interview = await Interview.findByPk(interviewId);
 
     if (!interview) {
-      return res.status(404).json({ message: 'HR interview not found' });
+      return res.status(404).json({ message: 'Interview not found' });
     }
 
-    // Update interview with HR specific details
-    const updatedInterview = await interview.update({
-      result,
-      feedback,
-      current_salary: currentSalary,
-      expected_salary: expectedSalary,
-      notice_period: noticePeriod,
-      willing_to_relocate: willingToRelocate,
-      willing_to_travel_saudi: willingToTravelSaudi,
+    await interview.update({
+      feedback: feedback,
       status: 'completed'
     });
 
-    // Update applicant status based on result
-    if (result === 'pass') {
-      await Applicant.update(
-        { status: 'hr_round_passed' },
-        { where: { id: interview.applicant_id } }
-      );
-    } else if (result === 'fail') {
-      await Applicant.update(
-        { status: 'hr_round_failed' },
-        { where: { id: interview.applicant_id } }
-      );
-    }
-
-    res.status(200).json(updatedInterview);
+    res.status(200).json({ message: 'HR feedback submitted successfully' });
   } catch (error) {
     console.error('Error submitting HR feedback:', error);
     res.status(500).json({ message: 'Error submitting HR feedback', error: error.message });
   }
 };
+
+module.exports = exports;

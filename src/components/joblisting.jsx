@@ -158,6 +158,47 @@ const JobPostingForm = () => {
         }
     };
 
+    // Get application status based on score
+    const getApplicationStatus = (applicant) => {
+        try {
+            const resumeData = JSON.parse(applicant.resume);
+            const score = resumeData?.score || 0;
+            return score < 55 ? 'rejected' : 'shortlisted';
+        } catch (error) {
+            console.error('Error parsing resume data:', error);
+            return 'pending';
+        }
+    };
+
+    // Update application status
+    const updateApplicationStatus = async (applicantId, newStatus) => {
+        try {
+            await axios.put(`http://localhost:5000/api/applicants/${applicantId}/status`, {
+                status: newStatus
+            });
+            
+            // Update local state
+            setApplicants(applicants.map(app => 
+                app.id === applicantId 
+                    ? { 
+                        ...app, 
+                        resume: JSON.stringify({
+                            ...JSON.parse(app.resume),
+                            score: newStatus === 'shortlisted' ? 75 : 45 // Set score based on status
+                        })
+                    }
+                    : app
+            ));
+            
+            setSuccessMessage('Status updated successfully');
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            console.error('Error updating status:', error);
+            setError('Failed to update status');
+            setTimeout(() => setError(null), 3000);
+        }
+    };
+
     const handleScoreHover = (event, resumeData) => {
         if (!resumeData) return;
         
@@ -173,108 +214,6 @@ const JobPostingForm = () => {
         } catch (error) {
             console.error('Error parsing resume data:', error);
         }
-    };
-
-    const ScoreDetailsModal = ({ resumeData, position }) => {
-        if (!resumeData || !resumeData.score_details) return null;
-
-        const scoreCategories = {
-            'Skills_Score': 'Skills Match',
-            'Experience_Score': 'Experience Match',
-            'Education_Score': 'Education Match',
-            'Certification_Score': 'Certifications Match'
-        };
-
-        return (
-            <div 
-                className="fixed z-50 bg-white shadow-xl rounded-lg p-4 border border-gray-200 w-72"
-                style={{
-                    left: `${position.x}px`,
-                    top: `${position.y}px`,
-                    transform: 'translateY(-25%)'
-                }}
-            >
-                <h3 className="font-medium text-gray-900 mb-3">Score Breakdown</h3>
-                <div className="space-y-3">
-                    <div className="flex justify-between items-center border-b pb-2">
-                        <span className="text-sm font-medium text-gray-900">Overall Match:</span>
-                        <span className="text-sm font-semibold text-indigo-600">{resumeData.score.toFixed(1)}%</span>
-                    </div>
-                    {Object.entries(resumeData.score_details).map(([key, score]) => (
-                        <div key={key} className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">{scoreCategories[key]}:</span>
-                            <span className="text-sm font-medium text-gray-900">{score.toFixed(1)}%</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
-    useEffect(() => {
-        if (jobId) {
-            const fetchJobData = async () => {
-                try {
-                    const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
-                    setJobPosting(response.data);
-
-                    // Get applicants for this job
-                    const applicantsResponse = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
-                    const applicantsData = applicantsResponse.data;
-
-                    // Fetch interviews for each applicant
-                    const applicantsWithInterviews = await Promise.all(
-                        applicantsData.map(async (applicant) => {
-                            try {
-                                const interviewsResponse = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
-                                return {
-                                    ...applicant,
-                                    interviews: interviewsResponse.data
-                                };
-                            } catch (err) {
-                                console.error(`Error fetching interviews for applicant ${applicant.id}:`, err);
-                                return {
-                                    ...applicant,
-                                    interviews: []
-                                };
-                            }
-                        })
-                    );
-
-                    setApplicants(applicantsWithInterviews);
-
-                } catch (err) {
-                    console.error('Error:', err);
-                }
-            };
-            fetchJobData();
-        }
-    }, [jobId]);
-
-    const grades = [
-        'Analyst',
-        'Associate',
-        'Senior Associate',
-        'Assistant Manager',
-        'Manager',
-        'Manager-1',
-        'Senior Manager',
-        'Director'
-    ];
-
-    const urgencyLevels = [
-        'Urgent - Immediate Hire',
-        'High Priority',
-        'Normal',
-        'Low Priority'
-    ];
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setJobPosting(prev => ({
-            ...prev,
-            [name]: value
-        }));
     };
 
     const handleFileUpload = async (e) => {
@@ -420,14 +359,6 @@ ${jobPosting.keySkillsAndCompetencies}
         }
     };
 
-    const updateApplicantStatus = (id, status) => {
-        setApplicants(prev =>
-            prev.map(applicant =>
-                applicant.id === id ? { ...applicant, status } : applicant
-            )
-        );
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -452,6 +383,72 @@ ${jobPosting.keySkillsAndCompetencies}
     const handleApplicantClick = (e, applicantId) => {
         e.preventDefault();
         navigate(`/interview-tracking/${applicantId}`);
+    };
+
+    useEffect(() => {
+        if (jobId) {
+            const fetchJobData = async () => {
+                try {
+                    const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
+                    setJobPosting(response.data);
+
+                    // Get applicants for this job
+                    const applicantsResponse = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
+                    const applicantsData = applicantsResponse.data;
+
+                    // Fetch interviews for each applicant
+                    const applicantsWithInterviews = await Promise.all(
+                        applicantsData.map(async (applicant) => {
+                            try {
+                                const interviewsResponse = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
+                                return {
+                                    ...applicant,
+                                    interviews: interviewsResponse.data
+                                };
+                            } catch (err) {
+                                console.error(`Error fetching interviews for applicant ${applicant.id}:`, err);
+                                return {
+                                    ...applicant,
+                                    interviews: []
+                                };
+                            }
+                        })
+                    );
+
+                    setApplicants(applicantsWithInterviews);
+
+                } catch (err) {
+                    console.error('Error:', err);
+                }
+            };
+            fetchJobData();
+        }
+    }, [jobId]);
+
+    const grades = [
+        'Analyst',
+        'Associate',
+        'Senior Associate',
+        'Assistant Manager',
+        'Manager',
+        'Manager-1',
+        'Senior Manager',
+        'Director'
+    ];
+
+    const urgencyLevels = [
+        'Urgent - Immediate Hire',
+        'High Priority',
+        'Normal',
+        'Low Priority'
+    ];
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setJobPosting(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     return (
@@ -699,22 +696,35 @@ ${jobPosting.keySkillsAndCompetencies}
                                             <th 
                                                 scope="col" 
                                                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                                                onClick={() => requestSort('status')}
                                             >
-                                                <div className="flex items-center space-x-1">
-                                                    <span>Status</span>
+                                                <button
+                                                    className="flex items-center space-x-1"
+                                                    onClick={() => requestSort('status')}
+                                                >
+                                                    <span>Interview Status</span>
                                                     {getSortIcon('status')}
-                                                </div>
+                                                </button>
                                             </th>
                                             <th 
                                                 scope="col" 
                                                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                                                onClick={() => requestSort('score')}
                                             >
                                                 <div className="flex items-center space-x-1">
                                                     <span>Score</span>
                                                     {getSortIcon('score')}
                                                 </div>
+                                            </th>
+                                            <th 
+                                                scope="col" 
+                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                                            >
+                                                <button
+                                                    className="flex items-center space-x-1"
+                                                    onClick={() => requestSort('aiStatus')}
+                                                >
+                                                    <span>AI Result</span>
+                                                    {getSortIcon('aiStatus')}
+                                                </button>
                                             </th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Actions
@@ -732,6 +742,9 @@ ${jobPosting.keySkillsAndCompetencies}
                                             } catch (error) {
                                                 console.error('Error parsing resume data:', error);
                                             }
+
+                                            const applicationStatus = getApplicationStatus(applicant);
+                                            const interviewStatus = getApplicantStatus(applicant);
 
                                             return (
                                                 <tr 
@@ -755,11 +768,11 @@ ${jobPosting.keySkillsAndCompetencies}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                            getApplicantStatus(applicant) === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                                            getApplicantStatus(applicant) === 'Hired' ? 'bg-green-100 text-green-800' :
+                                                            interviewStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
+                                                            interviewStatus === 'Hired' ? 'bg-green-100 text-green-800' :
                                                             'bg-blue-100 text-blue-800'
                                                         }`}>
-                                                            {getApplicantStatus(applicant)}
+                                                            {interviewStatus}
                                                         </span>
                                                     </td>
                                                     <td 
@@ -771,25 +784,34 @@ ${jobPosting.keySkillsAndCompetencies}
                                                             {score !== null ? `${score.toFixed(1)}%` : 'N/A'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                            applicationStatus === 'rejected' 
+                                                                ? 'bg-red-100 text-red-800' 
+                                                                : 'bg-green-100 text-green-800'
+                                                        }`}>
+                                                            {applicationStatus.charAt(0).toUpperCase() + applicationStatus.slice(1)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                         <div className="flex space-x-2">
                                                             <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    updateApplicantStatus(applicant.id, 'Approved');
-                                                                }}
-                                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 transition-colors"
+                                                                onClick={() => updateApplicationStatus(applicant.id, 'shortlisted')}
+                                                                className={`inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md ${
+                                                                    applicationStatus === 'shortlisted'
+                                                                        ? 'text-white bg-green-600 hover:bg-green-700'
+                                                                        : 'text-green-700 bg-green-100 hover:bg-green-200'
+                                                                } transition-colors w-16`}
                                                             >
-                                                                Approve
+                                                                Accept
                                                             </button>
                                                             <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    updateApplicantStatus(applicant.id, 'Rejected');
-                                                                }}
-                                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
+                                                                onClick={() => updateApplicationStatus(applicant.id, 'rejected')}
+                                                                className={`inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md ${
+                                                                    applicationStatus === 'rejected'
+                                                                        ? 'text-white bg-red-600 hover:bg-red-700'
+                                                                        : 'text-red-700 bg-red-100 hover:bg-red-200'
+                                                                } transition-colors w-16`}
                                                             >
                                                                 Reject
                                                             </button>

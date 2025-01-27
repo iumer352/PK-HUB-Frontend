@@ -31,6 +31,11 @@ const Applicant = sequelize.define('Applicant', {
   status: {
     type: DataTypes.TEXT,
     defaultValue: 'applied'
+  },
+  offer_status: {
+    type: DataTypes.ENUM('pending','accepted', 'rejected'),
+    defaultValue: 'pending',
+    allowNull: false
   }
 }, {
   tableName: 'applicants',

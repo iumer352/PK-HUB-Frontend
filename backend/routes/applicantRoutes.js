@@ -8,6 +8,9 @@ router.get('/', applicantController.getApplicants);
 // Get applicants by job ID
 router.get('/job/:jobId', applicantController.getApplicantsByJobId);
 
+// Get applicants by offer status
+router.get('/by-offer-status', applicantController.getApplicantsByOfferStatus);
+
 // Get a single applicant
 router.get('/:id', applicantController.getApplicant);
 
@@ -22,5 +25,10 @@ router.post('/from-parsed-resumes', applicantController.createApplicantsFromPars
 
 // Update applicant status
 router.put('/:id/status', applicantController.updateStatus);
+
+// Update offer status
+router.post('/:id/offer-status', applicantController.updateOfferStatus);
+
+router.get('/:id/offer-status', applicantController.getOfferStatus);
 
 module.exports = router;

@@ -28,6 +28,7 @@ const InterviewRightSidebar = ({
   const [showHRModal, setShowHRModal] = useState(false);
   const [selectedHRInterview, setSelectedHRInterview] = useState(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerStatus, setOfferStatus] = useState(null);
 
   // Map stage names to their corresponding interview types
   const stageToType = {
@@ -78,13 +79,26 @@ const InterviewRightSidebar = ({
     return stageResults[finalInterview?.id]?.result === 'pass';
   };
 
-  // Check if offer is accepted
+  // Check if offer is accepted using the offer status from backend
   const isOfferAccepted = () => {
-    const offerInterview = selectedApplicant?.interviews?.find(interview => 
-      interview.interviewer.interview_type === stageToType['OFFER']
-    );
-    return stageResults[offerInterview?.id]?.result === 'pass';
+    return offerStatus === 'accepted';
   };
+
+  // Fetch offer status whenever selected applicant changes
+  useEffect(() => {
+    const fetchOfferStatus = async () => {
+      if (selectedApplicant?.id) {
+        try {
+          const response = await axios.get(`http://localhost:5000/api/applicant/${selectedApplicant.id}/offer-status`);
+          setOfferStatus(response.data.offer_status);
+        } catch (error) {
+          console.error('Error fetching offer status:', error);
+        }
+      }
+    };
+    
+    fetchOfferStatus();
+  }, [selectedApplicant?.id]);
 
   // Handle onboard button click
   const handleOnboard = async () => {
@@ -167,6 +181,13 @@ const InterviewRightSidebar = ({
 
   // Get stage result (pass/fail/pending)
   const getStageResult = (stage) => {
+    // For offer stage, check the offer status
+    if (stage.id === 'OFFER') {
+      return offerStatus === 'accepted' ? 'pass' : 
+             offerStatus === 'rejected' ? 'fail' : 'pending';
+    }
+
+    // For other stages, check interview results
     const interview = selectedApplicant?.interviews?.find(interview => 
       interview.interviewer.interview_type === stageToType[stage.id]
     );
@@ -266,7 +287,7 @@ const InterviewRightSidebar = ({
               `}>
                 <div className="flex flex-col items-center z-10 relative">
                   {React.createElement(stageIcons[stage.id], {
-                    className: "w-4 h-4 mb-1",
+                    className: "w-4 h-4",
                     "aria-hidden": "true"
                   })}
                   <span className="text-xs font-medium whitespace-nowrap">{stage.name}</span>
@@ -381,13 +402,25 @@ const InterviewRightSidebar = ({
                       <h3 className="text-lg font-semibold text-gray-800">
                         {interview.interviewer.interview_type} Interview
                         <span className={`ml-2 px-2 py-1 text-sm rounded-full ${
-                          stageResults[interview.id] && stageResults[interview.id].result === 'pass'
+                          interview.interviewer.interview_type === 'Offer' && offerStatus === 'accepted'
+                            ? 'bg-green-200 text-green-800'
+                            : interview.interviewer.interview_type === 'Offer' && offerStatus === 'rejected'
+                            ? 'bg-red-200 text-red-800'
+                            : stageResults[interview.id] && stageResults[interview.id].result === 'pass'
                             ? 'bg-green-200 text-green-800'
                             : stageResults[interview.id] && stageResults[interview.id].result === 'fail'
                             ? 'bg-red-200 text-red-800'
                             : 'bg-blue-200 text-blue-800'
                         }`}>
-                          {stageResults[interview.id] && stageResults[interview.id].result ? stageResults[interview.id].result.charAt(0).toUpperCase() + stageResults[interview.id].result.slice(1) : 'Pending'}
+                          {interview.interviewer.interview_type === 'Offer'
+                            ? offerStatus === 'accepted'
+                              ? 'Offer Accepted'
+                              : offerStatus === 'rejected'
+                              ? 'Offer Rejected'
+                              : 'Pending'
+                            : stageResults[interview.id] && stageResults[interview.id].result 
+                              ? stageResults[interview.id].result.charAt(0).toUpperCase() + stageResults[interview.id].result.slice(1) 
+                              : 'Pending'}
                         </span>
                       </h3>
                     </div>
@@ -488,23 +521,36 @@ const InterviewRightSidebar = ({
       <OfferLetterModal
         isOpen={showOfferModal}
         onClose={() => setShowOfferModal(false)}
-        onSchedule={async (offerData) => {
+        onSchedule={async (resultData) => {
           try {
-            // Create a new interview entry for the offer stage
-            const response = await axios.post('http://localhost:5000/api/interview', {
-              applicant_id: selectedApplicant.id,
-              stage_id: 'OFFER',
-              result: offerData.offerAccepted ? 'pass' : 'fail',
-              offerAccepted: offerData.offerAccepted,
-              date_time: new Date().toISOString()
-            });
-            
-            // Refresh the page to show the new status
-            window.location.reload();
+            // Find the offer stage interview
+            const offerInterview = selectedApplicant?.interviews?.find(interview => 
+              interview.interviewer.interview_type === stageToType['OFFER']
+            );
+
+            if (offerInterview) {
+              const response = await axios.post(
+                `http://localhost:5000/api/interview/stages/${offerInterview.id}/${offerInterview.stage_id}/feedback`,
+                {
+                  result: resultData.result,
+                  feedback: `Offer ${resultData.offerStatus}`,
+                  notes: `Offer status updated to: ${resultData.offerStatus}`
+                }
+              );
+
+              // Update the stage results
+              setStageResults(prev => ({
+                ...prev,
+                [offerInterview.id]: response.data
+              }));
+            }
+
+            setShowOfferModal(false);
           } catch (error) {
             console.error('Error updating offer status:', error);
           }
         }}
+        applicantId={selectedApplicant?.id}
       />
     </div>
   );
