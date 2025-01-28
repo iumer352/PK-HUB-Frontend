@@ -7,6 +7,7 @@ import OfferLetterModal from './modals/OfferLetterModal';
 
 const InterviewRightSidebar = ({ 
   selectedApplicant,
+  jobDetails,
   INTERVIEW_STAGES,
   getCurrentStage,
   getStageStatus,
@@ -29,6 +30,14 @@ const InterviewRightSidebar = ({
   const [selectedHRInterview, setSelectedHRInterview] = useState(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerStatus, setOfferStatus] = useState(null);
+
+  // Debug log for job details
+  useEffect(() => {
+    console.log('Job Details in Right Sidebar:', {
+      jobDetails,
+      selectedApplicant
+    });
+  }, [jobDetails, selectedApplicant]);
 
   // Map stage names to their corresponding interview types
   const stageToType = {
@@ -224,7 +233,7 @@ const InterviewRightSidebar = ({
               </p>
               <p className="text-gray-600 flex items-center">
                 <Briefcase className="w-4 h-4 mr-2 text-gray-400" />
-                {selectedApplicant.position || 'Position Not Specified'}
+                Applied for: {jobDetails?.title || 'Position Not Available'}
               </p>
             </div>
           </div>

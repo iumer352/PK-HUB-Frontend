@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import InterviewLeftSidebar from './InterviewLeftSidebar';
 import InterviewRightSidebar from './InterviewRightSidebar';
 import InterviewResultModal from './modals/InterviewResultModal';
@@ -33,6 +33,18 @@ export const INTERVIEW_STAGES = [
 
 const RecruitingDashboard = () => {
   const { jobId, applicantId } = useParams();
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  const jobDetails = state?.jobDetails;
+
+  // Debug log to verify job details
+  useEffect(() => {
+    console.log('Job Details in Interview Tracking:', {
+      jobDetails,
+      state
+    });
+  }, [state]);
+
   const [applicants, setApplicants] = useState([]);
   const [interviewers, setInterviewers] = useState([]);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
@@ -326,6 +338,7 @@ const RecruitingDashboard = () => {
 
       <InterviewRightSidebar
         selectedApplicant={selectedApplicant}
+        jobDetails={jobDetails}
         INTERVIEW_STAGES={INTERVIEW_STAGES}
         getCurrentStage={getCurrentStage}
         getStageStatus={getStageStatus}
@@ -347,6 +360,7 @@ const RecruitingDashboard = () => {
           onSchedule={handleScheduleInterview}
           stageId={selectedStage}
           interviewers={interviewers}
+          jobDetails={jobDetails}
         />
       )}
 

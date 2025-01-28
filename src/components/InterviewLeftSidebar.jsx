@@ -108,22 +108,10 @@ const InterviewLeftSidebar = ({
     <div className="w-1/3 bg-white p-6 overflow-y-auto border-r border-gray-200 shadow-sm">
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-2xl font-bold text-gray-800">Interview Progress</h2>
-        {selectedApplicant && (
-          <button 
-            onClick={() => setSelectedApplicant(null)}
-            className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-200"
-          >
-            Back to List
-          </button>
-        )}
       </div>
 
       {applicantsToShow.map((applicant) => (
         <div key={applicant.id}>
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">{applicant.name}</h3>
-            <p className="text-sm text-gray-600">{applicant.position || 'Position Not Specified'}</p>
-          </div>
 
           {/* Interview Rounds */}
           <div className="space-y-4">

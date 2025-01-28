@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import InterviewResultModal from './modals/InterviewResultModal';
 import ScheduleInterviewModal from './modals/ScheduleInterviewModal';
@@ -28,6 +28,17 @@ const INTERVIEW_STAGES = [
 const ApplicantInterviewTracking = () => {
   const { applicantId } = useParams();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const jobDetails = state?.jobDetails;
+
+  // Debug log to verify job details
+  useEffect(() => {
+    console.log('Job Details in Interview Tracking:', {
+      jobDetails,
+      state
+    });
+  }, [state]);
+
   const [applicant, setApplicant] = useState(null);
   const [interviewers, setInterviewers] = useState([]);
   const [showScheduler, setShowScheduler] = useState(false);

@@ -380,9 +380,23 @@ ${jobPosting.keySkillsAndCompetencies}
         }
     };
 
-    const handleApplicantClick = (e, applicantId) => {
+    const handleApplicantClick = async (e, applicantId) => {
         e.preventDefault();
-        navigate(`/interview-tracking/${applicantId}`);
+        try {
+            // Fetch complete job details
+            const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
+            console.log('Complete job details:', response.data);
+            
+            // Pass all job data to interview tracking
+            navigate(`/interview-tracking/${applicantId}`, { 
+                state: { 
+                    jobDetails: response.data
+                }
+            });
+        } catch (err) {
+            console.error('Error fetching job details:', err);
+            setError('Failed to fetch job details');
+        }
     };
 
     useEffect(() => {
@@ -390,7 +404,15 @@ ${jobPosting.keySkillsAndCompetencies}
             const fetchJobData = async () => {
                 try {
                     const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
-                    setJobPosting(response.data);
+                    console.log('Fetched job data:', response.data);
+                    
+                    // Ensure function value is set correctly
+                    const jobData = {
+                        ...response.data,
+                        function: response.data.functionType || '' // Set default if not present
+                    };
+                    
+                    setJobPosting(jobData);
 
                     // Get applicants for this job
                     const applicantsResponse = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
