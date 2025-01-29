@@ -94,8 +94,16 @@ const JobPostingForm = () => {
 
         return [...applicants].sort((a, b) => {
             if (sortConfig.key === 'score') {
-                const scoreA = JSON.parse(a.resume)?.score || 0;
-                const scoreB = JSON.parse(b.resume)?.score || 0;
+                const getScore = (resume) => {
+                    try {
+                        const data = JSON.parse(resume);
+                        return data?.score?.Overall_Score || 0;
+                    } catch (error) {
+                        return 0;
+                    }
+                };
+                const scoreA = getScore(a.resume);
+                const scoreB = getScore(b.resume);
                 // Always sort score in descending order
                 return scoreB - scoreA;
             }
@@ -158,11 +166,10 @@ const JobPostingForm = () => {
         }
     };
 
-    // Get application status based on score
     const getApplicationStatus = (applicant) => {
         try {
             const resumeData = JSON.parse(applicant.resume);
-            const score = resumeData?.score || 0;
+            const score = resumeData?.score?.Overall_Score || 0;
             return score < 55 ? 'rejected' : 'shortlisted';
         } catch (error) {
             console.error('Error parsing resume data:', error);
@@ -383,14 +390,18 @@ ${jobPosting.keySkillsAndCompetencies}
     const handleApplicantClick = async (e, applicantId) => {
         e.preventDefault();
         try {
+            // Find the applicant with the score details
+            const applicant = applicants.find(app => app.id === applicantId);
+            
             // Fetch complete job details
             const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
             console.log('Complete job details:', response.data);
             
-            // Pass all job data to interview tracking
+            // Pass job data and score details to interview tracking
             navigate(`/interview-tracking/${applicantId}`, { 
                 state: { 
-                    jobDetails: response.data
+                    jobDetails: response.data,
+                    scoreDetails: applicant?.score
                 }
             });
         } catch (err) {
@@ -760,7 +771,12 @@ ${jobPosting.keySkillsAndCompetencies}
                                             
                                             try {
                                                 resumeData = JSON.parse(applicant.resume);
-                                                score = resumeData?.score || 0;
+                                                // Get Overall_Score from the new structure
+                                                const rawScore = resumeData?.score?.Overall_Score;
+                                                if (rawScore !== undefined && rawScore !== null) {
+                                                    score = Number(rawScore);
+                                                    if (isNaN(score)) score = 0;
+                                                }
                                             } catch (error) {
                                                 console.error('Error parsing resume data:', error);
                                             }
@@ -803,7 +819,7 @@ ${jobPosting.keySkillsAndCompetencies}
                                                         onMouseLeave={() => setShowScoreDetails(null)}
                                                     >
                                                         <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800">
-                                                            {score !== null ? `${score.toFixed(1)}%` : 'N/A'}
+                                                            {score !== null && !isNaN(score) ? `${Number(score).toFixed(1)}%` : 'N/A'}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -868,36 +884,84 @@ ${jobPosting.keySkillsAndCompetencies}
 };
 
 const ScoreDetailsModal = ({ resumeData, position }) => {
-    if (!resumeData || !resumeData.score_details) return null;
+    if (!resumeData || !position) return null;
 
-    const scoreCategories = {
-        'Skills_Score': 'Skills Match',
-        'Experience_Score': 'Experience Match',
-        'Education_Score': 'Education Match',
-        'Certification_Score': 'Certifications Match'
-    };
+    const scoreData = resumeData?.score;
+    if (!scoreData) return null;
+
+    // Log the score details being shown in the modal
+    console.log('Score Details in Modal:', {
+        score: scoreData,
+        evaluation: scoreData.Evaluation,
+        recommendation: scoreData.Recommendation
+    });
+
+    // Calculate position to keep modal within viewport
+    const modalWidth = 384; // w-96 = 24rem = 384px
+    const modalHeight = 300; // approximate max height
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const padding = 80; // padding from edges
+
+    // Calculate left position
+    let left = position.x;
+    if (left + modalWidth > windowWidth - padding) {
+        left = position.x - modalWidth - padding;
+    }
+    // Ensure minimum padding from left edge
+    left = Math.max(padding, left);
+
+    // Calculate top position
+    let top = position.y;
+    const bottomSpace = windowHeight - top;
+    
+    // If there's not enough space below, show above the cursor
+    if (bottomSpace < modalHeight + padding) {
+        top = Math.max(padding, windowHeight - modalHeight - padding);
+    }
 
     return (
         <div 
-            className="fixed z-50 bg-white shadow-xl rounded-lg p-4 border border-gray-200 w-72"
-            style={{
-                left: `${position.x}px`,
-                top: `${position.y}px`,
-                transform: 'translateY(-25%)'
+            className="fixed z-50 bg-white rounded-lg shadow-xl p-4 w-96 max-h-[60vh] overflow-y-auto"
+            style={{ 
+                left,
+                top,
+                maxHeight: `calc(100vh - ${padding * 2}px)`,
+                transform: 'none'
             }}
         >
-            <h3 className="font-medium text-gray-900 mb-3">Score Breakdown</h3>
-            <div className="space-y-3">
-                <div className="flex justify-between items-center border-b pb-2">
-                    <span className="text-sm font-medium text-gray-900">Overall Match:</span>
-                    <span className="text-sm font-semibold text-indigo-600">{resumeData.score.toFixed(1)}%</span>
-                </div>
-                {Object.entries(resumeData.score_details).map(([key, score]) => (
-                    <div key={key} className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">{scoreCategories[key]}:</span>
-                        <span className="text-sm font-medium text-gray-900">{score.toFixed(1)}%</span>
+            <div className="space-y-4">
+                {/* Pros */}
+                {scoreData.Evaluation?.Pros && scoreData.Evaluation.Pros.length > 0 && (
+                    <div className="space-y-1">
+                        <span className="text-sm font-medium text-green-600">Pros:</span>
+                        <ul className="list-disc list-inside space-y-1">
+                            {scoreData.Evaluation.Pros.map((pro, index) => (
+                                <li key={index} className="text-sm text-gray-600 break-words">{pro}</li>
+                            ))}
+                        </ul>
                     </div>
-                ))}
+                )}
+
+                {/* Cons */}
+                {scoreData.Evaluation?.Cons && scoreData.Evaluation.Cons.length > 0 && (
+                    <div className="space-y-1">
+                        <span className="text-sm font-medium text-red-600">Cons:</span>
+                        <ul className="list-disc list-inside space-y-1">
+                            {scoreData.Evaluation.Cons.map((con, index) => (
+                                <li key={index} className="text-sm text-gray-600 break-words">{con}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Recommendation */}
+                {scoreData.Recommendation && (
+                    <div className="pt-2 border-t">
+                        <span className="text-sm font-medium text-indigo-600">Recommendation: </span>
+                        <span className="text-sm text-gray-900 break-words">{scoreData.Recommendation}</span>
+                    </div>
+                )}
             </div>
         </div>
     );

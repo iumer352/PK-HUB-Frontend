@@ -334,30 +334,32 @@ const InterviewRightSidebar = ({
         )}
       </div>
 
-      <style jsx>{`
-        .arrow-shape::after {
-          content: '';
-          position: absolute;
-          right: -15px;
-          top: 0;
-          bottom: 0;
-          width: 30px;
-          background: inherit;
-          clip-path: polygon(0 0, 0 100%, 50% 50%);
-          z-index: 1;
-        }
-        .arrow-shape::before {
-          content: '';
-          position: absolute;
-          right: -15px;
-          top: 0;
-          bottom: 0;
-          width: 30px;
-          background: inherit;
-          clip-path: polygon(100% 0, 0 50%, 100% 100%);
-          z-index: 2;
-        }
-      `}</style>
+      <style>
+        {`
+          .arrow-shape::after {
+            content: '';
+            position: absolute;
+            right: -15px;
+            top: 0;
+            bottom: 0;
+            width: 30px;
+            background: inherit;
+            clip-path: polygon(0 0, 0 100%, 50% 50%);
+            z-index: 1;
+          }
+          .arrow-shape::before {
+            content: '';
+            position: absolute;
+            right: -15px;
+            top: 0;
+            bottom: 0;
+            width: 30px;
+            background: inherit;
+            clip-path: polygon(100% 0, 0 50%, 100% 100%);
+            z-index: 2;
+          }
+        `}
+      </style>
 
       {/* Interview Timeline */}
       <div className="space-y-4">

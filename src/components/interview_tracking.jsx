@@ -36,14 +36,20 @@ const RecruitingDashboard = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const jobDetails = state?.jobDetails;
+  const scoreDetails = state?.scoreDetails;
 
-  // Debug log to verify job details
+  // Debug log to verify job details and score
   useEffect(() => {
-    console.log('Job Details in Interview Tracking:', {
-      jobDetails,
-      state
-    });
-  }, [state]);
+    console.log('Job Details in Interview Tracking:', jobDetails);
+    
+    if (scoreDetails) {
+      console.log('Score Details in Interview Tracking:', {
+        score: scoreDetails,
+        evaluation: scoreDetails.Evaluation,
+        recommendation: scoreDetails.Recommendation
+      });
+    }
+  }, [state, jobDetails, scoreDetails]);
 
   const [applicants, setApplicants] = useState([]);
   const [interviewers, setInterviewers] = useState([]);
