@@ -35,6 +35,10 @@ const Applicant = sequelize.define('Applicant', {
     type: DataTypes.ENUM('pending','accepted', 'rejected'),
     defaultValue: 'pending',
     allowNull: false
+  },
+  ai_result: {
+    type: DataTypes.ENUM('shortlisted', 'rejected'),
+    allowNull: true
   }
 }, {
   tableName: 'applicants',

@@ -26,6 +26,11 @@ router.post('/from-parsed-resumes', applicantController.createApplicantsFromPars
 // Update applicant status
 router.put('/:id/status', applicantController.updateStatus);
 
+router.put('/:id/ai-result', applicantController.updateAiResult);
+
+// ... existing routes ...
+// ... existing routes ...
+router.get('/:id/ai-result', applicantController.getApplicantAiResult);
 // Update offer status
 router.post('/:id/offer-status', applicantController.updateOfferStatus);
 

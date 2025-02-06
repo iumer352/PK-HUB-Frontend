@@ -335,7 +335,78 @@ exports.updateOfferStatus = async (req, res) => {
         });
     }
 };
+// ... existing imports and code ...
 
+// Update AI result for an employee
+exports.updateAiResult = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { ai_result } = req.body;
+
+        // Validate AI result value
+        if (!['shortlisted', 'rejected'].includes(ai_result)) {
+            return res.status(400).json({ 
+                message: 'AI result must be either "shortlisted" or "rejected"' 
+            });
+        }
+
+        const [updatedRowsCount, [updatedApplicant]] = await Applicant.update(
+            { ai_result },
+            {
+                where: { id },
+                returning: true
+            }
+        );
+
+        if (updatedRowsCount === 0) {
+            return res.status(404).json({ message: 'Applicant not found' });
+        }
+
+        res.json({
+            message: 'AI result updated successfully',
+            applicant: updatedApplicant
+        });
+    } catch (error) {
+        console.error('Error updating AI result:', error);
+        res.status(500).json({
+            message: 'Error updating AI result',
+            error: error.message
+        });
+    }
+};
+
+exports.getApplicantAiResult = async (req, res) => {
+    try {
+        const { id } = req.params;  // applicant id
+
+        const applicant = await Applicant.findByPk(id, {
+            include: [{
+                model: Job,
+                attributes: ['id', 'title']
+            }]
+        });
+
+        if (!applicant) {
+            return res.status(404).json({ message: 'Applicant not found' });
+        }
+
+        res.json({
+            message: 'AI result retrieved successfully',
+            applicant: {
+                ai_result: applicant.ai_result,
+             
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching applicant AI result:', error);
+        res.status(500).json({
+            message: 'Error fetching AI result',
+            error: error.message
+        });
+    }
+};
+
+// ... rest of the existing code ...
 // Get applicants by offer status
 exports.getApplicantsByOfferStatus = async (req, res) => {
     try {
