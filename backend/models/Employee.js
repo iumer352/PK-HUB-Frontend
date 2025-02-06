@@ -25,29 +25,34 @@ const Employee = sequelize.define('Employee', {
   },
   department: {
     type: DataTypes.ENUM(
-      'Data Transformation',
       'Analytics and AI',
+      'Data Transformation',
       'Low Code',
       'Digital Enablement',
       'Innovation and Emerging Tech'
     ),
     allowNull: false
   },
-  role: {
+  jobTitle: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  status: {
-    type: DataTypes.ENUM('active', 'inactive'),
-    defaultValue: 'active'
+  grade: {
+    type: DataTypes.ENUM(
+      'Analyst',
+      'Associate',
+      'Senior Associate',
+      'Assistant Manager',
+      'Manager',
+      'Manager-1',
+      'Senior Manager',
+      'Director'
+    ),
+    allowNull: false
   },
   joinDate: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
-  },
-  isOnboarding: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
   }
 }, {
   timestamps: true

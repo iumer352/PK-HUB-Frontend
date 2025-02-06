@@ -6,23 +6,19 @@ const Applicant = require('../models/Applicant');
 // Create new employee from applicant
 router.post('/', async (req, res) => {
   try {
-    const { name, department, role, status, applicantId } = req.body;
+    const { name, email, phone, department, jobTitle, grade} = req.body;
+
 
     // Create new employee
     const employee = await Employee.create({
       name,
+      email,
+      phone,
       department,
-      role,
-      status
+      jobTitle,
+      grade
     });
 
-    // Update applicant status if applicantId is provided
-    if (applicantId) {
-      await Applicant.update(
-        { status: 'hired' },
-        { where: { id: applicantId } }
-      );
-    }
 
     res.status(201).json(employee);
   } catch (error) {

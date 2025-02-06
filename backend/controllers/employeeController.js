@@ -141,28 +141,18 @@ exports.getEmployeeById = async (req, res) => {
 // Create new employee from applicant
 exports.createEmployee = async (req, res) => {
   try {
-    const { name, department, role, status, applicantId, email, phone } = req.body;
+    const { name, department, email, phone, jobTitle, grade } = req.body;
 
     // Create new employee with additional fields
     const employee = await Employee.create({
       name,
       department,
-      role,
-      status: status || 'active',
+      jobTitle,
+      grade,
       email,
       phone,
       joinDate: new Date(), // Set join date to current date
-      isOnboarding: true // Flag to indicate employee is in onboarding process
     });
-
-    // Update applicant status if applicantId is provided
-    if (applicantId) {
-      const Applicant = require('../models/Applicant');
-      await Applicant.update(
-        { status: 'hired' },
-        { where: { id: applicantId } }
-      );
-    }
 
     // Return the created employee with all fields
     const createdEmployee = await Employee.findByPk(employee.id, {

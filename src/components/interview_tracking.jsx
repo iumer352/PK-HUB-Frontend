@@ -54,6 +54,7 @@ const RecruitingDashboard = () => {
   const [applicants, setApplicants] = useState([]);
   const [interviewers, setInterviewers] = useState([]);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [interviewQuestions, setInterviewQuestions] = useState(null);
   const [showScheduler, setShowScheduler] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState(null);
@@ -66,6 +67,20 @@ const RecruitingDashboard = () => {
     fetchData();
   }, [jobId, applicantId]);
 
+  useEffect(() => {
+    if (selectedApplicant?.resume) {
+      try {
+        const resumeData = JSON.parse(selectedApplicant.resume);
+        const questions = resumeData?.score?.Interview_Questions;
+        console.log('Parsed Interview Questions:', questions);
+        setInterviewQuestions(questions);
+      } catch (error) {
+        console.error('Error parsing resume data for interview questions:', error);
+        setInterviewQuestions(null);
+      }
+    }
+  }, [selectedApplicant]);
+
   const fetchData = async () => {
     try {
       const [InterviewerRes] = await Promise.all([
@@ -76,10 +91,12 @@ const RecruitingDashboard = () => {
         // If we have an applicantId, fetch just that applicant
         const applicantRes = await axios.get(`http://localhost:5000/api/applicant/${applicantId}`);
         const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicantId}`);
+        console.log('Applicant data check:', applicantRes.data.resume);
         const applicantWithInterviews = {
           ...applicantRes.data,
           interviews: interviewsRes.data
         };
+        console.log('Applicant data:', applicantWithInterviews);
         setApplicants([applicantWithInterviews]);
         setSelectedApplicant(applicantWithInterviews);
       } else if (jobId) {
@@ -356,6 +373,7 @@ const RecruitingDashboard = () => {
         setShowResultModal={setShowResultModal}
         setSelectedInterview={setSelectedInterview}
         setShowNotes={setShowNotes}
+        interviewQuestions={interviewQuestions}
       />
 
       {/* Modals */}

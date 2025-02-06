@@ -18,7 +18,8 @@ const InterviewRightSidebar = ({
   setSelectedStage,
   setShowResultModal,
   setSelectedInterview,
-  setShowNotes
+  setShowNotes,
+  interviewQuestions
 }) => {
   const navigate = useNavigate();
   const [showStageDropdown, setShowStageDropdown] = useState(false);
@@ -30,32 +31,34 @@ const InterviewRightSidebar = ({
   const [selectedHRInterview, setSelectedHRInterview] = useState(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerStatus, setOfferStatus] = useState(null);
+  const [showQuestions, setShowQuestions] = useState(false);
 
-  // Debug log for job details
+  // Debug log for job details and interview questions
   useEffect(() => {
-    console.log('Job Details in Right Sidebar:', {
+    console.log('Job Details and Interview Questions in Right Sidebar:', {
       jobDetails,
-      selectedApplicant
+      selectedApplicant,
+      interviewQuestions
     });
-  }, [jobDetails, selectedApplicant]);
+  }, [jobDetails, selectedApplicant, interviewQuestions]);
 
   // Map stage names to their corresponding interview types
   const stageToType = {
     'HR': 'HR',
-    'TECHNICAL': 'Technical',
     'CULTURAL': 'Cultural',
+    'TECHNICAL': 'Technical',
     'FINAL': 'Final',
     'OFFER': 'Offer'
   };
 
   // Stage order mapping (for progression check)
-  const stageOrder = ['HR', 'TECHNICAL', 'CULTURAL', 'FINAL', 'OFFER'];
+  const stageOrder = ['HR', 'CULTURAL', 'TECHNICAL', 'FINAL', 'OFFER'];
 
   // Map stage names to their corresponding icons
   const stageIcons = {
     'HR': User,
-    'TECHNICAL': Code,
     'CULTURAL': ChevronDown,
+    'TECHNICAL': Code,
     'FINAL': Lock,
     'OFFER': DollarSign
   };
@@ -112,12 +115,13 @@ const InterviewRightSidebar = ({
   // Handle onboard button click
   const handleOnboard = async () => {
     try {
-      const response = await axios.post('http://localhost:5000/api/employees/create', {
+      const response = await axios.post('http://localhost:5000/api/employees/', {
         name: selectedApplicant.name,
         email: selectedApplicant.email,
         phone: selectedApplicant.phone,
-        department: selectedApplicant.job?.functionType || 'Data Transformation',
-        role: selectedApplicant.job?.title || '' ? `${selectedApplicant.job.title} - ${selectedApplicant.job.grade || 'Analyst'}` : selectedApplicant.job?.grade || 'Analyst'
+        department: jobDetails.functionType,
+        jobTitle: jobDetails.title,
+        grade: jobDetails.grade
       });
 
       if (response.status === 201) {
@@ -515,7 +519,77 @@ const InterviewRightSidebar = ({
           )}
         </div>
       </div>
-      
+
+      {/* AI Interview Questions Section (Beta) */}
+      {interviewQuestions && (
+        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+          <button 
+            onClick={() => setShowQuestions(!showQuestions)}
+            className="w-full flex items-center justify-between mb-4 focus:outline-none"
+          >
+            <div className="flex items-center">
+              <h3 className="text-xl font-semibold text-gray-800">
+                AI Suggested Interview Questions
+              </h3>
+              <span className="ml-2 px-2 py-1 text-xs font-medium text-purple-600 bg-purple-100 rounded-full">
+                Beta
+              </span>
+            </div>
+            <ChevronDown 
+              className={`w-5 h-5 text-gray-500 transform transition-transform duration-200 ${
+                showQuestions ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {showQuestions && (
+            <div className="space-y-4 mt-4">
+              {(() => {
+                let questions = [];
+                switch(activeStage) {
+                  case 'HR':
+                    questions = interviewQuestions?.HR_Round || [];
+                    break;
+                  case 'CULTURAL':
+                    questions = interviewQuestions?.Cultural_Round || [];
+                    break;
+                  case 'TECHNICAL':
+                    questions = interviewQuestions?.Technical_Round || [];
+                    break;
+                  case 'FINAL':
+                    questions = interviewQuestions?.Final_Round || [];
+                    break;
+                  default:
+                    questions = [];
+                }
+
+                return questions.length > 0 ? (
+                  <div className="space-y-3">
+                    {questions.map((question, index) => (
+                      <div 
+                        key={index}
+                        className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors"
+                      >
+                        <div className="flex items-start">
+                          <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-purple-100 text-purple-600 text-sm font-medium mr-3">
+                            {index + 1}
+                          </span>
+                          <p className="text-gray-700">{question}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                    <p className="text-gray-500">No suggested questions available for this stage</p>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* HR Result Modal */}
       <HRResultModal
         isOpen={showHRModal}
