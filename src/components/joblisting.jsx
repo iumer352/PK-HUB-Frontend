@@ -2,6 +2,181 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
+const ApplicantRow = React.memo(({ 
+    applicant, 
+    handleApplicantClick, 
+    handleScoreHover, 
+    setShowScoreDetails 
+}) => {
+    const [aiStatus, setAiStatus] = React.useState('pending');
+    
+    // Function to store AI result in database
+    const storeAiResult = async (result) => {
+        try {
+            await axios.put(`http://localhost:5000/api/applicant/${applicant.id}/ai-result`, {
+                ai_result: result
+            });
+        } catch (error) {
+            console.error('Error storing AI result:', error);
+        }
+    };
+
+    // Function to fetch AI result from database
+    const fetchAiResult = async () => {
+        try {
+            const response = await axios.get(`http://localhost:5000/api/applicant/${applicant.id}/ai-result`);
+            return response.data.applicant.ai_result;
+        } catch (error) {
+            console.error('Error fetching AI result:', error);
+            return null;
+        }
+    };
+
+    // Process score and set initial AI result
+    React.useEffect(() => {
+        const processScore = async () => {
+            try {
+                const resumeData = JSON.parse(applicant.resume);
+                const score = resumeData?.score?.Overall_Score;
+                
+                if (score !== undefined && score !== null) {
+                    // First check if there's an existing AI result
+                    const existingResult = await fetchAiResult();
+                    
+                    if (!existingResult) {
+                        // If no existing result, determine and store based on score
+                        const initialResult = Number(score) < 50 ? 'rejected' : 'shortlisted';
+                        await storeAiResult(initialResult);
+                        setAiStatus(initialResult);
+                    } else {
+                        // If result exists, use it
+                        setAiStatus(existingResult);
+                    }
+                }
+            } catch (error) {
+                console.error('Error processing score:', error);
+            }
+        };
+
+        processScore();
+    }, [applicant.id, applicant.resume]);
+
+    // Handle manual status update through action buttons
+    const handleStatusUpdate = async (e, newStatus) => {
+        e.stopPropagation();
+        try {
+            await storeAiResult(newStatus);
+            setAiStatus(newStatus);
+        } catch (error) {
+            console.error('Error updating status:', error);
+        }
+    };
+
+    let score = null;
+    try {
+        const resumeData = JSON.parse(applicant.resume);
+        const rawScore = resumeData?.score?.Overall_Score;
+        if (rawScore !== undefined && rawScore !== null) {
+            score = Number(rawScore);
+            if (isNaN(score)) score = 0;
+        }
+    } catch (error) {
+        console.error('Error parsing resume data:', error);
+    }
+
+    const interviewStatus = !applicant.interviews || applicant.interviews.length === 0
+        ? 'No Interview Scheduled'
+        : applicant.interviews.some(interview => interview.stages?.some(stage => stage.result === 'fail'))
+        ? 'Rejected'
+        : applicant.interviews.some(interview => interview.stages?.some(stage => stage.stage_id === 4 && stage.result === 'pass'))
+        ? 'Hired'
+        : (() => {
+            let currentStageId = 1;
+            applicant.interviews.forEach(interview => {
+                if (interview.stages?.[0]) {
+                    const stageId = interview.stages[0].stage_id;
+                    if (stageId > currentStageId) {
+                        currentStageId = stageId;
+                    }
+                }
+            });
+            switch (currentStageId) {
+                case 1: return 'In HR Round';
+                case 2: return 'In Technical Round';
+                case 3: return 'In Cultural Round';
+                case 4: return 'In Final Round';
+                default: return 'No Interview Scheduled';
+            }
+        })();
+
+    return (
+        <tr 
+            className="hover:bg-gray-50 transition-colors cursor-pointer"
+            onClick={(e) => handleApplicantClick(e, applicant.id)}
+        >
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {applicant.name}
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        viewResume(applicant.id);
+                    }}
+                    className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                >
+                    View Resume
+                </button>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    interviewStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
+                    interviewStatus === 'Hired' ? 'bg-green-100 text-green-800' :
+                    'bg-blue-100 text-blue-800'
+                }`}>
+                    {interviewStatus}
+                </span>
+            </td>
+            <td 
+                className="px-6 py-4 whitespace-nowrap text-sm font-medium cursor-help relative"
+                onMouseEnter={(e) => handleScoreHover(e, applicant.resume)}
+                onMouseLeave={() => setShowScoreDetails(null)}
+            >
+                <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800">
+                    {score !== null && !isNaN(score) ? `${Number(score).toFixed(1)}%` : 'N/A'}
+                </span>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    aiStatus === 'rejected' 
+                        ? 'bg-red-100 text-red-800' 
+                        : aiStatus === 'shortlisted'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                }`}>
+                    {aiStatus.charAt(0).toUpperCase() + aiStatus.slice(1)}
+                </span>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div className="flex space-x-2">
+                    <button
+                        onClick={(e) => handleStatusUpdate(e, 'shortlisted')}
+                        className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 transition-colors w-16"
+                    >
+                        Accept
+                    </button>
+                    <button
+                        onClick={(e) => handleStatusUpdate(e, 'rejected')}
+                        className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors w-16"
+                    >
+                        Reject
+                    </button>
+                </div>
+            </td>
+        </tr>
+    );
+});
+
 const JobPostingForm = () => {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
@@ -765,99 +940,15 @@ ${jobPosting.keySkillsAndCompetencies}
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {sortApplicants(applicants).map((applicant) => {
-                                            let resumeData = {};
-                                            let score = null;
-                                            
-                                            try {
-                                                resumeData = JSON.parse(applicant.resume);
-                                                // Get Overall_Score from the new structure
-                                                const rawScore = resumeData?.score?.Overall_Score;
-                                                if (rawScore !== undefined && rawScore !== null) {
-                                                    score = Number(rawScore);
-                                                    if (isNaN(score)) score = 0;
-                                                }
-                                            } catch (error) {
-                                                console.error('Error parsing resume data:', error);
-                                            }
-
-                                            const applicationStatus = getApplicationStatus(applicant);
-                                            const interviewStatus = getApplicantStatus(applicant);
-
-                                            return (
-                                                <tr 
-                                                    key={applicant.id}
-                                                    className="hover:bg-gray-50 transition-colors cursor-pointer"
-                                                    onClick={(e) => handleApplicantClick(e, applicant.id)}
-                                                >
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {applicant.name}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                viewResume(applicant.id);
-                                                            }}
-                                                            className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
-                                                        >
-                                                            View Resume
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                            interviewStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                                            interviewStatus === 'Hired' ? 'bg-green-100 text-green-800' :
-                                                            'bg-blue-100 text-blue-800'
-                                                        }`}>
-                                                            {interviewStatus}
-                                                        </span>
-                                                    </td>
-                                                    <td 
-                                                        className="px-6 py-4 whitespace-nowrap text-sm font-medium cursor-help relative"
-                                                        onMouseEnter={(e) => handleScoreHover(e, applicant.resume)}
-                                                        onMouseLeave={() => setShowScoreDetails(null)}
-                                                    >
-                                                        <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800">
-                                                            {score !== null && !isNaN(score) ? `${Number(score).toFixed(1)}%` : 'N/A'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                            applicationStatus === 'rejected' 
-                                                                ? 'bg-red-100 text-red-800' 
-                                                                : 'bg-green-100 text-green-800'
-                                                        }`}>
-                                                            {applicationStatus.charAt(0).toUpperCase() + applicationStatus.slice(1)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                        <div className="flex space-x-2">
-                                                            <button
-                                                                onClick={() => updateApplicationStatus(applicant.id, 'shortlisted')}
-                                                                className={`inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md ${
-                                                                    applicationStatus === 'shortlisted'
-                                                                        ? 'text-white bg-green-600 hover:bg-green-700'
-                                                                        : 'text-green-700 bg-green-100 hover:bg-green-200'
-                                                                } transition-colors w-16`}
-                                                            >
-                                                                Accept
-                                                            </button>
-                                                            <button
-                                                                onClick={() => updateApplicationStatus(applicant.id, 'rejected')}
-                                                                className={`inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md ${
-                                                                    applicationStatus === 'rejected'
-                                                                        ? 'text-white bg-red-600 hover:bg-red-700'
-                                                                        : 'text-red-700 bg-red-100 hover:bg-red-200'
-                                                                } transition-colors w-16`}
-                                                            >
-                                                                Reject
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                        {sortApplicants(applicants).map((applicant) => (
+                                            <ApplicantRow
+                                                key={applicant.id}
+                                                applicant={applicant}
+                                                handleApplicantClick={handleApplicantClick}
+                                                handleScoreHover={handleScoreHover}
+                                                setShowScoreDetails={setShowScoreDetails}
+                                            />
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
