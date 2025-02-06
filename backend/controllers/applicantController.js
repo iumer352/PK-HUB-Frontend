@@ -167,6 +167,22 @@ exports.createApplicantsFromParsedResumes = async (req, res) => {
 
         for (const parse of successful_parses) {
             try {
+                // Check if applicant already exists for this job
+                const existingApplicant = await Applicant.findOne({
+                    where: {
+                        email: parse.content.Email,
+                        JobId: jobId
+                    }
+                });
+
+                if (existingApplicant) {
+                    results.failed.push({
+                        name: parse.content.Name,
+                        error: 'Application already exists for this job'
+                    });
+                    continue; // Skip to next applicant
+                }
+
                 // Save the resume file if it exists in the request
                 let resumePath = null;
                 if (parse.originalFile && parse.originalFile.data) {
@@ -193,8 +209,6 @@ exports.createApplicantsFromParsedResumes = async (req, res) => {
                     resumePath: resumePath
                 };
 
-                console.log('Creating applicant with resume path:', resumePath);
-
                 const applicant = await Applicant.create({
                     name: parse.content.Name,
                     email: parse.content.Email,
@@ -203,8 +217,6 @@ exports.createApplicantsFromParsedResumes = async (req, res) => {
                     status: 'applied',
                     JobId: jobId
                 });
-
-                console.log('Applicant created successfully:', applicant.id);
 
                 results.created.push({
                     name: parse.content.Name,

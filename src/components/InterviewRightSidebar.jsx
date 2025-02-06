@@ -45,20 +45,21 @@ const InterviewRightSidebar = ({
   // Map stage names to their corresponding interview types
   const stageToType = {
     'HR': 'HR',
-    'CULTURAL': 'Cultural',
     'TECHNICAL': 'Technical',
+    'CULTURAL': 'Cultural',
+  
     'FINAL': 'Final',
     'OFFER': 'Offer'
   };
 
   // Stage order mapping (for progression check)
-  const stageOrder = ['HR', 'CULTURAL', 'TECHNICAL', 'FINAL', 'OFFER'];
+  const stageOrder = ['HR', 'TECHNICAL', 'CULTURAL', 'FINAL', 'OFFER'];
 
   // Map stage names to their corresponding icons
   const stageIcons = {
     'HR': User,
-    'CULTURAL': ChevronDown,
     'TECHNICAL': Code,
+    'CULTURAL': ChevronDown,
     'FINAL': Lock,
     'OFFER': DollarSign
   };
@@ -631,6 +632,8 @@ const InterviewRightSidebar = ({
             }
 
             setShowOfferModal(false);
+            // Refresh the entire page to update both sidebars
+            window.location.reload();
           } catch (error) {
             console.error('Error updating offer status:', error);
           }

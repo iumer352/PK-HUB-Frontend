@@ -8,7 +8,7 @@ const StageLookup = require('./stage_lookup')
 const Job = require('./Job');
 const Interviewer = require('./Interviewer');
 const Timesheet = require('./Timesheet');
-
+const JobApplication = require('./JobApplication');
 // Project-Employee many-to-many relationship
 Project.belongsToMany(Employee, {
     through: ProjectAssignee,
@@ -65,15 +65,20 @@ StageLookup.hasMany(InterviewStage, {
 });
 
 // Job-Applicant association
-Applicant.belongsTo(Job, {
-    foreignKey: 'job_id',
+Applicant.belongsToMany(Job, {
+    through: 'JobApplication',
+    foreignKey: 'applicant_id',
+    otherKey: 'job_id',
     as: 'job'
 });
 
-Job.hasMany(Applicant, {
+Job.belongsToMany(Applicant, {
+    through: JobApplication,
     foreignKey: 'job_id',
-    as: 'applicants'
+    otherKey: 'applicant_id',
+    as: 'applicant'
 });
+
 
 // Timesheet associations
 Timesheet.belongsTo(Employee, {

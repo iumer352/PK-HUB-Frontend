@@ -68,7 +68,7 @@ const HRResultModal = ({ isOpen, interview, stageId, applicantId, onClose }) => 
         {/* Salary Information */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Current Salary (SAR)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Current Salary (PKR)</label>
             <input
               type="number"
               value={currentSalary}
@@ -78,7 +78,7 @@ const HRResultModal = ({ isOpen, interview, stageId, applicantId, onClose }) => 
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Salary (SAR)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Expected Salary (PKR)</label>
             <input
               type="number"
               value={expectedSalary}

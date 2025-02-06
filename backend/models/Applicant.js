@@ -15,7 +15,6 @@ const Applicant = sequelize.define('Applicant', {
   email: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true,
     validate: {
       isEmail: true
     }
