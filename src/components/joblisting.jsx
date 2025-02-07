@@ -6,7 +6,7 @@ const ApplicantRow = React.memo(({
     applicant, 
     handleApplicantClick, 
     handleScoreHover, 
-    setShowScoreDetails 
+    setShowScoreDetails
 }) => {
     const [aiStatus, setAiStatus] = React.useState('pending');
     
@@ -108,6 +108,25 @@ const ApplicantRow = React.memo(({
                 default: return 'No Interview Scheduled';
             }
         })();
+
+    // Add viewResume function here
+    const viewResume = async (applicantId) => {
+        try {
+            const response = await axios.get(
+                `http://localhost:5000/api/applicant/${applicantId}/resume`,
+                { responseType: 'blob' }
+            );
+            
+            // Create blob URL and open in new tab
+            const blob = new Blob([response.data], { 
+                type: response.headers['content-type'] 
+            });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url);
+        } catch (error) {
+            console.error('Error viewing resume:', error);
+        }
+    };
 
     return (
         <tr 
@@ -520,24 +539,6 @@ ${jobPosting.keySkillsAndCompetencies}
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
-        }
-    };
-
-    const viewResume = async (applicantId) => {
-        try {
-            const response = await axios.get(
-                `http://localhost:5000/api/applicant/${applicantId}/resume`,
-                { responseType: 'blob' }
-            );
-            
-            // Create blob URL and open in new tab
-            const blob = new Blob([response.data], { 
-                type: response.headers['content-type'] 
-            });
-            const url = window.URL.createObjectURL(blob);
-            window.open(url);
-        } catch (error) {
-            console.error('Error viewing resume:', error);
         }
     };
 
