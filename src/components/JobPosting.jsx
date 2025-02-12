@@ -65,7 +65,7 @@ const JobPosting = () => {
 
     const fetchHiringManagers = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/hiring-managers');
+            const response = await axios.get('https://kabi.pk.go1.kworld.kpmg.com/api/hiring-managers');
             setHiringManagers(response.data);
             setLoadingManagers(false);
         } catch (err) {
@@ -80,7 +80,7 @@ const JobPosting = () => {
         setSuccess(false);
 
         try {
-            const response = await axios.post('http://localhost:5000/api/jobs', {
+            const response = await axios.post('https://kabi.pk.go1.kworld.kpmg.com/api/jobs', {
                 title: jobTitle,
                 grade: grade,
                 hiringManager: hiringManager,

@@ -41,7 +41,7 @@ const AddEmployee = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/employees', {
+      const response = await fetch('https://kabi.pk.go1.kworld.kpmg.com/api/employees', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

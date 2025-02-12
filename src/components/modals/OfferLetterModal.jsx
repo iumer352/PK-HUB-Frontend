@@ -17,7 +17,7 @@ const OfferLetterModal = ({ isOpen, onClose, onSchedule, applicantId }) => {
   const fetchOfferStatus = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/applicant/${applicantId}/offer-status`);
+      const response = await axios.get(`https://kabi.pk.go1.kworld.kpmg.com/api/applicant/${applicantId}/offer-status`);
       setOfferStatus(response.data.offer_status);
     } catch (error) {
       console.error('Error fetching offer status:', error);
@@ -33,7 +33,7 @@ const OfferLetterModal = ({ isOpen, onClose, onSchedule, applicantId }) => {
       setError(null);
 
       // Update offer status
-      await axios.post(`http://localhost:5000/api/applicant/${applicantId}/offer-status`, {
+      await axios.post(`https://kabi.pk.go1.kworld.kpmg.com/api/applicant/${applicantId}/offer-status`, {
         offer_status: offerStatus
       });
 

@@ -22,7 +22,7 @@ const ProjectDashboard = () => {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/projects');
+      const response = await fetch('https://kabi.pk.go1.kworld.kpmg.com/api/projects');
       if (!response.ok) {
         throw new Error('Failed to fetch projects');
       }
@@ -39,7 +39,7 @@ const ProjectDashboard = () => {
   // Fetch all employees
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/employees');
+      const response = await fetch('https://kabi.pk.go1.kworld.kpmg.com/api/employees');
       if (!response.ok) {
         throw new Error('Failed to fetch employees');
       }
@@ -83,7 +83,7 @@ const ProjectDashboard = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/projects', {
+      const response = await fetch('https://kabi.pk.go1.kworld.kpmg.com/api/projects', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ const ProjectDashboard = () => {
   const handleUpdateProject = async (projectId, updates) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+      const response = await fetch(`https://kabi.pk.go1.kworld.kpmg.com/api/projects/${projectId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +137,7 @@ const ProjectDashboard = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}`, {
+      const response = await fetch(`https://kabi.pk.go1.kworld.kpmg.com/api/projects/${projectId}`, {
         method: 'DELETE',
       });
 
@@ -162,7 +162,7 @@ const ProjectDashboard = () => {
     if (!employeeId) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/projects/${projectId}/assign`, {
+      const response = await fetch(`https://kabi.pk.go1.kworld.kpmg.com/api/projects/${projectId}/assign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ const ProjectDashboard = () => {
       await fetchProjects();
       
       // Get the updated project and set it as selected
-      const projectResponse = await fetch(`http://localhost:5000/api/projects/${projectId}`);
+      const projectResponse = await fetch(`https://kabi.pk.go1.kworld.kpmg.com/api/projects/${projectId}`);
       if (projectResponse.ok) {
         const updatedProject = await projectResponse.json();
         setSelectedProject(updatedProject);
