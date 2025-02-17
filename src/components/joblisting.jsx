@@ -200,6 +200,7 @@ const JobPostingForm = () => {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
     
+    
     const { jobId } = useParams();
 
     const [jobPosting, setJobPosting] = useState({
@@ -211,7 +212,7 @@ const JobPostingForm = () => {
         keyResponsibilities: '',
         keySkillsAndCompetencies: '',
         status: 'Active',
-        function: ''
+        functionType: ''
     });
 
     const [applicants, setApplicants] = useState([]);
@@ -549,6 +550,7 @@ ${jobPosting.keySkillsAndCompetencies}
 
         try {
             if (jobId) {
+                console.log('Job posting is:', jobPosting);
                 await axios.put(`http://localhost:5000/api/jobs/${jobId}`, jobPosting);
                 setSuccessMessage('Job updated successfully');
                 setTimeout(() => setSuccessMessage(''), 3000); // Clear message after 3 seconds
@@ -596,7 +598,7 @@ ${jobPosting.keySkillsAndCompetencies}
                     // Ensure function value is set correctly
                     const jobData = {
                         ...response.data,
-                        function: response.data.functionType || '' // Set default if not present
+                        functionType: response.data.functionType || '' // Set default if not present
                     };
                     
                     setJobPosting(jobData);
@@ -638,10 +640,13 @@ ${jobPosting.keySkillsAndCompetencies}
         'Analyst',
         'Associate',
         'Senior Associate',
+        'Consultant',
+        'Senior Consultant',
         'Assistant Manager',
         'Manager',
         'Manager-1',
         'Senior Manager',
+        'Associate Director',
         'Director'
     ];
 
@@ -737,8 +742,8 @@ ${jobPosting.keySkillsAndCompetencies}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Function</label>
                                     <select
-                                        name="function"
-                                        value={jobPosting.function}
+                                        name="functionType"
+                                        value={jobPosting.functionType}
                                         onChange={handleInputChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
                                         required

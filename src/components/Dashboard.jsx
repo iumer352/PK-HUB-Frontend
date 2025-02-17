@@ -74,17 +74,8 @@ const Dashboard = () => {
       try {
         // In a real app, these would be actual API endpoints
         const [projectsRes, jobsRes, interviewsRes, employeesRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/projects/stats'),
-          axios.get('http://localhost:5000/api/jobs/stats'),
-          axios.get('http://localhost:5000/api/interviews/stats'),
           axios.get('http://localhost:5000/api/employees')
         ]);
-
-        setDashboardData({
-          projectStats: projectsRes.data,
-          jobStats: jobsRes.data,
-          interviewStats: interviewsRes.data
-        });
         setOnboardedEmployees(employeesRes.data);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);

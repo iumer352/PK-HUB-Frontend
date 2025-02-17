@@ -22,6 +22,8 @@ const ManageJobPostings = () => {
     });
     const [hiringManagerError, setHiringManagerError] = useState(null);
     const [interviewerError, setInterviewerError] = useState(null);
+    const [selectedFunction, setSelectedFunction] = useState('');
+    const [selectedUrgency, setSelectedUrgency] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -207,7 +209,19 @@ const ManageJobPostings = () => {
         );
     }
 
-    const filteredJobs = jobs.filter((job) => job.status !== 'Closed');
+    const filteredJobs = jobs
+        .filter((job) => job.status !== 'Closed') // Existing filter
+        .filter((job) => {
+            // Filter by function
+            if (selectedFunction && job.functionType !== selectedFunction) {
+                return false;
+            }
+            // Filter by urgency
+            if (selectedUrgency && job.hiringUrgency !== selectedUrgency) {
+                return false;
+            }
+            return true;
+        });
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -244,6 +258,39 @@ const ManageJobPostings = () => {
                     >
                         Create New Job
                     </button>
+                </div>
+            </div>
+
+            {/* Filter UI */}
+            <div className="flex gap-4 mb-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Filter by Function</label>
+                    <select
+                        value={selectedFunction}
+                        onChange={(e) => setSelectedFunction(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                    >
+                        <option value="">All Functions</option>
+                        <option value="Data Transformation">Data Transformation</option>
+                        <option value="Analytics and AI">Analytics and AI</option>
+                        <option value="Low Code">Low Code</option>
+                        <option value="Digital Enablement">Digital Enablement</option>
+                        <option value="Innovation and Emerging Tech">Innovation and Emerging Tech</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Filter by Urgency</label>
+                    <select
+                        value={selectedUrgency}
+                        onChange={(e) => setSelectedUrgency(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                    >
+                        <option value="">All Urgencies</option>
+                        <option value="Urgent - Immediate Hire">Urgent - Immediate Hire</option>
+                        <option value="High Priority">High Priority</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Low Priority">Low Priority</option>
+                    </select>
                 </div>
             </div>
 
