@@ -102,7 +102,7 @@ const InterviewRightSidebar = ({
     const fetchOfferStatus = async () => {
       if (selectedApplicant?.id) {
         try {
-          const response = await axios.get(`https://kabi.pk.go1.kworld.kpmg.com/api/applicant/${selectedApplicant.id}/offer-status`);
+          const response = await axios.get(`http://10.183.199.14:5000/api/applicant/${selectedApplicant.id}/offer-status`);
           setOfferStatus(response.data.offer_status);
         } catch (error) {
           console.error('Error fetching offer status:', error);
@@ -116,7 +116,7 @@ const InterviewRightSidebar = ({
   // Handle onboard button click
   const handleOnboard = async () => {
     try {
-      const response = await axios.post('https://kabi.pk.go1.kworld.kpmg.com/api/employees/', {
+      const response = await axios.post('http://10.183.199.14:5000/api/employees/', {
         name: selectedApplicant.name,
         email: selectedApplicant.email,
         phone: selectedApplicant.phone,
@@ -128,7 +128,7 @@ const InterviewRightSidebar = ({
       if (response.status === 201) {
         setOnboardingSuccess(true);
         // Update applicant status to reflect onboarding completion
-        await axios.patch(`https://kabi.pk.go1.kworld.kpmg.com/api/applicant/${selectedApplicant.id}/status`, {
+        await axios.patch(`http://10.183.199.14:5000/api/applicant/${selectedApplicant.id}/status`, {
           status: 'onboarded'
         });
       }
@@ -616,7 +616,7 @@ const InterviewRightSidebar = ({
 
             if (offerInterview) {
               const response = await axios.post(
-                `https://kabi.pk.go1.kworld.kpmg.com/api/interview/stages/${offerInterview.id}/${offerInterview.stage_id}/feedback`,
+                `http://10.183.199.14:5000/api/interview/stages/${offerInterview.id}/${offerInterview.stage_id}/feedback`,
                 {
                   result: resultData.result,
                   feedback: `Offer ${resultData.offerStatus}`,

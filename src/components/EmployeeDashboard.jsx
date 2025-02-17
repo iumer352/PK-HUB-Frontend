@@ -37,7 +37,7 @@ const EmployeeDashboard = () => {
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('https://kabi.pk.go1.kworld.kpmg.com/api/employees');
+      const response = await axios.get('http://10.183.199.14:5000/api/employees');
       const employees = response.data;
       setEmployees(employees);
       

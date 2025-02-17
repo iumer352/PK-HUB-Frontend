@@ -56,9 +56,9 @@ const ApplicantInterviewTracking = () => {
   const fetchData = async () => {
     try {
       const [applicantRes, interviewerRes, interviewsRes] = await Promise.all([
-        axios.get(`https://kabi.pk.go1.kworld.kpmg.com/api/applicant/${applicantId}`),
-        axios.get('https://kabi.pk.go1.kworld.kpmg.com/api/interviewers/'),
-        axios.get(`https://kabi.pk.go1.kworld.kpmg.com/api/interview/applicant/${applicantId}`)
+        axios.get(`http://10.183.199.14:5000/api/applicant/${applicantId}`),
+        axios.get('http://10.183.199.14:5000/api/interviewers/'),
+        axios.get(`http://10.183.199.14:5000/api/interview/applicant/${applicantId}`)
       ]);
 
       setApplicant({
@@ -80,7 +80,7 @@ const ApplicantInterviewTracking = () => {
       let response;
       
       if (!applicant.interviews || applicant.interviews.length === 0) {
-        response = await axios.post('https://kabi.pk.go1.kworld.kpmg.com/api/interview/schedule-first', {
+        response = await axios.post('http://10.183.199.14:5000/api/interview/schedule-first', {
           applicant_id: applicant.id,
           interviewer_id: interviewerId,
           date_time: dateTime.toISOString()
@@ -92,7 +92,7 @@ const ApplicantInterviewTracking = () => {
           throw new Error(`Stage not found with ID: ${stageId}`);
         }
 
-        response = await axios.post('https://kabi.pk.go1.kworld.kpmg.com/api/interview/schedule-stage', {
+        response = await axios.post('http://10.183.199.14:5000/api/interview/schedule-stage', {
           applicant_id: applicant.id,
           interviewer_id: interviewerId,
           date_time: dateTime.toISOString(),
@@ -102,7 +102,7 @@ const ApplicantInterviewTracking = () => {
       }
       
       // Refresh interview data
-      const interviewsRes = await axios.get(`https://kabi.pk.go1.kworld.kpmg.com/api/interview/applicant/${applicant.id}`);
+      const interviewsRes = await axios.get(`http://10.183.199.14:5000/api/interview/applicant/${applicant.id}`);
       setApplicant(prev => ({
         ...prev,
         interviews: interviewsRes.data
@@ -116,7 +116,7 @@ const ApplicantInterviewTracking = () => {
 
   const handleUpdateResult = async (interviewId, resultData) => {
     try {
-      await axios.post(`https://kabi.pk.go1.kworld.kpmg.com/api/interview/stages/${interviewId}/feedback`, {
+      await axios.post(`http://10.183.199.14:5000/api/interview/stages/${interviewId}/feedback`, {
         result: resultData.result,
         feedback: resultData.feedback,
         notes: resultData.notes
@@ -129,7 +129,7 @@ const ApplicantInterviewTracking = () => {
 
   const handleUpdateNotes = async (notes) => {
     try {
-      const response = await axios.patch(`https://kabi.pk.go1.kworld.kpmg.com/api/interview/${selectedInterview.id}/feedback`, {
+      const response = await axios.patch(`http://10.183.199.14:5000/api/interview/${selectedInterview.id}/feedback`, {
         notes
       });
 

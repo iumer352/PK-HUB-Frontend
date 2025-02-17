@@ -74,10 +74,10 @@ const Dashboard = () => {
       try {
         // In a real app, these would be actual API endpoints
         const [projectsRes, jobsRes, interviewsRes, employeesRes] = await Promise.all([
-          axios.get('https://kabi.pk.go1.kworld.kpmg.com/api/projects/stats'),
-          axios.get('https://kabi.pk.go1.kworld.kpmg.com/api/jobs/stats'),
-          axios.get('https://kabi.pk.go1.kworld.kpmg.com/api/interviews/stats'),
-          axios.get('https://kabi.pk.go1.kworld.kpmg.com/api/employees')
+          axios.get('http://10.183.199.14:5000/api/projects/stats'),
+          axios.get('http://10.183.199.14:5000/api/jobs/stats'),
+          axios.get('http://10.183.199.14:5000/api/interviews/stats'),
+          axios.get('http://10.183.199.14:5000/api/employees')
         ]);
 
         setDashboardData({

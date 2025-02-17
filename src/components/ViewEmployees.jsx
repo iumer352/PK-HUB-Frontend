@@ -121,7 +121,7 @@ const ViewEmployees = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await fetch('https://kabi.pk.go1.kworld.kpmg.com/api/employees');
+        const response = await fetch('http://10.183.199.14:5000/api/employees');
         if (!response.ok) {
           throw new Error('Failed to fetch employees');
         }
@@ -148,7 +148,7 @@ const ViewEmployees = () => {
       const availabilityPromises = employees.map(async (employee) => {
         try {
           const response = await fetch(
-            `https://kabi.pk.go1.kworld.kpmg.com/api/employees/${employee.id}/availability?` +
+            `http://10.183.199.14:5000/api/employees/${employee.id}/availability?` +
             `startDate=${format(startDate, 'yyyy-MM-dd')}&` +
             `endDate=${format(endDate, 'yyyy-MM-dd')}`
           );

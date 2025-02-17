@@ -40,7 +40,7 @@ const ManageJobPostings = () => {
 
     const fetchJobStatus = async (jobId) => {
         try {
-            const response = await axios.get(`https://kabi.pk.go1.kworld.kpmg.com/api/applicant/job/${jobId}`);
+            const response = await axios.get(`http://10.183.199.14:5000/api/applicant/job/${jobId}`);
             const applicants = response.data;
             
             // If no applicants found, it will throw an error and go to catch block
@@ -64,7 +64,7 @@ const ManageJobPostings = () => {
 
     const fetchJobs = async () => {
         try {
-            const response = await axios.get('https://kabi.pk.go1.kworld.kpmg.com/api/jobs');
+            const response = await axios.get('http://10.183.199.14:5000/api/jobs');
             const jobsData = response.data;
             
             // Fetch status for each job
@@ -103,7 +103,7 @@ const ManageJobPostings = () => {
         setHiringManagerError(null);
         
         try {
-            await axios.post('https://kabi.pk.go1.kworld.kpmg.com/api/hiring-managers', hiringManagerForm);
+            await axios.post('http://10.183.199.14:5000/api/hiring-managers', hiringManagerForm);
             setShowHiringManagerModal(false);
             setHiringManagerForm({ name: '', email: '' });
             setSuccessMessage('Hiring Manager added successfully!');
@@ -125,7 +125,7 @@ const ManageJobPostings = () => {
         setInterviewerError(null);
         
         try {
-            await axios.post('https://kabi.pk.go1.kworld.kpmg.com/api/interviewers', interviewerForm);
+            await axios.post('http://10.183.199.14:5000/api/interviewers', interviewerForm);
             setShowInterviewerModal(false);
             setInterviewerForm({
                 name: '',
@@ -182,7 +182,7 @@ const ManageJobPostings = () => {
     const handleDeleteJob = async (jobId) => {
         if (window.confirm('Are you sure you want to delete this job posting?')) {
             try {
-                await axios.delete(`https://kabi.pk.go1.kworld.kpmg.com/api/jobs/${jobId}`);
+                await axios.delete(`http://10.183.199.14:5000/api/jobs/${jobId}`);
                 fetchJobs();
             } catch (err) {
                 setError('Failed to delete job');

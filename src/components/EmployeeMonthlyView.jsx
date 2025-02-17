@@ -13,7 +13,7 @@ const EmployeeMonthlyView = () => {
     // Fetch employee data
     const fetchEmployeeData = async () => {
       try {
-        const response = await fetch(`https://kabi.pk.go1.kworld.kpmg.com/api/employees/${employeeId}`);
+        const response = await fetch(`http://10.183.199.14:5000/api/employees/${employeeId}`);
         if (!response.ok) throw new Error('Failed to fetch employee data');
         const data = await response.json();
         setEmployee(data);
@@ -28,7 +28,7 @@ const EmployeeMonthlyView = () => {
       try {
         const start = startOfMonth(new Date());
         const end = endOfMonth(new Date());
-        const response = await fetch(`https://kabi.pk.go1.kworld.kpmg.com/api/employees/${employeeId}/availabilities?startDate=${format(start, 'yyyy-MM-dd')}&endDate=${format(end, 'yyyy-MM-dd')}`);
+        const response = await fetch(`http://10.183.199.14:5000/api/employees/${employeeId}/availabilities?startDate=${format(start, 'yyyy-MM-dd')}&endDate=${format(end, 'yyyy-MM-dd')}`);
         if (!response.ok) throw new Error('Failed to fetch availability');
         const data = await response.json();
         setAvailability(data.availability);
