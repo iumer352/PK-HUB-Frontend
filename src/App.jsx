@@ -14,6 +14,7 @@ import EmployeeMonthlyView from './components/EmployeeMonthlyView';
 import ApplicantInterviewTracking from './components/ApplicantInterviewTracking';
 import OnboardingChecklist from './components/OnboardingChecklist';
 import MonthlyTimesheet from './components/timesheet';
+import EditJob from './components/EditJob.jsx';
 
 function App() {
   return (
@@ -36,7 +37,7 @@ function App() {
           <Route path="/employees/:employeeId/monthly" element={<EmployeeMonthlyView />} />
           <Route path="/onboarding/:employeeId" element={<OnboardingChecklist />} />
           <Route path="/timesheet/:employeeId" element={<MonthlyTimesheet />} />
-
+          <Route path="/edit-job/:jobId" element={<EditJob />} />
         </Routes>
       </Layout>
     </Router>

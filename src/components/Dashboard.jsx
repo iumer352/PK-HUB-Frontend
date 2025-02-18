@@ -62,11 +62,38 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  // Dashboard navigation options
+  // Add recruitment metrics state
+  const [recruitmentMetrics, setRecruitmentMetrics] = useState({
+    byGrade: {
+      'Analyst': 12,
+      'Associate': 15,
+      'Senior': 8,
+      'Manager': 5
+    },
+    byFunction: {
+      'Technology': 18,
+      'Analytics': 12,
+      'Consulting': 10,
+      'Digital': 8
+    },
+    byDemandedFor: {
+      'Client A': 10,
+      'Client B': 8,
+      'Internal': 15,
+      'Solution X': 7
+    },
+    byUrgency: {
+      'Urgent': 8,
+      'High': 12,
+      'Normal': 15,
+      'Low': 5
+    }
+  });
+
+  // Update dashboard navigation options
   const dashboardOptions = [
-    { name: 'Employee Management', path: '/employees' },
-    { name: 'Recruitment Dashboard', path: '/manage' },
-    { name: 'Project Dashboard', path: '/projectDashboard' }
+    { name: 'Recruitment Management', path: '/manage' },
+    { name: 'Resource Management', path: '/employees' }
   ];
 
   useEffect(() => {
@@ -401,412 +428,277 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      {/* Dashboard Navigation */}
-      <div className="mb-8 relative">
-        <button
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center justify-between w-72 px-5 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Dashboard Selection Dropdown */}
+        <div className="relative mb-8">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center justify-between w-full md:w-72 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 text-left"
+          >
+            <span className="text-gray-700 font-medium">Select Dashboard</span>
+            <ChevronDown
+              className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                isDropdownOpen ? 'transform rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {/* Dropdown Menu */}
+          <AnimatePresence>
+            {isDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute z-10 w-full md:w-72 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
+              >
+                {dashboardOptions.map((option) => (
+                  <button
+                    key={option.path}
+                    onClick={() => {
+                      navigate(option.path);
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                  >
+                    {option.name}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Main Dashboard Content */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="space-y-6"
         >
-          <span className="text-gray-700">Select Dashboard</span>
-          <ChevronDown className={`w-5 h-5 transition-transform ${isDropdownOpen ? 'transform rotate-180' : ''}`} />
-        </button>
-        
-        {/* Dropdown Menu */}
-        <AnimatePresence>
-          {isDropdownOpen && (
+          {/* Quick Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute z-10 w-72 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg"
+              whileHover={{ scale: 1.02 }}
+              className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+              onClick={() => setShowProjectsModal(true)}
             >
-              {dashboardOptions.map((option) => (
-                <button
-                  key={option.path}
-                  onClick={() => {
-                    navigate(option.path);
-                    setIsDropdownOpen(false);
-                  }}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
-                >
-                  {option.name}
-                </button>
-              ))}
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                  <Briefcase className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                {dashboardData.projectStats.total}
+              </h3>
+              <p className="text-gray-600 text-base">Total Projects</p>
+              <div className="mt-4 flex items-center text-sm">
+                <span className="text-green-600 font-medium">+12%</span>
+                <span className="text-gray-500 ml-2">vs last month</span>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
 
-      {/* Main Dashboard Content */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-6"
-      >
-        {/* Quick Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-            onClick={() => setShowProjectsModal(true)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-blue-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                <Briefcase className="w-6 h-6 text-blue-600" />
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+              onClick={() => setShowPositionsModal(true)}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 bg-green-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                  <Users className="w-6 h-6 text-green-600" />
+                </div>
               </div>
-            </div>
-            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-              {dashboardData.projectStats.total}
-            </h3>
-            <p className="text-gray-600 text-base">Total Projects</p>
-            <div className="mt-4 flex items-center text-sm">
-              <span className="text-green-600 font-medium">+12%</span>
-              <span className="text-gray-500 ml-2">vs last month</span>
-            </div>
-          </motion.div>
+              <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                {dashboardData.jobStats.open}
+              </h3>
+              <p className="text-gray-600 text-base">Open Positions</p>
+              <div className="mt-4 flex items-center text-sm">
+                <span className="text-green-600 font-medium">+5%</span>
+                <span className="text-gray-500 ml-2">vs last month</span>
+              </div>
+            </motion.div>
 
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-            onClick={() => setShowPositionsModal(true)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-green-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                <Users className="w-6 h-6 text-green-600" />
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+              onClick={() => setShowHiringModal(true)}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                </div>
               </div>
-            </div>
-            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-              {dashboardData.jobStats.open}
-            </h3>
-            <p className="text-gray-600 text-base">Open Positions</p>
-            <div className="mt-4 flex items-center text-sm">
-              <span className="text-green-600 font-medium">+5%</span>
-              <span className="text-gray-500 ml-2">vs last month</span>
-            </div>
-          </motion.div>
+              <h3 className="text-2xl font-semibold text-gray-800 mb-2">85%</h3>
+              <p className="text-gray-600 text-base">Hiring Rate</p>
+              <div className="mt-4 flex items-center text-sm">
+                <span className="text-green-600 font-medium">+3%</span>
+                <span className="text-gray-500 ml-2">vs last month</span>
+              </div>
+            </motion.div>
 
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-            onClick={() => setShowHiringModal(true)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                <TrendingUp className="w-6 h-6 text-purple-600" />
+            {/* Onboarding Card */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+              onClick={() => setShowOnboardingModal(true)}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                  <Users className="w-6 h-6 text-purple-600" />
+                </div>
               </div>
-            </div>
-            <h3 className="text-2xl font-semibold text-gray-800 mb-2">85%</h3>
-            <p className="text-gray-600 text-base">Hiring Rate</p>
-            <div className="mt-4 flex items-center text-sm">
-              <span className="text-green-600 font-medium">+3%</span>
-              <span className="text-gray-500 ml-2">vs last month</span>
-            </div>
-          </motion.div>
+              <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                {onboardedEmployees.length}
+              </h3>
+              <p className="text-gray-600 text-base">Newly Onboarded</p>
+            </motion.div>
+          </div>
+          
+          {/* Recruitment Metrics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Jobs by Grade */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+            >
+              <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Grade</h3>
+              <Bar
+                data={{
+                  labels: Object.keys(recruitmentMetrics.byGrade),
+                  datasets: [{
+                    label: 'Number of Positions',
+                    data: Object.values(recruitmentMetrics.byGrade),
+                    backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    borderWidth: 1
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: true,
+                  plugins: {
+                    legend: { display: false }
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: { stepSize: 1 }
+                    }
+                  }
+                }}
+              />
+            </motion.div>
 
-          {/* Onboarding Card */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-            onClick={() => setShowOnboardingModal(true)}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                <Users className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-              {onboardedEmployees.length}
-            </h3>
-            <p className="text-gray-600 text-base">Newly Onboarded</p>
-          </motion.div>
-        </div>
+            {/* Jobs by Function */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+            >
+              <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Function</h3>
+              <Doughnut
+                data={{
+                  labels: Object.keys(recruitmentMetrics.byFunction),
+                  datasets: [{
+                    data: Object.values(recruitmentMetrics.byFunction),
+                    backgroundColor: [
+                      'rgba(59, 130, 246, 0.8)',  // Blue
+                      'rgba(147, 51, 234, 0.8)',  // Purple
+                      'rgba(16, 185, 129, 0.8)',  // Green
+                      'rgba(249, 115, 22, 0.8)',  // Orange
+                    ]
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: true,
+                  plugins: {
+                    legend: {
+                      position: 'right',
+                      labels: { padding: 20 }
+                    }
+                  }
+                }}
+              />
+            </motion.div>
+
+            {/* Jobs by Demanded For */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+            >
+              <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Demanded For</h3>
+              <Bar
+                data={{
+                  labels: Object.keys(recruitmentMetrics.byDemandedFor),
+                  datasets: [{
+                    label: 'Number of Positions',
+                    data: Object.values(recruitmentMetrics.byDemandedFor),
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: true,
+                  plugins: {
+                    legend: { display: false }
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: { stepSize: 1 }
+                    }
+                  }
+                }}
+              />
+            </motion.div>
+
+            {/* Jobs by Urgency */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+            >
+              <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Urgency</h3>
+              <Doughnut
+                data={{
+                  labels: Object.keys(recruitmentMetrics.byUrgency),
+                  datasets: [{
+                    data: Object.values(recruitmentMetrics.byUrgency),
+                    backgroundColor: [
+                      'rgba(239, 68, 68, 0.8)',   // Red for Urgent
+                      'rgba(249, 115, 22, 0.8)',  // Orange for High
+                      'rgba(59, 130, 246, 0.8)',  // Blue for Normal
+                      'rgba(16, 185, 129, 0.8)',  // Green for Low
+                    ]
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: true,
+                  plugins: {
+                    legend: {
+                      position: 'right',
+                      labels: { padding: 20 }
+                    }
+                  }
+                }}
+              />
+            </motion.div>
+          </div>
+        </motion.div>
         
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Project Progress Line Chart */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.01 }}
-            className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
-          >
-            <h3 className="text-xl font-semibold mb-6 text-gray-800">Project Progress</h3>
-            <Line
-              data={{
-                labels: dashboardData.projectStats.monthlyProgress.map(item => item.month),
-                datasets: [
-                  {
-                    label: 'Project Progress',
-                    data: dashboardData.projectStats.monthlyProgress.map(item => item.count),
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.4,
-                    fill: true,
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    pointRadius: 4,
-                    pointBackgroundColor: 'rgb(75, 192, 192)',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgb(75, 192, 192)',
-                    pointHoverBorderWidth: 2
-                  }
-                ]
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { 
-                  legend: { 
-                    position: 'top',
-                    labels: {
-                      padding: 20,
-                      font: {
-                        size: 12,
-                        weight: '500'
-                      }
-                    }
-                  },
-                  tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: {
-                      size: 13,
-                      weight: 'bold'
-                    },
-                    bodyFont: {
-                      size: 12
-                    },
-                    displayColors: false
-                  }
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      stepSize: 5,
-                      font: {
-                        size: 11
-                      }
-                    },
-                    grid: {
-                      color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                  },
-                  x: {
-                    ticks: {
-                      font: {
-                        size: 11
-                      }
-                    },
-                    grid: {
-                      display: false
-                    }
-                  }
-                }
-              }}
-            />
-          </motion.div>
-
-          {/* Jobs by Department Doughnut Chart */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.01 }}
-            className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
-          >
-            <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Department</h3>
-            <Doughnut
-              data={{
-                labels: Object.keys(dashboardData.jobStats.byDepartment),
-                datasets: [
-                  {
-                    label: 'Jobs by Department',
-                    data: Object.values(dashboardData.jobStats.byDepartment),
-                    backgroundColor: [
-                      'rgba(255, 99, 132, 0.85)',
-                      'rgba(54, 162, 235, 0.85)',
-                      'rgba(255, 206, 86, 0.85)',
-                      'rgba(75, 192, 192, 0.85)',
-                      'rgba(153, 102, 255, 0.85)',
-                    ],
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    hoverBorderWidth: 0,
-                    hoverOffset: 15
-                  }
-                ]
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { 
-                  legend: { 
-                    position: 'right',
-                    labels: {
-                      padding: 20,
-                      font: {
-                        size: 12,
-                        weight: '500'
-                      },
-                      usePointStyle: true,
-                      pointStyle: 'circle'
-                    }
-                  },
-                  tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: {
-                      size: 13,
-                      weight: 'bold'
-                    },
-                    bodyFont: {
-                      size: 12
-                    },
-                    callbacks: {
-                      label: function(context) {
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const value = context.raw;
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${value} (${percentage}%)`;
-                      }
-                    }
-                  }
-                },
-                cutout: '65%'
-              }}
-            />
-          </motion.div>
-
-          {/* Project Status Bar Chart */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.01 }}
-            className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
-          >
-            <h3 className="text-xl font-semibold mb-6 text-gray-800">Project Status Overview</h3>
-            <Bar
-              data={{
-                labels: ['Active', 'Completed', 'Upcoming'],
-                datasets: [
-                  {
-                    data: [
-                      dashboardData.projectStats.active,
-                      dashboardData.projectStats.completed,
-                      dashboardData.projectStats.upcoming
-                    ],
-                    backgroundColor: [
-                      'rgba(54, 162, 235, 0.85)',
-                      'rgba(75, 192, 192, 0.85)',
-                      'rgba(255, 206, 86, 0.85)',
-                    ],
-                    borderRadius: 6,
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    hoverBorderWidth: 0
-                  }
-                ]
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { 
-                  legend: { display: false },
-                  tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
-                    titleFont: {
-                      size: 13,
-                      weight: 'bold'
-                    },
-                    bodyFont: {
-                      size: 12
-                    },
-                    callbacks: {
-                      label: function(context) {
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const value = context.raw;
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${value} (${percentage}%)`;
-                      }
-                    }
-                  }
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    grid: {
-                      color: 'rgba(0, 0, 0, 0.05)'
-                    },
-                    ticks: {
-                      font: {
-                        size: 11
-                      }
-                    }
-                  },
-                  x: {
-                    grid: {
-                      display: false
-                    },
-                    ticks: {
-                      font: {
-                        size: 11
-                      }
-                    }
-                  }
-                }
-              }}
-            />
-          </motion.div>
-
-          {/* Recruitment Metrics Radar Chart */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.01 }}
-            className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
-          >
-            <h3 className="text-xl font-semibold mb-6 text-gray-800">Recruitment Metrics</h3>
-            <Radar
-              data={{
-                labels: ['Job Openings', 'Interview Success', 'Hiring Speed', 'Candidate Quality', 'Offer Acceptance'],
-                datasets: [
-                  {
-                    label: 'Current Period',
-                    data: [90, 85, 75, 80, 88],
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgb(54, 162, 235)',
-                    pointBackgroundColor: 'rgb(54, 162, 235)',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgb(54, 162, 235)'
-                  }
-                ]
-              }}
-              options={{
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: {
-                  r: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: { stepSize: 20 }
-                  }
-                }
-              }}
-            />
-          </motion.div>
-        </div>
-      </motion.div>
-      
-      {/* Modals */}
-      <ProjectsModal />
-      <PositionsModal />
-      <OnboardingModal />
-      <HiringModal />
+        {/* Modals */}
+        <ProjectsModal />
+        <PositionsModal />
+        <OnboardingModal />
+        <HiringModal />
+      </div>
     </div>
   );
 };

@@ -16,17 +16,21 @@ const JobPosting = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [hiringManagers, setHiringManagers] = useState([]);
+    const [demandedFor, setDemandedFor] = useState('');
     const [loadingManagers, setLoadingManagers] = useState(true);
     const [managerError, setManagerError] = useState(null);
 
     const grades = [
         'Analyst',
         'Associate',
+        'Consultant',
+        'Senior Consultant',
         'Senior Associate',
         'Assistant Manager',
         'Manager',
         'Manager-1',
         'Senior Manager',
+        'Associate Director',
         'Director'
     ];
 
@@ -39,8 +43,9 @@ const JobPosting = () => {
     ];
 
     const urgencyLevels = [
+        'Urgent - Immediate Hire',
         'High Priority',
-        'Normal',
+        'Medium Priority',
         'Low Priority'
     ];
 
@@ -49,8 +54,8 @@ const JobPosting = () => {
             case 'Urgent - Immediate Hire':
                 return 'text-red-600';
             case 'High Priority':
-                return 'text-orange-500';
-            case 'Normal':
+                return 'text-red-500';
+            case 'Medium Priority':
                 return 'text-blue-600';
             case 'Low Priority':
                 return 'text-green-600';
@@ -89,6 +94,7 @@ const JobPosting = () => {
                 keyResponsibilities: keyResponsibilities,
                 keySkillsAndCompetencies: keySkillsAndCompetencies,
                 functionType: functionType,
+                demandedFor: demandedFor,
                 status: 'Active'
             });
 
@@ -195,23 +201,39 @@ const JobPosting = () => {
                                 />
                             </div>
 
-                            <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700">
-                                    Function
-                                </label>
-                                <select
-                                    value={functionType}
-                                    onChange={(e) => setFunctionType(e.target.value)}
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                                    required
-                                >
-                                    <option value="">Select Function</option>
-                                    {functionTypes.map((func) => (
-                                        <option key={func} value={func}>
-                                            {func}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Function
+                                    </label>
+                                    <select
+                                        value={functionType}
+                                        onChange={(e) => setFunctionType(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                        required
+                                    >
+                                        <option value="">Select Function</option>
+                                        {functionTypes.map((func) => (
+                                            <option key={func} value={func}>
+                                                {func}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Demanded For (Client/Solution)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={demandedFor}
+                                        onChange={(e) => setDemandedFor(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                        required
+                                        placeholder="Enter demanded for"
+                                    />
+                                </div>
                             </div>
 
                             <div className="border-t border-gray-200 pt-6">

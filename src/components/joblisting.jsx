@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import EditJob from './EditJob.jsx';
 
 const ApplicantRow = React.memo(({ 
     applicant, 
@@ -198,11 +199,9 @@ const ApplicantRow = React.memo(({
 
 const JobPostingForm = () => {
     const navigate = useNavigate();
+    const { jobId } = useParams();
     const fileInputRef = useRef(null);
     
-    
-    const { jobId } = useParams();
-
     const [jobPosting, setJobPosting] = useState({
         title: '',
         grade: 'Analyst',
@@ -212,7 +211,8 @@ const JobPostingForm = () => {
         keyResponsibilities: '',
         keySkillsAndCompetencies: '',
         status: 'Active',
-        functionType: ''
+        functionType: '',
+        demandedFor: ''
     });
 
     const [applicants, setApplicants] = useState([]);
@@ -229,6 +229,8 @@ const JobPostingForm = () => {
 
     const [hiringManagers, setHiringManagers] = useState([]);
     const [functions, setFunctions] = useState(['Analytics and AI', 'Data Transformation', 'Low Code', 'Digital Enablement', 'Innovation and Emerging Tech']);
+
+    const [showJobDetails, setShowJobDetails] = useState(false);
 
     useEffect(() => {
         const fetchHiringManagers = async () => {
@@ -543,49 +545,9 @@ ${jobPosting.keySkillsAndCompetencies}
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-
-        try {
-            if (jobId) {
-                console.log('Job posting is:', jobPosting);
-                await axios.put(`http://localhost:5000/api/jobs/${jobId}`, jobPosting);
-                setSuccessMessage('Job updated successfully');
-                setTimeout(() => setSuccessMessage(''), 3000); // Clear message after 3 seconds
-            } else {
-                await axios.post('http://localhost:5000/api/jobs', jobPosting);
-                navigate('/manage');
-            }
-        } catch (err) {
-            console.error('Error:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleApplicantClick = async (e, applicantId) => {
-        e.preventDefault();
-        try {
-            // Find the applicant with the score details
-            const applicant = applicants.find(app => app.id === applicantId);
-            
-            // Fetch complete job details
-            const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
-            console.log('Complete job details:', response.data);
-            
-            // Pass job data and score details to interview tracking
-            navigate(`/interview-tracking/${applicantId}`, { 
-                state: { 
-                    jobDetails: response.data,
-                    scoreDetails: applicant?.score
-                }
-            });
-        } catch (err) {
-            console.error('Error fetching job details:', err);
-            setError('Failed to fetch job details');
-        }
+    const handleJobUpdateSuccess = () => {
+        // Refresh applicants list or perform other necessary updates
+        fetchApplicants();
     };
 
     useEffect(() => {
@@ -665,9 +627,51 @@ ${jobPosting.keySkillsAndCompetencies}
         }));
     };
 
+    // Add toggle function
+    const toggleJobDetails = () => {
+        setShowJobDetails(!showJobDetails);
+    };
+
     return (
         <div className="min-h-screen bg-gray-100">
             <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                {/* Header Section */}
+                <div className="mb-8 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">
+                            Job Posting
+                        </h1>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Manage job posting and applicants
+                        </p>
+                    </div>
+                    <button
+                        onClick={toggleJobDetails}
+                        className="px-4 py-2 text-sm font-medium text-indigo-600 bg-white rounded-md shadow-sm hover:bg-indigo-50 flex items-center gap-2"
+                    >
+                        {showJobDetails ? 'Hide Details' : 'View Details'}
+                        <svg 
+                            className={`w-5 h-5 transition-transform ${showJobDetails ? 'transform rotate-180' : ''}`} 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Job Details Dropdown */}
+                {showJobDetails && (
+                    <div className="mb-8 transition-all duration-300 ease-in-out">
+                        <EditJob 
+                            jobId={jobId} 
+                            onSuccess={() => setShowJobDetails(false)} 
+                            isDropdown={true}
+                        />
+                    </div>
+                )}
+
                 {/* Success Message */}
                 {successMessage && (
                     <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg flex items-center">
@@ -677,163 +681,6 @@ ${jobPosting.keySkillsAndCompetencies}
                         {successMessage}
                     </div>
                 )}
-
-                {/* Header Section */}
-                <div className="mb-8 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            {jobId ? 'Edit Job Posting' : 'Create Job Posting'}
-                        </h1>
-                        <p className="mt-1 text-sm text-gray-500">
-                            {jobId ? 'Update the job details and manage applicants' : 'Fill in the details to create a new job posting'}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Main Form */}
-                <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-                    <form onSubmit={handleSubmit} className="divide-y divide-gray-200">
-                        {/* Basic Info Section */}
-                        <div className="p-7">
-                            <h2 className="text-lg font-medium text-gray-900 mb-5">Basic Information</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
-                                    <input
-                                        type="text"
-                                        name="title"
-                                        value={jobPosting.title}
-                                        onChange={handleInputChange}
-                                        placeholder="e.g., Senior Software Engineer"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
-                                    <select
-                                        name="grade"
-                                        value={jobPosting.grade}
-                                        onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
-                                        required
-                                    >
-                                        <option value="">Select Grade</option>
-                                        {grades.map((grade) => (
-                                            <option key={grade} value={grade}>{grade}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Hiring Manager</label>
-                                    <select
-                                        name="hiringManager"
-                                        value={jobPosting.hiringManager}
-                                        onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
-                                        required
-                                    >
-                                        <option value="">Select Hiring Manager</option>
-                                        {hiringManagers.map((manager) => (
-                                            <option key={manager.id} value={manager.name}>{manager.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Function</label>
-                                    <select
-                                        name="functionType"
-                                        value={jobPosting.functionType}
-                                        onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
-                                        required
-                                    >
-                                        <option value="">Select Function</option>
-                                        {functions.map((func) => (
-                                            <option key={func} value={func}>{func}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Hiring Urgency</label>
-                                    <select
-                                        name="hiringUrgency"
-                                        value={jobPosting.hiringUrgency}
-                                        onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
-                                        required
-                                    >
-                                        <option value="">Select Urgency</option>
-                                        {urgencyLevels.map((level) => (
-                                            <option key={level} value={level}>{level}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Job Details Section */}
-                        <div className="p-7">
-                            <h2 className="text-lg font-medium text-gray-900 mb-5">Job Details</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Role Overview</label>
-                                    <textarea
-                                        name="roleOverview"
-                                        value={jobPosting.roleOverview}
-                                        onChange={handleInputChange}
-                                        placeholder="Provide a brief overview of the role..."
-                                        rows={4}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Key Responsibilities</label>
-                                    <textarea
-                                        name="keyResponsibilities"
-                                        value={jobPosting.keyResponsibilities}
-                                        onChange={handleInputChange}
-                                        placeholder="List the key responsibilities..."
-                                        rows={4}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
-                                        required
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Key Skills and Competencies</label>
-                                    <textarea
-                                        name="keySkillsAndCompetencies"
-                                        value={jobPosting.keySkillsAndCompetencies}
-                                        onChange={handleInputChange}
-                                        placeholder="List required skills and competencies..."
-                                        rows={4}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Form Actions */}
-                        <div className="px-7 py-4 bg-gray-50 flex justify-end space-x-3">
-                            <button
-                                type="button"
-                                onClick={() => navigate('/manage')}
-                                className="px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-indigo-500 transition-colors"
-                            >
-                                Back to Jobs
-                            </button>
-                            <button
-                                type="submit"
-                                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                                disabled={loading}
-                            >
-                                {loading ? 'Saving...' : 'Update Job'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
 
                 {/* Applicants Section */}
                 {jobId && (
