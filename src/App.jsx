@@ -15,12 +15,18 @@ import ApplicantInterviewTracking from './components/ApplicantInterviewTracking'
 import OnboardingChecklist from './components/OnboardingChecklist';
 import MonthlyTimesheet from './components/timesheet';
 import EditJob from './components/EditJob.jsx';
+import Login from './components/Login';
+import Register from './components/Register';
 
 function App() {
   return (
     <Router>
-      <Layout>
-        <Routes>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        {/* Wrap protected routes with Layout */}
+        <Route element={<Layout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/employees" element={<EmployeeDashboard />} />
@@ -38,8 +44,8 @@ function App() {
           <Route path="/onboarding/:employeeId" element={<OnboardingChecklist />} />
           <Route path="/timesheet/:employeeId" element={<MonthlyTimesheet />} />
           <Route path="/edit-job/:jobId" element={<EditJob />} />
-        </Routes>
-      </Layout>
+        </Route>
+      </Routes>
     </Router>
   );
 }

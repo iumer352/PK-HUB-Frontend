@@ -10,6 +10,7 @@ const ApplicantRow = React.memo(({
     setShowScoreDetails
 }) => {
     const [aiStatus, setAiStatus] = React.useState('pending');
+
     
     // Function to store AI result in database
     const storeAiResult = async (result) => {
@@ -201,6 +202,9 @@ const JobPostingForm = () => {
     const navigate = useNavigate();
     const { jobId } = useParams();
     const fileInputRef = useRef(null);
+
+    
+    
     
     const [jobPosting, setJobPosting] = useState({
         title: '',
@@ -549,6 +553,28 @@ ${jobPosting.keySkillsAndCompetencies}
         // Refresh applicants list or perform other necessary updates
         fetchApplicants();
     };
+    const handleApplicantClick = async (e, applicantId) => {
+        e.preventDefault();
+        try {
+            // Find the applicant with the score details
+            const applicant = applicants.find(app => app.id === applicantId);
+            
+            // Fetch complete job details
+            const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
+            console.log('Complete job details:', response.data);
+            
+            // Pass job data and score details to interview tracking
+            navigate(`/interview-tracking/${applicantId}`, { 
+                state: { 
+                    jobDetails: response.data,
+                    scoreDetails: applicant?.score
+                }
+            });
+        } catch (err) {
+            console.error('Error fetching job details:', err);
+            setError('Failed to fetch job details');
+        }
+    };
 
     useEffect(() => {
         if (jobId) {
@@ -597,6 +623,8 @@ ${jobPosting.keySkillsAndCompetencies}
             fetchJobData();
         }
     }, [jobId]);
+
+   
 
     const grades = [
         'Analyst',

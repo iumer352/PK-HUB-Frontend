@@ -46,14 +46,13 @@ const InterviewRightSidebar = ({
   const stageToType = {
     'HR': 'HR',
     'TECHNICAL': 'Technical',
-    'CULTURAL': 'Cultural',
-  
+    'CULTURAL': 'Cultural', 
     'FINAL': 'Final',
     'OFFER': 'Offer'
   };
 
   // Stage order mapping (for progression check)
-  const stageOrder = ['HR', 'TECHNICAL', 'CULTURAL', 'FINAL', 'OFFER'];
+  const stageOrder = ['HR', 'CULTURAL', 'TECHNICAL', 'FINAL', 'OFFER'];
 
   // Map stage names to their corresponding icons
   const stageIcons = {
@@ -69,7 +68,19 @@ const InterviewRightSidebar = ({
     const currentIndex = stageOrder.indexOf(stageId);
     if (currentIndex === 0) return true; // Can always do HR
 
-    // Check all previous stages
+    // Special handling for final round
+    if (stageId === 'FINAL') {
+      // Check if previous stages are passed
+      const prevStages = stageOrder.slice(0, currentIndex);
+      return prevStages.every(stage => {
+        const interview = selectedApplicant?.interviews?.find(i => 
+          i.interviewer.interview_type === stageToType[stage]
+        );
+        return stageResults[interview?.id]?.result === 'pass';
+      });
+    }
+
+    // For other stages, check all previous stages
     for (let i = 0; i < currentIndex; i++) {
       const prevStage = stageOrder[i];
       const prevInterview = selectedApplicant?.interviews?.find(interview => 
@@ -78,7 +89,7 @@ const InterviewRightSidebar = ({
       const prevResult = stageResults[prevInterview?.id]?.result;
       
       if (prevResult !== 'pass') {
-        return false; // Can't proceed if any previous stage isn't passed
+        return false;
       }
     }
     return true;
@@ -206,6 +217,22 @@ const InterviewRightSidebar = ({
       interview.interviewer.interview_type === stageToType[stage.id]
     );
     return stageResults[interview?.id]?.result || 'pending';
+  };
+
+  // Add a function to check if can schedule another final round
+  const canScheduleAnotherFinal = () => {
+    const finalInterviews = selectedApplicant?.interviews?.filter(
+      interview => interview.interviewer.interview_type === 'Final'
+    ) || [];
+
+    // Can schedule if no interviews yet
+    if (finalInterviews.length === 0) return true;
+
+    // Can schedule another if all existing ones are completed
+    return finalInterviews.every(interview => 
+      stageResults[interview.id]?.result === 'pass' || 
+      stageResults[interview.id]?.result === 'fail'
+    );
   };
 
   if (!selectedApplicant) {

@@ -61,6 +61,8 @@ const Dashboard = () => {
     }
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [jobsData, setJobsData] = useState([]);
 
   // Add recruitment metrics state
   const [recruitmentMetrics, setRecruitmentMetrics] = useState({
@@ -96,6 +98,71 @@ const Dashboard = () => {
     { name: 'Resource Management', path: '/employees' }
   ];
 
+  // Function to process jobs data into required format
+  const processJobsData = (jobs) => {
+    // Count by function type
+    const byFunction = jobs.reduce((acc, job) => {
+      acc[job.functionType] = (acc[job.functionType] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Count by grade
+    const byGrade = jobs.reduce((acc, job) => {
+      acc[job.grade] = (acc[job.grade] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Count by demanded for (clients/projects)
+    const byDemandedFor = jobs.reduce((acc, job) => {
+      acc[job.demandedFor] = (acc[job.demandedFor] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Count by urgency
+    const byUrgency = jobs.reduce((acc, job) => {
+      acc[job.hiringUrgency] = (acc[job.hiringUrgency] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Count by status
+    const statusCounts = jobs.reduce((acc, job) => {
+      acc[job.status] = (acc[job.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      totalPositions: jobs.length,
+      openPositions: statusCounts['Active'] || 0,
+      inProgress: jobs.filter(job => job.status === 'In Progress').length,
+      filled: jobs.filter(job => job.status === 'Filled').length,
+      byFunction,
+      byGrade,
+      byDemandedFor,
+      byUrgency
+    };
+  };
+
+  useEffect(() => {
+    const fetchJobsData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('http://localhost:5000/api/jobs', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        const processedData = processJobsData(response.data);
+        setJobsData(processedData);
+      } catch (err) {
+        console.error('Error fetching jobs data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobsData();
+  }, []);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -103,6 +170,7 @@ const Dashboard = () => {
         const [projectsRes, jobsRes, interviewsRes, employeesRes] = await Promise.all([
           axios.get('http://localhost:5000/api/employees')
         ]);
+      
         setOnboardedEmployees(employeesRes.data);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -490,9 +558,9 @@ const Dashboard = () => {
                 </div>
               </div>
               <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                {dashboardData.projectStats.total}
+                {jobsData.totalPositions || 0}
               </h3>
-              <p className="text-gray-600 text-base">Total Projects</p>
+              <p className="text-gray-600 text-base">Total Positions</p>
               <div className="mt-4 flex items-center text-sm">
                 <span className="text-green-600 font-medium">+12%</span>
                 <span className="text-gray-500 ml-2">vs last month</span>
@@ -510,7 +578,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                {dashboardData.jobStats.open}
+                {jobsData.openPositions}
               </h3>
               <p className="text-gray-600 text-base">Open Positions</p>
               <div className="mt-4 flex items-center text-sm">
@@ -566,10 +634,10 @@ const Dashboard = () => {
               <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Grade</h3>
               <Bar
                 data={{
-                  labels: Object.keys(recruitmentMetrics.byGrade),
+                  labels: Object.keys(jobsData.byGrade),
                   datasets: [{
                     label: 'Number of Positions',
-                    data: Object.values(recruitmentMetrics.byGrade),
+                    data: Object.values(jobsData.byGrade),
                     backgroundColor: 'rgba(99, 102, 241, 0.8)',
                     borderColor: 'rgba(99, 102, 241, 1)',
                     borderWidth: 1
@@ -600,14 +668,14 @@ const Dashboard = () => {
               <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Function</h3>
               <Doughnut
                 data={{
-                  labels: Object.keys(recruitmentMetrics.byFunction),
+                  labels: Object.keys(jobsData.byFunction),
                   datasets: [{
-                    data: Object.values(recruitmentMetrics.byFunction),
+                    data: Object.values(jobsData.byFunction),
                     backgroundColor: [
-                      'rgba(59, 130, 246, 0.8)',  // Blue
-                      'rgba(147, 51, 234, 0.8)',  // Purple
-                      'rgba(16, 185, 129, 0.8)',  // Green
-                      'rgba(249, 115, 22, 0.8)',  // Orange
+                      'rgba(59, 130, 246, 0.8)',
+                      'rgba(147, 51, 234, 0.8)',
+                      'rgba(16, 185, 129, 0.8)',
+                      'rgba(249, 115, 22, 0.8)',
                     ]
                   }]
                 }}
@@ -633,10 +701,10 @@ const Dashboard = () => {
               <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Demanded For</h3>
               <Bar
                 data={{
-                  labels: Object.keys(recruitmentMetrics.byDemandedFor),
+                  labels: Object.keys(jobsData.byDemandedFor),
                   datasets: [{
                     label: 'Number of Positions',
-                    data: Object.values(recruitmentMetrics.byDemandedFor),
+                    data: Object.values(jobsData.byDemandedFor),
                     backgroundColor: 'rgba(16, 185, 129, 0.8)',
                     borderColor: 'rgba(16, 185, 129, 1)',
                     borderWidth: 1
@@ -667,9 +735,9 @@ const Dashboard = () => {
               <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Urgency</h3>
               <Doughnut
                 data={{
-                  labels: Object.keys(recruitmentMetrics.byUrgency),
+                  labels: Object.keys(jobsData.byUrgency),
                   datasets: [{
-                    data: Object.values(recruitmentMetrics.byUrgency),
+                    data: Object.values(jobsData.byUrgency),
                     backgroundColor: [
                       'rgba(239, 68, 68, 0.8)',   // Red for Urgent
                       'rgba(249, 115, 22, 0.8)',  // Orange for High

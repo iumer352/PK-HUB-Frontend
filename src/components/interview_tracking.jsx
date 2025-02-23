@@ -25,8 +25,8 @@ import {
 
 export const INTERVIEW_STAGES = [
   { id: 'HR', name: 'HR round', color: 'blue', icon: UserCheck },
-  { id: 'TECHNICAL', name: 'Technical Round', color: 'purple', icon: Code },
   { id: 'CULTURAL', name: 'Cultural Fit', color: 'green', icon: Users },
+  { id: 'TECHNICAL', name: 'Technical Round', color: 'purple', icon: Code },
   { id: 'FINAL', name: 'Final Round', color: 'orange', icon: Award },
   { id: 'OFFER', name: 'Offer', color: 'yellow', icon: DollarSign }
 ];
