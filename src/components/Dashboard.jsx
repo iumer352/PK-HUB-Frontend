@@ -17,6 +17,7 @@ import {
   RadialLinearScale
 } from 'chart.js';
 import { Line, Bar, Doughnut, Radar } from 'react-chartjs-2';
+import ConfirmDialog from './ConfirmDialog';
 
 ChartJS.register(
   CategoryScale,
@@ -63,6 +64,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [jobsData, setJobsData] = useState([]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Add recruitment metrics state
   const [recruitmentMetrics, setRecruitmentMetrics] = useState({
@@ -91,6 +93,9 @@ const Dashboard = () => {
       'Low': 5
     }
   });
+
+  // Update the state for newly onboarded employees
+  const [newlyOnboarded, setNewlyOnboarded] = useState([]);
 
   // Update dashboard navigation options
   const dashboardOptions = [
@@ -164,65 +169,55 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchData = async () => {
       try {
-        // In a real app, these would be actual API endpoints
-        const [projectsRes, jobsRes, interviewsRes, employeesRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/employees')
-        ]);
-      
-        setOnboardedEmployees(employeesRes.data);
+        // Fetch employees data
+        const employeesResponse = await axios.get('http://localhost:5000/api/employees');
+        const employees = employeesResponse.data;
+
+        // Get employees who joined in the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 60);
+
+        const recentEmployees = employees.filter(employee => {
+          const joinDate = new Date(employee.joinDate);
+          return joinDate > thirtyDaysAgo;
+        });
+
+        setNewlyOnboarded(recentEmployees);
+
+        // ... rest of your existing fetch logic ...
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        // Use dummy data for demonstration
-        setDashboardData({
-          projectStats: {
-            total: 25,
-            active: 12,
-            completed: 8,
-            upcoming: 5,
-            monthlyProgress: [
-              { month: 'Jan', count: 5 },
-              { month: 'Feb', count: 8 },
-              { month: 'Mar', count: 12 },
-              { month: 'Apr', count: 15 },
-              { month: 'May', count: 10 },
-              { month: 'Jun', count: 18 }
-            ]
-          },
-          jobStats: {
-            total: 45,
-            open: 15,
-            filled: 20,
-            inProgress: 10,
-            byDepartment: {
-              Engineering: 20,
-              Marketing: 8,
-              Sales: 7,
-              Design: 5,
-              HR: 5
-            }
-          },
-          interviewStats: {
-            scheduled: 12,
-            completed: 25,
-            upcoming: 8
-          }
-        });
-        setOnboardedEmployees([
-          { _id: 1, name: 'John Doe', role: 'Software Engineer', joiningDate: '2022-01-01' },
-          { _id: 2, name: 'Jane Doe', role: 'Marketing Manager', joiningDate: '2022-02-01' },
-          { _id: 3, name: 'Bob Smith', role: 'Sales Representative', joiningDate: '2022-03-01' },
-          { _id: 4, name: 'Alice Johnson', role: 'Design Lead', joiningDate: '2022-04-01' },
-          { _id: 5, name: 'Mike Brown', role: 'HR Generalist', joiningDate: '2022-05-01' }
-        ]);
-      } finally {
-        setLoading(false);
       }
     };
 
-    fetchDashboardData();
+    fetchData();
   }, []);
+
+  // Single useEffect to handle back button only for dashboard
+  useEffect(() => {
+    const handleBackButton = (e) => {
+      e.preventDefault();
+      setShowConfirmDialog(true);
+    };
+
+    // Push initial state to prevent immediate back
+    window.history.pushState({ page: 'dashboard' }, '', window.location.pathname);
+
+    // Handle popstate (back button)
+    window.addEventListener('popstate', handleBackButton);
+
+    return () => {
+      window.removeEventListener('popstate', handleBackButton);
+    };
+  }, []); // Empty dependency array since we only want this on mount
+
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login', { replace: true });
+  };
 
   const StatModal = ({ show, onClose, title, children }) => (
     <AnimatePresence>
@@ -343,7 +338,7 @@ const Dashboard = () => {
               labels: Object.keys(dashboardData.jobStats.byDepartment),
               datasets: [
                 {
-                  label: 'Jobs by Department',
+                  label: 'Jobs by Solutions',
                   data: Object.values(dashboardData.jobStats.byDepartment),
                   backgroundColor: [
                     'rgba(255, 99, 132, 0.8)',
@@ -449,16 +444,15 @@ const Dashboard = () => {
               </button>
             </div>
             <div className="space-y-4">
-              {onboardedEmployees.map((employee) => (
-                <div key={employee._id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+              {newlyOnboarded.map((employee) => (
+                <div key={employee.id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-lg text-gray-800">{employee.name}</h3>
-                      <p className="text-gray-600">{employee.role}</p>
-                      <p className="text-gray-500 text-sm">{employee.department}</p>
+                      <p className="text-gray-600">{employee.jobTitle}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-500">Joined: {new Date(employee.joiningDate).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-500">Joined: {new Date(employee.joinDate).toLocaleDateString()}</p>
                       <button
                         onClick={() => navigate(`/onboarding/${employee._id}`)}
                         className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
@@ -496,278 +490,293 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Dashboard Selection Dropdown */}
-        <div className="relative mb-8">
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center justify-between w-full md:w-72 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 text-left"
+    <>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Dashboard Selection Dropdown */}
+          <div className="relative mb-8">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center justify-between w-full md:w-72 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 text-left"
+            >
+              <span className="text-gray-700 font-medium">Select Dashboard</span>
+              <ChevronDown
+                className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                  isDropdownOpen ? 'transform rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+              {isDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute z-10 w-full md:w-72 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
+                >
+                  {dashboardOptions.map((option) => (
+                    <button
+                      key={option.path}
+                      onClick={() => {
+                        navigate(option.path);
+                        setIsDropdownOpen(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                    >
+                      {option.name}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Main Dashboard Content */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-6"
           >
-            <span className="text-gray-700 font-medium">Select Dashboard</span>
-            <ChevronDown
-              className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                isDropdownOpen ? 'transform rotate-180' : ''
-              }`}
-            />
-          </button>
-
-          {/* Dropdown Menu */}
-          <AnimatePresence>
-            {isDropdownOpen && (
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute z-10 w-full md:w-72 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
+                whileHover={{ scale: 1.02 }}
+                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                onClick={() => setShowProjectsModal(true)}
               >
-                {dashboardOptions.map((option) => (
-                  <button
-                    key={option.path}
-                    onClick={() => {
-                      navigate(option.path);
-                      setIsDropdownOpen(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                  >
-                    {option.name}
-                  </button>
-                ))}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-blue-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                    <Briefcase className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                  {jobsData.totalPositions || 0}
+                </h3>
+                <p className="text-gray-600 text-base">Total Positions</p>
+                <div className="mt-4 flex items-center text-sm">
+                  <span className="text-green-600 font-medium">+12%</span>
+                  <span className="text-gray-500 ml-2">vs last month</span>
+                </div>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
-        {/* Main Dashboard Content */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          className="space-y-6"
-        >
-          {/* Quick Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-              onClick={() => setShowProjectsModal(true)}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-2 bg-blue-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                  <Briefcase className="w-6 h-6 text-blue-600" />
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                onClick={() => setShowPositionsModal(true)}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-green-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                    <Users className="w-6 h-6 text-green-600" />
+                  </div>
                 </div>
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                {jobsData.totalPositions || 0}
-              </h3>
-              <p className="text-gray-600 text-base">Total Positions</p>
-              <div className="mt-4 flex items-center text-sm">
-                <span className="text-green-600 font-medium">+12%</span>
-                <span className="text-gray-500 ml-2">vs last month</span>
-              </div>
-            </motion.div>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                  {jobsData.openPositions}
+                </h3>
+                <p className="text-gray-600 text-base">Open Positions</p>
+                <div className="mt-4 flex items-center text-sm">
+                  <span className="text-green-600 font-medium">+5%</span>
+                  <span className="text-gray-500 ml-2">vs last month</span>
+                </div>
+              </motion.div>
 
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-              onClick={() => setShowPositionsModal(true)}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-2 bg-green-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                  <Users className="w-6 h-6 text-green-600" />
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                onClick={() => setShowHiringModal(true)}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                    <TrendingUp className="w-6 h-6 text-purple-600" />
+                  </div>
                 </div>
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                {jobsData.openPositions}
-              </h3>
-              <p className="text-gray-600 text-base">Open Positions</p>
-              <div className="mt-4 flex items-center text-sm">
-                <span className="text-green-600 font-medium">+5%</span>
-                <span className="text-gray-500 ml-2">vs last month</span>
-              </div>
-            </motion.div>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-2">85%</h3>
+                <p className="text-gray-600 text-base">Hiring Rate</p>
+                <div className="mt-4 flex items-center text-sm">
+                  <span className="text-green-600 font-medium">+3%</span>
+                  <span className="text-gray-500 ml-2">vs last month</span>
+                </div>
+              </motion.div>
 
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-              onClick={() => setShowHiringModal(true)}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
+              {/* Onboarding Card */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                onClick={() => setShowOnboardingModal(true)}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                    <Users className="w-6 h-6 text-purple-600" />
+                  </div>
                 </div>
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-800 mb-2">85%</h3>
-              <p className="text-gray-600 text-base">Hiring Rate</p>
-              <div className="mt-4 flex items-center text-sm">
-                <span className="text-green-600 font-medium">+3%</span>
-                <span className="text-gray-500 ml-2">vs last month</span>
-              </div>
-            </motion.div>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                  {newlyOnboarded.length}
+                </h3>
+                <p className="text-gray-600 text-base">Newly Onboarded</p>
+              </motion.div>
+            </div>
+            
+            {/* Recruitment Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Jobs by Grade */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+              >
+                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Grade</h3>
+                <Bar
+                  data={{
+                    labels: Object.keys(jobsData.byGrade),
+                    datasets: [{
+                      label: 'Number of Positions',
+                      data: Object.values(jobsData.byGrade),
+                      backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                      borderColor: 'rgba(99, 102, 241, 1)',
+                      borderWidth: 1
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                      legend: { display: false }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                      }
+                    }
+                  }}
+                />
+              </motion.div>
 
-            {/* Onboarding Card */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-              onClick={() => setShowOnboardingModal(true)}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                  <Users className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                {onboardedEmployees.length}
-              </h3>
-              <p className="text-gray-600 text-base">Newly Onboarded</p>
-            </motion.div>
-          </div>
+              {/* Jobs by Function */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+              >
+                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Solutions</h3>
+                <Doughnut
+                  data={{
+                    labels: Object.keys(jobsData.byFunction),
+                    datasets: [{
+                      data: Object.values(jobsData.byFunction),
+                      backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(147, 51, 234, 0.8)',
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(249, 115, 22, 0.8)',
+                      ]
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                        labels: { padding: 20 }
+                      }
+                    }
+                  }}
+                />
+              </motion.div>
+
+              {/* Jobs by Demanded For */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+              >
+                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Clients/Solutions</h3>
+                <Bar
+                  data={{
+                    labels: Object.keys(jobsData.byDemandedFor),
+                    datasets: [{
+                      label: 'Number of Positions',
+                      data: Object.values(jobsData.byDemandedFor),
+                      backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                      borderColor: 'rgba(16, 185, 129, 1)',
+                      borderWidth: 1
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                      legend: { display: false }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                      }
+                    }
+                  }}
+                />
+              </motion.div>
+
+              {/* Jobs by Urgency */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+              >
+                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Urgency</h3>
+                <Doughnut
+                  data={{
+                    labels: Object.keys(jobsData.byUrgency),
+                    datasets: [{
+                      data: Object.values(jobsData.byUrgency),
+                      backgroundColor: [
+                        'rgba(239, 68, 68, 0.8)',   // Red for Urgent
+                        'rgba(249, 115, 22, 0.8)',  // Orange for High
+                        'rgba(59, 130, 246, 0.8)',  // Blue for Normal
+                        'rgba(16, 185, 129, 0.8)',  // Green for Low
+                      ]
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                        labels: { padding: 20 }
+                      }
+                    }
+                  }}
+                />
+              </motion.div>
+            </div>
+          </motion.div>
           
-          {/* Recruitment Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Jobs by Grade */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
-            >
-              <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Grade</h3>
-              <Bar
-                data={{
-                  labels: Object.keys(jobsData.byGrade),
-                  datasets: [{
-                    label: 'Number of Positions',
-                    data: Object.values(jobsData.byGrade),
-                    backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                    borderColor: 'rgba(99, 102, 241, 1)',
-                    borderWidth: 1
-                  }]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: true,
-                  plugins: {
-                    legend: { display: false }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: { stepSize: 1 }
-                    }
-                  }
-                }}
-              />
-            </motion.div>
-
-            {/* Jobs by Function */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
-            >
-              <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Function</h3>
-              <Doughnut
-                data={{
-                  labels: Object.keys(jobsData.byFunction),
-                  datasets: [{
-                    data: Object.values(jobsData.byFunction),
-                    backgroundColor: [
-                      'rgba(59, 130, 246, 0.8)',
-                      'rgba(147, 51, 234, 0.8)',
-                      'rgba(16, 185, 129, 0.8)',
-                      'rgba(249, 115, 22, 0.8)',
-                    ]
-                  }]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: true,
-                  plugins: {
-                    legend: {
-                      position: 'right',
-                      labels: { padding: 20 }
-                    }
-                  }
-                }}
-              />
-            </motion.div>
-
-            {/* Jobs by Demanded For */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
-            >
-              <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Demanded For</h3>
-              <Bar
-                data={{
-                  labels: Object.keys(jobsData.byDemandedFor),
-                  datasets: [{
-                    label: 'Number of Positions',
-                    data: Object.values(jobsData.byDemandedFor),
-                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 1
-                  }]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: true,
-                  plugins: {
-                    legend: { display: false }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: { stepSize: 1 }
-                    }
-                  }
-                }}
-              />
-            </motion.div>
-
-            {/* Jobs by Urgency */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
-            >
-              <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Urgency</h3>
-              <Doughnut
-                data={{
-                  labels: Object.keys(jobsData.byUrgency),
-                  datasets: [{
-                    data: Object.values(jobsData.byUrgency),
-                    backgroundColor: [
-                      'rgba(239, 68, 68, 0.8)',   // Red for Urgent
-                      'rgba(249, 115, 22, 0.8)',  // Orange for High
-                      'rgba(59, 130, 246, 0.8)',  // Blue for Normal
-                      'rgba(16, 185, 129, 0.8)',  // Green for Low
-                    ]
-                  }]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: true,
-                  plugins: {
-                    legend: {
-                      position: 'right',
-                      labels: { padding: 20 }
-                    }
-                  }
-                }}
-              />
-            </motion.div>
-          </div>
-        </motion.div>
-        
-        {/* Modals */}
-        <ProjectsModal />
-        <PositionsModal />
-        <OnboardingModal />
-        <HiringModal />
+          {/* Modals */}
+          <ProjectsModal />
+          <PositionsModal />
+          <OnboardingModal />
+          <HiringModal />
+        </div>
       </div>
-    </div>
+      
+      <ConfirmDialog
+        isOpen={showConfirmDialog}
+        onClose={() => {
+          setShowConfirmDialog(false);
+          // Push state again to maintain the behavior
+          window.history.pushState({ page: 'dashboard' }, '', window.location.pathname);
+        }}
+        onConfirm={() => {
+          setShowConfirmDialog(false);
+          handleSignOut();
+        }}
+      />
+    </>
   );
 };
 

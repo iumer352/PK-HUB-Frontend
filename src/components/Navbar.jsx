@@ -1,13 +1,31 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, Briefcase, Settings, LogOut } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, Users, Briefcase, Settings, LogOut, User } from 'lucide-react';
 import { motion } from 'framer-motion';
+import kpmgLogo from '../assets/kpmg.png';
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const isActive = (path) => {
     return location.pathname === path;
+  };
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    navigate('/login', { replace: true });
   };
 
   const menuItems = [
@@ -17,52 +35,55 @@ const Navbar = () => {
   ];
 
   return (
-    <div className="w-80 h-full bg-black border-r border-gray-800 flex flex-col relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 z-0">
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.03, 0.06, 0.03],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.04, 0.07, 0.04],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute -bottom-24 -right-24 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"
-        />
-      </div>
+    <div className="w-80 h-full bg-gradient-to-b from-gray-900 to-black border-r border-gray-800 flex flex-col">
+      {/* App Brand Section */}
+      
 
-      {/* Content Container */}
-      <div className="relative z-10 flex flex-col h-full">
-        {/* Logo Section */}
-        <div className="p-8 border-b border-gray-800/50">
-          <div className="flex items-center space-x-3">
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg"
-            >
-              <span className="text-white font-bold text-2xl">P</span>
-            </motion.div>
-            <span className="text-2xl font-bold text-white tracking-wide">PK Hub</span>
+      {/* User Profile Section */}
+      {user && (
+        <div className="p-6 border-b border-gray-800/30">
+          <div className="bg-gradient-to-r from-gray-800 to-gray-800/50 rounded-2xl p-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center border border-blue-500/20">
+                <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+                  {user.name?.charAt(0) || user.email?.charAt(0)}
+                </span>
+              </div>
+              <div className="flex-1">
+                <p className="text-gray-400 text-sm font-medium">Welcome back,</p>
+                <p className="text-white font-bold text-lg truncate">
+                  {user.name || user.email}
+                </p>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mt-1">
+                  {user.role}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <Link
+                to="/admin-center"
+                className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition-colors group"
+              >
+                <Settings className="w-4 h-4 mr-2 text-blue-400 group-hover:text-blue-300" />
+                <span className="text-sm text-gray-300 group-hover:text-white">Admin</span>
+              </Link>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-700/50 hover:bg-red-900/50 transition-colors group"
+              >
+                <LogOut className="w-4 h-4 mr-2 text-gray-400 group-hover:text-red-400" />
+                <span className="text-sm text-gray-300 group-hover:text-red-300">Sign Out</span>
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Navigation Menu */}
-        <nav className="flex-1 pt-8 px-6 space-y-2">
+      {/* Navigation Menu */}
+      <nav className="flex-1 py-6 px-4">
+        <div className="space-y-1">
           {menuItems.map((item) => (
             <motion.div
               key={item.path}
@@ -71,42 +92,33 @@ const Navbar = () => {
             >
               <Link
                 to={item.path}
-                className={`flex items-center space-x-4 px-5 py-4 rounded-xl transition-all duration-200 ${
+                className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive(item.path)
-                    ? 'bg-gradient-to-r from-gray-800 to-gray-800/50 text-white shadow-lg'
-                    : 'text-gray-400 hover:bg-gray-800/30 hover:text-white'
+                    ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/10 text-white shadow-lg border border-blue-500/20'
+                    : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
                 }`}
               >
-                <span className={isActive(item.path) ? 'text-white' : 'text-gray-400'}>
+                <span className={`${isActive(item.path) ? 'text-blue-400' : 'text-gray-400'}`}>
                   {item.icon}
                 </span>
                 <span className="font-medium">{item.name}</span>
               </Link>
             </motion.div>
           ))}
-        </nav>
+        </div>
+      </nav>
 
-        {/* User Section */}
-        <div className="border-t border-gray-800/50 p-6 backdrop-blur-sm bg-black/10">
-          <motion.div 
-            whileHover={{ y: -2 }}
-            className="flex items-center space-x-4"
-          >
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shadow-lg ring-1 ring-gray-700/50">
-              <span className="text-gray-300 font-semibold text-lg">A</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-300">Admin User</p>
-              <p className="text-xs text-gray-500">admin@pkhub.com</p>
-            </div>
-            <motion.button 
-              whileHover={{ scale: 1.1, rotate: 15 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2.5 text-gray-400 hover:text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors"
-            >
-              <LogOut size={22} />
-            </motion.button>
-          </motion.div>
+      {/* Footer with KPMG Logo */}
+      <div className="p-6 border-t border-gray-800/30">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-800/50 rounded-2xl p-4 text-center">
+          <img 
+            src={kpmgLogo} 
+            alt="PK-Hub Opps" 
+            className="h-16 w-auto mx-auto opacity-70 hover:opacity-100 transition-all duration-300 transform hover:scale-105" 
+          />
+          <p className="text-xs text-gray-500 mt-3 font-medium tracking-wider">
+            PK-HUB OPPS APPLICATION
+          </p>
         </div>
       </div>
     </div>

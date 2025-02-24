@@ -90,8 +90,12 @@ const ApplicantRow = React.memo(({
         ? 'No Interview Scheduled'
         : applicant.interviews.some(interview => interview.stages?.some(stage => stage.result === 'fail'))
         ? 'Rejected'
-        : applicant.interviews.some(interview => interview.stages?.some(stage => stage.stage_id === 4 && stage.result === 'pass'))
+        : applicant.interviews.some(interview => interview.stages?.some(stage => stage.stage_id === 4 && stage.result === 'pass' && stage.offer_status === 'pending'))
+        ? 'Offer Stage'
+        : applicant.offer_status === 'accepted'
         ? 'Hired'
+        : applicant.offer_status === 'rejected'
+        ? 'Offer Rejected'
         : (() => {
             let currentStageId = 1;
             applicant.interviews.forEach(interview => {
@@ -104,8 +108,8 @@ const ApplicantRow = React.memo(({
             });
             switch (currentStageId) {
                 case 1: return 'In HR Round';
-                case 2: return 'In Technical Round';
-                case 3: return 'In Cultural Round';
+                case 2: return 'In Cultural Round';
+                case 3: return 'In Technical Round';
                 case 4: return 'In Final Round';
                 default: return 'No Interview Scheduled';
             }
@@ -151,9 +155,13 @@ const ApplicantRow = React.memo(({
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    interviewStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
-                    interviewStatus === 'Hired' ? 'bg-green-100 text-green-800' :
-                    'bg-blue-100 text-blue-800'
+                    interviewStatus === 'Rejected' || interviewStatus === 'Offer Rejected' 
+                        ? 'bg-red-100 text-red-800' 
+                        : interviewStatus === 'Hired' 
+                        ? 'bg-green-100 text-green-800' 
+                        : interviewStatus === 'Offer Stage'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-blue-100 text-blue-800'
                 }`}>
                     {interviewStatus}
                 </span>
@@ -235,6 +243,9 @@ const JobPostingForm = () => {
     const [functions, setFunctions] = useState(['Analytics and AI', 'Data Transformation', 'Low Code', 'Digital Enablement', 'Innovation and Emerging Tech']);
 
     const [showJobDetails, setShowJobDetails] = useState(false);
+
+    // Add state for filter
+    const [applicantFilter, setApplicantFilter] = useState('all'); // 'all', 'top5', 'top10', 'top15'
 
     useEffect(() => {
         const fetchHiringManagers = async () => {
@@ -660,6 +671,41 @@ ${jobPosting.keySkillsAndCompetencies}
         setShowJobDetails(!showJobDetails);
     };
 
+    // Add function to filter applicants
+    const getFilteredApplicants = () => {
+        // Sort applicants by score first
+        const sortedApplicants = [...applicants].sort((a, b) => {
+            const scoreA = getApplicantScore(a) || 0;
+            const scoreB = getApplicantScore(b) || 0;
+            return scoreB - scoreA;
+        });
+
+        // Apply filter
+        switch (applicantFilter) {
+            case 'top2':
+                return sortedApplicants.slice(0, 2);
+            case 'top5':
+                return sortedApplicants.slice(0, 5);
+            case 'top10':
+                return sortedApplicants.slice(0, 10);
+            case 'top15':
+                return sortedApplicants.slice(0, 15);
+            default:
+                return sortedApplicants;
+        }
+    };
+
+    // Helper function to get applicant score
+    const getApplicantScore = (applicant) => {
+        try {
+            const resumeData = JSON.parse(applicant.resume);
+            const score = resumeData?.score?.Overall_Score;
+            return score ? Number(score) : 0;
+        } catch (error) {
+            return 0;
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100">
             <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -709,6 +755,57 @@ ${jobPosting.keySkillsAndCompetencies}
                         {successMessage}
                     </div>
                 )}
+
+                {/* Add Filter Section */}
+                <div className="mb-6 flex items-center justify-between">
+                    <div className="flex space-x-4">
+                        <button
+                            onClick={() => setApplicantFilter('all')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                                applicantFilter === 'all'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            All Candidates
+                        </button>
+                        <button
+                            onClick={() => setApplicantFilter('top5')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                                applicantFilter === 'top5'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            Top 5
+                        </button>
+                        <button
+                            onClick={() => setApplicantFilter('top10')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                                applicantFilter === 'top10'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            Top 10
+                        </button>
+                        <button
+                            onClick={() => setApplicantFilter('top15')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                                applicantFilter === 'top15'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            Top 15
+                        </button>
+                    </div>
+                    
+                    {/* Show count of displayed applicants */}
+                    <div className="text-sm text-gray-600">
+                        Showing {getFilteredApplicants().length} of {applicants.length} candidates
+                    </div>
+                </div>
 
                 {/* Applicants Section */}
                 {jobId && (
@@ -821,7 +918,7 @@ ${jobPosting.keySkillsAndCompetencies}
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {sortApplicants(applicants).map((applicant) => (
+                                        {getFilteredApplicants().map((applicant) => (
                                             <ApplicantRow
                                                 key={applicant.id}
                                                 applicant={applicant}

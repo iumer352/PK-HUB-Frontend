@@ -27,7 +27,7 @@ export const INTERVIEW_STAGES = [
   { id: 'HR', name: 'HR round', color: 'blue', icon: UserCheck },
   { id: 'CULTURAL', name: 'Cultural Fit', color: 'green', icon: Users },
   { id: 'TECHNICAL', name: 'Technical Round', color: 'purple', icon: Code },
-  { id: 'FINAL', name: 'Final Round', color: 'orange', icon: Award },
+  { id: 'FINAL', name: 'Final Round', color: 'orange', icon: Award, allowMultiple: true },
   { id: 'OFFER', name: 'Offer', color: 'yellow', icon: DollarSign }
 ];
 
@@ -150,11 +150,24 @@ const RecruitingDashboard = () => {
   const handleScheduleInterview = async (stageId, date, time, interviewerId) => {
     try {
       const dateTime = new Date(`${date}T${time}`);
-      
-      // Get the stage information
       const stage = INTERVIEW_STAGES.find(s => s.id === stageId);
-      if (!stage) {
-        throw new Error(`Stage not found with ID: ${stageId}`);
+      
+      // Check if this is a final round and if there are existing final round interviews
+      if (stage.id === 'FINAL') {
+        const finalInterviews = selectedApplicant.interviews.filter(
+          interview => interview.stages?.[0]?.stage_id === 4
+        );
+        
+        // Only allow maximum of 2 final interviews
+        if (finalInterviews.length >= 2) {
+          throw new Error('Maximum of 2 final round interviews are allowed');
+        }
+        
+        // If there's one interview, it must be completed before scheduling second
+        if (finalInterviews.length === 1 && 
+            !['pass', 'fail'].includes(finalInterviews[0].stages?.[0]?.result)) {
+          throw new Error('Please complete the first final round interview before scheduling another');
+        }
       }
 
       const requestData = {
@@ -165,7 +178,8 @@ const RecruitingDashboard = () => {
         stage_name: stage.name
       };
       
-      // Use schedule-stage for all interviews
+      console.log('Scheduling interview with data:', requestData);
+      
       const response = await axios.post('http://localhost:5000/api/interview/schedule-stage', requestData);
       
       // Get updated interview data
@@ -190,12 +204,10 @@ const RecruitingDashboard = () => {
       
       return true;
     } catch (error) {
-      console.error('Error scheduling interview:', error.response?.data || error);
-      if (error.response?.status === 409) {
-        alert('This interview stage has already been scheduled.');
-      } else {
-        alert('Error scheduling interview. Please try again.');
-      }
+      console.error('Error scheduling interview:', error);
+      // Show more specific error message from the backend if available
+      const errorMessage = error.response?.data?.message || error.message || 'Error scheduling interview. Please try again.';
+      alert(errorMessage);
       return false;
     }
   };

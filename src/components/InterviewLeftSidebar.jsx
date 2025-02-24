@@ -101,7 +101,7 @@ const InterviewLeftSidebar = ({
   };
 
   const formatSalary = (salary) => {
-    return salary ? `${Number(salary).toLocaleString()} SAR` : 'Not specified';
+    return salary ? `${Number(salary).toLocaleString()} PKR` : 'Not specified';
   };
 
   return (
@@ -115,21 +115,22 @@ const InterviewLeftSidebar = ({
 
           {/* Interview Rounds */}
           <div className="space-y-4">
-            {INTERVIEW_STAGES.map((stage, index) => {
+            {INTERVIEW_STAGES.map((stage) => {
               const stageIdMap = { 'HR': 1, 'TECHNICAL': 2, 'CULTURAL': 3, 'FINAL': 4, 'OFFER': 5 };
               const numericStageId = stageIdMap[stage.id];
               
-              const interview = applicant.interviews.find(i => 
+              // Get all interviews for this stage
+              const stageInterviews = applicant.interviews.filter(i => 
                 i.stages && i.stages.length > 0 && i.stages[0].stage_id === numericStageId
               );
-              const feedback = interview ? stageFeedback[`${interview.id}-${numericStageId}`] : null;
+
               const status = getStageStatus(applicant.interviews, stage.id);
               const isHRStage = stage.id === 'HR';
               const isOfferStage = stage.id === 'OFFER';
+              const isFinalStage = stage.id === 'FINAL';
 
               return (
-                <div 
-                  key={stage.id} 
+                <div key={stage.id} 
                   className={`p-4 rounded-lg border-l-4 ${
                     status === 'completed' 
                       ? 'border-l-green-500 bg-green-50' 
@@ -138,27 +139,90 @@ const InterviewLeftSidebar = ({
                       : 'border-l-gray-300 bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-800 flex items-center">
-                      {stage.name}
-                      {feedback && (
-                        <span className="ml-2">
-                          {getResultIcon(feedback.result)}
-                        </span>
-                      )}
-                    </h4>
-                    {status === 'completed' && (
-                      <span className="text-sm text-green-600 font-medium">Completed</span>
-                    )}
-                  </div>
+                  {/* For non-final stages, show compact header */}
+                  {!isFinalStage && stageInterviews.map((interview) => {
+                    const interviewKey = `${interview.id}-${interview.stages[0].stage_id}`;
+                    const feedback = stageFeedback[interviewKey];
+                    
+                    return (
+                      <div key={interview.id} className="space-y-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center">
+                            <h4 className="font-medium text-gray-800">{stage.name}</h4>
+                            <span className="mx-2 text-gray-400">•</span>
+                            <span className="text-sm text-gray-600">{interview.interviewer.name}</span>
+                          </div>
+                          <span>
+                            {getResultIcon(feedback?.result)}
+                          </span>
+                        </div>
 
-                  {feedback && feedback.feedback && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      <span className="font-medium">Feedback:</span> {feedback.feedback}
-                    </p>
+                        {feedback?.feedback && (
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Feedback: </span>
+                            {feedback.feedback}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* For Final Stage, keep the original detailed format */}
+                  {isFinalStage && (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-gray-800">{stage.name}</h4>
+                        {status === 'completed' && (
+                          <span className="text-sm text-green-600 font-medium">Completed</span>
+                        )}
+                      </div>
+                      
+                      {stageInterviews.length > 0 && (
+                        <div className="space-y-4">
+                          {stageInterviews.map((interview, index) => {
+                            const interviewKey = `${interview.id}-${interview.stages[0].stage_id}`;
+                            const feedback = stageFeedback[interviewKey];
+                            
+                            return (
+                              <div key={interview.id} 
+                                className={`p-3 rounded-lg ${
+                                  feedback?.result === 'pass' 
+                                    ? 'bg-green-50' 
+                                    : feedback?.result === 'fail'
+                                    ? 'bg-red-50'
+                                    : 'bg-white'
+                                } border border-gray-200`}
+                              >
+                                {/* Keep existing Final round interview display */}
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-medium text-gray-700">
+                                    Final Interview {index + 1}
+                                  </span>
+                                  <span className="ml-2">
+                                    {getResultIcon(feedback?.result)}
+                                  </span>
+                                </div>
+
+                                <div className="text-sm text-gray-600 mb-2">
+                                  <span className="font-medium">Interviewer: </span>
+                                  {interview.interviewer.name}
+                                </div>
+
+                                {feedback?.feedback && (
+                                  <div className="text-sm text-gray-600">
+                                    <span className="font-medium">Feedback: </span>
+                                    {feedback.feedback}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  {/* HR Stage Details */}
+                  {/* Keep HR and Offer stage details */}
                   {isHRStage && hrData && (
                     <div className="mt-3 space-y-2 text-sm text-gray-600 border-t border-gray-200 pt-3">
                       <div className="flex items-center justify-between">
@@ -184,7 +248,6 @@ const InterviewLeftSidebar = ({
                     </div>
                   )}
 
-                  {/* Offer Stage Details */}
                   {isOfferStage && offerStatus && (
                     <div className="mt-3 space-y-2 text-sm border-t border-gray-200 pt-3">
                       <div className={`px-3 py-2 rounded-lg ${getOfferStatusColor(offerStatus)}`}>

@@ -219,7 +219,7 @@ const InterviewRightSidebar = ({
     return stageResults[interview?.id]?.result || 'pending';
   };
 
-  // Add a function to check if can schedule another final round
+  // Modify the canScheduleAnotherFinal function
   const canScheduleAnotherFinal = () => {
     const finalInterviews = selectedApplicant?.interviews?.filter(
       interview => interview.interviewer.interview_type === 'Final'
@@ -228,11 +228,14 @@ const InterviewRightSidebar = ({
     // Can schedule if no interviews yet
     if (finalInterviews.length === 0) return true;
 
-    // Can schedule another if all existing ones are completed
-    return finalInterviews.every(interview => 
-      stageResults[interview.id]?.result === 'pass' || 
-      stageResults[interview.id]?.result === 'fail'
-    );
+    // Can schedule second interview if first one is completed and total is less than 2
+    if (finalInterviews.length === 1) {
+      return finalInterviews[0].stages?.[0]?.result === 'pass' || 
+             finalInterviews[0].stages?.[0]?.result === 'fail';
+    }
+
+    // Cannot schedule more than 2 final interviews
+    return false;
   };
 
   if (!selectedApplicant) {
@@ -411,7 +414,11 @@ const InterviewRightSidebar = ({
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                 <Calendar className="w-8 h-8 text-gray-400" />
               </div>
-              <p className="text-gray-500 text-lg">No {activeStage} interviews scheduled yet</p>
+              {activeStage !== 'OFFER' && (
+                <p className="text-gray-500 text-lg">
+                  No {activeStage} interviews scheduled yet
+                </p>
+              )}
               <button
                 onClick={() => {
                   if (activeStage === 'OFFER') {
@@ -427,7 +434,7 @@ const InterviewRightSidebar = ({
               </button>
             </div>
           ) : (
-            filteredInterviews.map((interview) => (
+            filteredInterviews.map((interview, index) => (
               <div
                 key={interview.id}
                 className={`rounded-xl shadow-sm p-6 hover:shadow-md transition-all duration-200 ${
@@ -443,7 +450,12 @@ const InterviewRightSidebar = ({
                     {/* Interview Type and Status */}
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-gray-800">
-                        {interview.interviewer.interview_type} Interview
+                        {interview.interviewer.interview_type === 'Final' 
+                          ? `Final Interview ${
+                              filteredInterviews.filter(i => i.interviewer.interview_type === 'Final')
+                                .indexOf(interview) + 1
+                            }` 
+                          : `${interview.interviewer.interview_type} Interview`}
                         <span className={`ml-2 px-2 py-1 text-sm rounded-full ${
                           interview.interviewer.interview_type === 'Offer' && offerStatus === 'accepted'
                             ? 'bg-green-200 text-green-800'
@@ -547,6 +559,21 @@ const InterviewRightSidebar = ({
           )}
         </div>
       </div>
+
+      {/* Add a Schedule Another Interview button for Final round */}
+      {activeStage === 'FINAL' && canScheduleAnotherFinal() && (
+        <button
+          onClick={() => {
+            setSelectedStage('FINAL');
+            setShowScheduler(true);
+          }}
+          className="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Schedule {selectedApplicant?.interviews?.some(i => i.interviewer.interview_type === 'Final') 
+            ? 'Second Final Interview' 
+            : 'Final Interview'}
+        </button>
+      )}
 
       {/* AI Interview Questions Section (Beta) */}
       {interviewQuestions && (

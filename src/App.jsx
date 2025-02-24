@@ -17,34 +17,43 @@ import MonthlyTimesheet from './components/timesheet';
 import EditJob from './components/EditJob.jsx';
 import Login from './components/Login';
 import Register from './components/Register';
+import ProtectedRoute from './components/protectedroutes';   // Import your ProtectedRoute
+import AdminCenter from './components/AdminCenter';
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
-        {/* Wrap protected routes with Layout */}
-        <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/employees" element={<EmployeeDashboard />} />
-          <Route path="/projectDashboard" element={<ProjectDashboard />} />
-          <Route path="/manage" element={<ManageJobPostings />} />
-          <Route path="/projects" element={<Dashboard />} /> 
-          <Route path="/joblisting/:jobId" element={<JobPostingForm />} />
-          <Route path="/jobposting" element={<JobPosting />} />
-          <Route path="/add-employee" element={<AddEmployee />} />
-          <Route path="/view-employees" element={<ViewEmployees />} />
-          <Route path="/interview-status/:jobId" element={<RecruitingDashboard />} />
-          <Route path="/interview-tracking/:applicantId" element={<RecruitingDashboard />} />
-          <Route path="/applicant-interview" element={<ApplicantInterviewTracking/>} />
-          <Route path="/employees/:employeeId/monthly" element={<EmployeeMonthlyView />} />
-          <Route path="/onboarding/:employeeId" element={<OnboardingChecklist />} />
-          <Route path="/timesheet/:employeeId" element={<MonthlyTimesheet />} />
-          <Route path="/edit-job/:jobId" element={<EditJob />} />
+
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/employees" element={<EmployeeDashboard />} />
+            <Route path="/projectDashboard" element={<ProjectDashboard />} />
+            <Route path="/manage" element={<ManageJobPostings />} />
+            <Route path="/projects" element={<Dashboard />} /> 
+            <Route path="/joblisting/:jobId" element={<JobPostingForm />} />
+            <Route path="/jobposting" element={<JobPosting />} />
+            <Route path="/add-employee" element={<AddEmployee />} />
+            <Route path="/view-employees" element={<ViewEmployees />} />
+            <Route path="/interview-status/:jobId" element={<RecruitingDashboard />} />
+            <Route path="/interview-tracking/:applicantId" element={<RecruitingDashboard />} />
+            <Route path="/applicant-interview" element={<ApplicantInterviewTracking />} />
+            <Route path="/employees/:employeeId/monthly" element={<EmployeeMonthlyView />} />
+            <Route path="/onboarding/:employeeId" element={<OnboardingChecklist />} />
+            <Route path="/timesheet/:employeeId" element={<MonthlyTimesheet />} />
+            <Route path="/edit-job/:jobId" element={<EditJob />} />
+            <Route path="/admin-center" element={<AdminCenter />} />
+          </Route>
         </Route>
+
+        {/* Fallback: redirect any unknown route to login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

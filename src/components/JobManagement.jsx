@@ -24,6 +24,7 @@ const ManageJobPostings = () => {
     const [interviewerError, setInterviewerError] = useState(null);
     const [selectedFunction, setSelectedFunction] = useState('');
     const [selectedUrgency, setSelectedUrgency] = useState('');
+    const [demandedForFilter, setDemandedForFilter] = useState('all');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -201,6 +202,11 @@ const ManageJobPostings = () => {
         return new Date(date).toLocaleDateString('en-US', options);
     };
 
+    const getUniqueDemandedFor = () => {
+        const uniqueValues = [...new Set(jobs.map(job => job.demandedFor))].filter(Boolean);
+        return uniqueValues;
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -209,19 +215,13 @@ const ManageJobPostings = () => {
         );
     }
 
-    const filteredJobs = jobs
-        .filter((job) => job.status !== 'Closed') // Existing filter
-        .filter((job) => {
-            // Filter by function
-            if (selectedFunction && job.functionType !== selectedFunction) {
-                return false;
-            }
-            // Filter by urgency
-            if (selectedUrgency && job.hiringUrgency !== selectedUrgency) {
-                return false;
-            }
-            return true;
-        });
+    const filteredJobs = jobs.filter(job => {
+        const functionMatch = !selectedFunction || job.functionType === selectedFunction;
+        const urgencyMatch = !selectedUrgency || job.hiringUrgency === selectedUrgency;
+        const demandedForMatch = demandedForFilter === 'all' || job.demandedFor === demandedForFilter;
+        
+        return functionMatch && urgencyMatch && demandedForMatch;
+    });
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -250,7 +250,7 @@ const ManageJobPostings = () => {
                         onClick={() => setShowHiringManagerModal(true)}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
-                        Add Hiring Manager
+                        Add Solution Lead
                     </button>
                     <button
                         onClick={handleCreateJob}
@@ -291,6 +291,22 @@ const ManageJobPostings = () => {
                         <option value="Normal">Normal</option>
                         <option value="Low Priority">Low Priority</option>
                     </select>
+                </div>
+                <div>
+                    <span className="block text-sm font-medium text-gray-700">Filter by Client/Solution:</span>
+                    <select
+                        value={demandedForFilter}
+                        onChange={(e) => setDemandedForFilter(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                    >
+                        <option value="all">All Demands</option>
+                        {getUniqueDemandedFor().map(value => (
+                            <option key={value} value={value}>
+                                {value}
+                            </option>
+                        ))}
+                    </select>
+                
                 </div>
             </div>
 
@@ -414,7 +430,7 @@ const ManageJobPostings = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">Add Hiring Manager</h2>
+                            <h2 className="text-xl font-semibold">Add Solution Lead</h2>
                             <button
                                 onClick={() => setShowHiringManagerModal(false)}
                                 className="text-gray-500 hover:text-gray-700"
