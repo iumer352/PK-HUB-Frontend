@@ -117,7 +117,7 @@ const InterviewRightSidebar = ({
     const fetchOfferStatus = async () => {
       if (selectedApplicant?.id) {
         try {
-          const response = await axios.get(`http://10.183.199.14:5000/api/applicant/${selectedApplicant.id}/offer-status`);
+          const response = await axios.get(`http://localhost:5000/api/applicant/${selectedApplicant.id}/offer-status`);
           setOfferStatus(response.data.offer_status);
         } catch (error) {
           console.error('Error fetching offer status:', error);
@@ -132,7 +132,7 @@ const InterviewRightSidebar = ({
   const handleOnboard = async () => {
     console.log('Onboard function called');
     try {
-      const response = await axios.post('http://10.183.199.14:5000/api/employees/', {
+      const response = await axios.post('http://localhost:5000/api/employees/', {
         name: selectedApplicant.name,
         email: selectedApplicant.email,
         phone: selectedApplicant.phone,
@@ -745,7 +745,7 @@ const InterviewRightSidebar = ({
 
             if (offerInterview) {
               const response = await axios.post(
-                `http://10.183.199.14:5000/api/interview/stages/${offerInterview.id}/${offerInterview.stage_id}/feedback`,
+                `http://localhost:5000/api/interview/stages/${offerInterview.id}/${offerInterview.stage_id}/feedback`,
                 {
                   result: resultData.result,
                   feedback: `Offer ${resultData.offerStatus}`,

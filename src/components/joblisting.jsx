@@ -26,7 +26,7 @@ const ApplicantRow = React.memo(({
     // Function to fetch AI result from database
     const fetchAiResult = async () => {
         try {
-            const response = await axios.get(`http://10.183.199.14:5000/api/applicant/${applicant.id}/ai-result`);
+            const response = await axios.get(`http://localhost:5000/api/applicant/${applicant.id}/ai-result`);
             return response.data.applicant.ai_result;
         } catch (error) {
             console.error('Error fetching AI result:', error);
@@ -119,7 +119,7 @@ const ApplicantRow = React.memo(({
     const viewResume = async (applicantId) => {
         try {
             const response = await axios.get(
-                `http://10.183.199.14:5000/api/applicant/${applicantId}/resume`,
+                `http://localhost:5000/api/applicant/${applicantId}/resume`,
                 { responseType: 'blob' }
             );
             
@@ -250,7 +250,7 @@ const JobPostingForm = () => {
     useEffect(() => {
         const fetchHiringManagers = async () => {
             try {
-                const response = await axios.get('http://10.183.199.14:5000/api/hiring-managers');
+                const response = await axios.get('http://localhost:5000/api/hiring-managers');
                 setHiringManagers(response.data);
             } catch (err) {
                 console.error('Error fetching hiring managers:', err);
@@ -392,7 +392,7 @@ const JobPostingForm = () => {
     // Update application status
     const updateApplicationStatus = async (applicantId, newStatus) => {
         try {
-            await axios.put(`http://10.183.199.14:5000/api/applicants/${applicantId}/status`, {
+            await axios.put(`http://localhost:5000/api/applicants/${applicantId}/status`, {
                 status: newStatus
             });
             
@@ -536,14 +536,14 @@ ${jobPosting.keySkillsAndCompetencies}
 
             // Step 3: Send parsed data with files to backend
             const response = await axios.post(
-                'http://10.183.199.14:5000/api/applicant/from-parsed-resumes',
+                'http://localhost:5000/api/applicant/from-parsed-resumes',
                 payload
             );
 
             console.log('Import completed:', response.data);
 
             // Refresh applicants list
-            const applicantsResponse = await axios.get(`http://10.183.199.14:5000/api/applicant/job/${jobId}`);
+            const applicantsResponse = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
             setApplicants(applicantsResponse.data);
             setError(null);
         } catch (error) {
@@ -571,7 +571,7 @@ ${jobPosting.keySkillsAndCompetencies}
             const applicant = applicants.find(app => app.id === applicantId);
             
             // Fetch complete job details
-            const response = await axios.get(`http://10.183.199.14:5000/api/jobs/${jobId}`);
+            const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
             console.log('Complete job details:', response.data);
             
             // Pass job data and score details to interview tracking
@@ -591,7 +591,7 @@ ${jobPosting.keySkillsAndCompetencies}
         if (jobId) {
             const fetchJobData = async () => {
                 try {
-                    const response = await axios.get(`http://10.183.199.14:5000/api/jobs/${jobId}`);
+                    const response = await axios.get(`http://localhost:5000/api/jobs/${jobId}`);
                     console.log('Fetched job data:', response.data);
                     
                     // Ensure function value is set correctly
@@ -603,14 +603,14 @@ ${jobPosting.keySkillsAndCompetencies}
                     setJobPosting(jobData);
 
                     // Get applicants for this job
-                    const applicantsResponse = await axios.get(`http://10.183.199.14:5000/api/applicant/job/${jobId}`);
+                    const applicantsResponse = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
                     const applicantsData = applicantsResponse.data;
 
                     // Fetch interviews for each applicant
                     const applicantsWithInterviews = await Promise.all(
                         applicantsData.map(async (applicant) => {
                             try {
-                                const interviewsResponse = await axios.get(`http://10.183.199.14:5000/api/interview/applicant/${applicant.id}`);
+                                const interviewsResponse = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
                                 return {
                                     ...applicant,
                                     interviews: interviewsResponse.data

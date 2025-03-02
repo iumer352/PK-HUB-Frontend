@@ -31,7 +31,7 @@ const InterviewLeftSidebar = ({
             // For HR stage, fetch HR-specific data
             if (interview.stages[0].stage_id === 1) {
               const response = await axios.get(
-                `http://10.183.199.14:5000/api/interview/stages/${interview.stages[0].stage_id}/applicant/${selectedApplicant.id}/hr-result`
+                `http://localhost:5000/api/interview/stages/${interview.stages[0].stage_id}/applicant/${selectedApplicant.id}/hr-result`
               );
               if (isMounted) {
                 setHrData(response.data);
@@ -39,7 +39,7 @@ const InterviewLeftSidebar = ({
             }
             
             const response = await axios.get(
-              `http://10.183.199.14:5000/api/interview/stages/${interview.id}/${interview.stages[0].stage_id}/result`
+              `http://localhost:5000/api/interview/stages/${interview.id}/${interview.stages[0].stage_id}/result`
             );
             if (isMounted) {
               feedbackData[key] = response.data;
@@ -57,7 +57,7 @@ const InterviewLeftSidebar = ({
         if (selectedApplicant?.id) {
           try {
             const response = await axios.get(
-              `http://10.183.199.14:5000/api/applicant/${selectedApplicant.id}/offer-status`
+              `http://localhost:5000/api/applicant/${selectedApplicant.id}/offer-status`
             );
             if (isMounted) {
               setOfferStatus(response.data.offer_status);

@@ -84,13 +84,13 @@ const RecruitingDashboard = () => {
   const fetchData = async () => {
     try {
       const [InterviewerRes] = await Promise.all([
-        axios.get('http://10.183.199.14:5000/api/interviewers/')
+        axios.get('http://localhost:5000/api/interviewers/')
       ]);
 
       if (applicantId) {
         // If we have an applicantId, fetch just that applicant
-        const applicantRes = await axios.get(`http://10.183.199.14:5000/api/applicant/${applicantId}`);
-        const interviewsRes = await axios.get(`http://10.183.199.14:5000/api/interview/applicant/${applicantId}`);
+        const applicantRes = await axios.get(`http://localhost:5000/api/applicant/${applicantId}`);
+        const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicantId}`);
         console.log('Applicant data check:', applicantRes.data.resume);
         const applicantWithInterviews = {
           ...applicantRes.data,
@@ -101,10 +101,10 @@ const RecruitingDashboard = () => {
         setSelectedApplicant(applicantWithInterviews);
       } else if (jobId) {
         // If we have a jobId, fetch all applicants for that job
-        const applicantsRes = await axios.get(`http://10.183.199.14:5000/api/applicant/job/${jobId}`);
+        const applicantsRes = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
         const applicantsWithInterviews = await Promise.all(
           applicantsRes.data.map(async (applicant) => {
-            const interviewsRes = await axios.get(`http://10.183.199.14:5000/api/interview/applicant/${applicant.id}`);
+            const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
             return {
               ...applicant,
               interviews: interviewsRes.data
@@ -131,7 +131,7 @@ const RecruitingDashboard = () => {
     }
 
     try {
-      const interviewsRes = await axios.get(`http://10.183.199.14:5000/api/interview/applicant/${applicant.id}`);
+      const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
       const updatedApplicant = {
         ...applicant,
         interviews: interviewsRes.data
@@ -179,10 +179,10 @@ const RecruitingDashboard = () => {
       };
       
       // Use schedule-stage for all interviews
-      const response = await axios.post('http://10.183.199.14:5000/api/interview/schedule-stage', requestData);
+      const response = await axios.post('http://localhost:5000/api/interview/schedule-stage', requestData);
       
       // Get updated interview data
-      const interviewsRes = await axios.get(`http://10.183.199.14:5000/api/interview/applicant/${selectedApplicant.id}`);
+      const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${selectedApplicant.id}`);
       
       // Update the applicants state with new interview data
       setApplicants(prev => prev.map(applicant => 
@@ -212,7 +212,7 @@ const RecruitingDashboard = () => {
 
   const handleUpdateNotes = async (notes) => {
     try {
-      const response = await axios.patch(`http://10.183.199.14:5000/api/interview/${selectedInterview.id}/feedback`, {
+      const response = await axios.patch(`http://localhost:5000/api/interview/${selectedInterview.id}/feedback`, {
         notes
       });
 
@@ -259,7 +259,7 @@ const RecruitingDashboard = () => {
   const handleUpdateResult = async (interviewId, resultData) => {
     try {
       // Save the result to backend
-      await axios.post(`http://10.183.199.14:5000/api/interview/stages/${interviewId}/${resultData.stageId}/feedback`, {
+      await axios.post(`http://localhost:5000/api/interview/stages/${interviewId}/${resultData.stageId}/feedback`, {
         result: resultData.result,
         feedback: resultData.feedback,
         notes: resultData.notes
@@ -267,8 +267,8 @@ const RecruitingDashboard = () => {
 
       // Get updated interview data
       const [interviewsRes, feedbackRes] = await Promise.all([
-        axios.get(`http://10.183.199.14:5000/api/interview/applicant/${selectedApplicant.id}`),
-        axios.get(`http://10.183.199.14:5000/api/interview/stages/${interviewId}/${resultData.stageId}/result`)
+        axios.get(`http://localhost:5000/api/interview/applicant/${selectedApplicant.id}`),
+        axios.get(`http://localhost:5000/api/interview/stages/${interviewId}/${resultData.stageId}/result`)
       ]);
       
       // Update the applicants state with new interview data

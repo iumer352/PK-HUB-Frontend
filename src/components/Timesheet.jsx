@@ -43,7 +43,7 @@ const MonthlyTimesheet = () => {
       if (!employeeId) return;
 
       try {
-        const response = await fetch(`http://10.183.199.14:5000/api/employees/${employeeId}`);
+        const response = await fetch(`http://localhost:5000/api/employees/${employeeId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch employee data');
         }
@@ -68,7 +68,7 @@ const MonthlyTimesheet = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('http://10.183.199.14:5000/api/projects');
+      const response = await fetch('http://localhost:5000/api/projects');
       if (!response.ok) throw new Error('Failed to fetch projects');
       const data = await response.json();
       setProjects(data || []); 
@@ -83,7 +83,7 @@ const MonthlyTimesheet = () => {
       if (!employeeId) return;
 
       try {
-        const response = await fetch(`http://10.183.199.14:5000/api/timesheet/${employeeId}/${selectedYear}/${selectedMonth + 1}`);
+        const response = await fetch(`http://localhost:5000/api/timesheet/${employeeId}/${selectedYear}/${selectedMonth + 1}`);
         if (!response.ok) {
           throw new Error('Failed to fetch timesheet data');
         }
@@ -215,7 +215,7 @@ const MonthlyTimesheet = () => {
 
       // Save all entries
       await Promise.all(entries.map(entry =>
-        fetch('http://10.183.199.14:5000/api/timesheet/entry', {
+        fetch('http://localhost:5000/api/timesheet/entry', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
