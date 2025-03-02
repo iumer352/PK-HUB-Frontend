@@ -31,6 +31,18 @@ export const INTERVIEW_STAGES = [
   { id: 'OFFER', name: 'Offer', color: 'yellow', icon: DollarSign }
 ];
 
+// Add stageToType mapping while keeping original structure
+export const stageToType = {
+  'HR': 'HR',
+  'CULTURAL': 'CULTURAL',
+  'TECHNICAL': 'TECHNICAL',
+  'FINAL': 'FINAL',
+  1: 'HR',
+  2: 'CULTURAL', 
+  3: 'TECHNICAL',
+  4: 'FINAL'
+};
+
 const RecruitingDashboard = () => {
   const { jobId, applicantId } = useParams();
   const navigate = useNavigate();

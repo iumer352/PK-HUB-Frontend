@@ -122,6 +122,13 @@ const Dashboard = () => {
     'Innovation and Emerging Tech'
   ];
 
+  // Add role check at the top of the component
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isInterviewer = user.role === 'interviewer';
+
+  // Add this with other state declarations at the top
+  const [showAllPositionsModal, setShowAllPositionsModal] = useState(false);
+
   // Function to process jobs data into required format
   const processJobsData = (jobs) => {
     // Filter jobs by selected solution if not 'all'
@@ -583,6 +590,109 @@ const Dashboard = () => {
     </AnimatePresence>
   );
 
+  // Add AllPositionsModal component
+  const AllPositionsModal = ({ show, onClose, jobsData }) => {
+    // Data for the pie chart
+    const chartData = {
+      labels: ['Open Positions', 'Closed Positions'],
+      datasets: [{
+        data: [
+          jobsData.openPositions || 0,
+          (jobsData.totalPositions - jobsData.openPositions) || 0
+        ],
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.8)',  // green for open
+          'rgba(107, 114, 128, 0.8)', // gray for closed
+        ],
+        borderColor: [
+          'rgba(34, 197, 94, 1)',
+          'rgba(107, 114, 128, 1)',
+        ],
+        borderWidth: 1
+      }]
+    };
+
+    return (
+      <StatModal
+        show={show}
+        onClose={onClose}
+        title="Positions Overview"
+      >
+        <div className="p-6">
+          {/* Summary Stats Cards */}
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="bg-green-50 rounded-lg p-6 text-center">
+              <div className="p-3 bg-green-100 rounded-full w-12 h-12 mx-auto mb-4">
+                <FileText className="w-6 h-6 text-green-600" />
+              </div>
+              <h4 className="text-sm font-medium text-green-600 mb-2">Open Positions</h4>
+              <p className="text-3xl font-bold text-green-700">{jobsData.openPositions}</p>
+              <p className="text-sm text-green-600 mt-2">Active job listings</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-6 text-center">
+              <div className="p-3 bg-gray-100 rounded-full w-12 h-12 mx-auto mb-4">
+                <CheckSquare className="w-6 h-6 text-gray-600" />
+              </div>
+              <h4 className="text-sm font-medium text-gray-600 mb-2">Closed Positions</h4>
+              <p className="text-3xl font-bold text-gray-700">
+                {jobsData.totalPositions - jobsData.openPositions}
+              </p>
+              <p className="text-sm text-gray-600 mt-2">Completed hirings</p>
+            </div>
+          </div>
+
+          {/* Chart Section */}
+          <div className="bg-white rounded-lg p-6 mb-8">
+            <h4 className="text-lg font-medium text-gray-900 mb-4 text-center">Position Status Distribution</h4>
+            <div className="w-full max-w-md mx-auto h-[300px] flex items-center justify-center">
+              <Doughnut 
+                data={chartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: true,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        padding: 20,
+                        font: { size: 12 },
+                        usePointStyle: true
+                      }
+                    }
+                  },
+                  cutout: '60%'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Additional Stats */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="text-sm text-gray-600">
+              <div className="flex justify-between items-center mb-2">
+                <span>Total Positions:</span>
+                <span className="font-medium">{jobsData.totalPositions}</span>
+              </div>
+              <div className="flex justify-between items-center mb-2">
+                <span>Open Rate:</span>
+                <span className="font-medium">
+                  {((jobsData.openPositions / jobsData.totalPositions) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Closed Rate:</span>
+                <span className="font-medium">
+                  {(((jobsData.totalPositions - jobsData.openPositions) / jobsData.totalPositions) * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </StatModal>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -713,8 +823,8 @@ const Dashboard = () => {
                 </div>
               </motion.div>
 
-              {interviewerData ? (
-                // Show upcoming interviews card for interviewers
+              {/* Show Upcoming Interviews card only for interviewers */}
+              {isInterviewer ? (
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
@@ -731,12 +841,12 @@ const Dashboard = () => {
                   <p className="text-gray-600 text-base">Upcoming Interviews</p>
                   <div className="mt-4 flex items-center text-sm">
                     <span className="text-purple-600 font-medium">
-                      {interviewerData.interview_type} Interviewer
+                      {interviewerData?.interview_type} Interviewer
                     </span>
                   </div>
                 </motion.div>
               ) : (
-                // Show hiring rate card for non-interviewers
+                // Show Hiring Rate card for non-interviewers
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
@@ -945,6 +1055,11 @@ const Dashboard = () => {
             show={showInterviewsModal}
             onClose={() => setShowInterviewsModal(false)}
             interviews={pendingInterviews}
+          />
+          <AllPositionsModal 
+            show={showAllPositionsModal}
+            onClose={() => setShowAllPositionsModal(false)}
+            jobsData={jobsData}
           />
         </div>
       </div>
