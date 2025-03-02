@@ -20,7 +20,7 @@ const HRResultModal = ({ isOpen, interview, stageId, applicantId, onClose }) => 
 
     try {
       setLoading(true);
-      await axios.post(`http://localhost:5000/api/interview/stages/${stageId}/applicant/${applicantId}/hr-result`, {
+      await axios.post(`http://10.183.199.14:5000/api/interview/stages/${stageId}/applicant/${applicantId}/hr-result`, {
         result,
         feedback,
         currentSalary: parseFloat(currentSalary),
