@@ -62,13 +62,23 @@ const Navbar = () => {
 
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-2 mt-4">
-              <Link
-                to="/admin-center"
-                className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition-colors group"
-              >
-                <Settings className="w-4 h-4 mr-2 text-blue-400 group-hover:text-blue-300" />
-                <span className="text-sm text-gray-300 group-hover:text-white">Admin</span>
-              </Link>
+              {user?.role === 'admin' ? (
+                <Link
+                  to="/admin-center"
+                  className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition-colors group"
+                >
+                  <Settings className="w-4 h-4 mr-2 text-blue-400 group-hover:text-blue-300" />
+                  <span className="text-sm text-gray-300 group-hover:text-white">Admin</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/settings"
+                  className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition-colors group"
+                >
+                  <Settings className="w-4 h-4 mr-2 text-blue-400 group-hover:text-blue-300" />
+                  <span className="text-sm text-gray-300 group-hover:text-white">Settings</span>
+                </Link>
+              )}
               <button
                 onClick={handleSignOut}
                 className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-700/50 hover:bg-red-900/50 transition-colors group"

@@ -1,0 +1,193 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  Key, 
+  AlertCircle, 
+  CheckCircle, 
+  User, 
+  Mail, 
+  Shield, 
+  Clock, 
+  Calendar 
+} from 'lucide-react';
+import axios from 'axios';
+import PasswordChangeModal from './modals/PasswordChangeModal';
+import ConfirmationModal from './modals/ConfirmationModal';
+import { useNavigate } from 'react-router-dom';
+
+const Settings = () => {
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwords, setPasswords] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const navigate = useNavigate();
+
+  // Get user data from localStorage
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const lastLogin = new Date(user.lastLogin || Date.now()).toLocaleString();
+  const joinDate = new Date(user.createdAt || Date.now()).toLocaleDateString();
+
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess('');
+
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(
+        'http://localhost:5000/api/auth/updatePassword',
+        {
+          currentPassword: passwords.currentPassword,
+          newPassword: passwords.newPassword
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        setSuccess('Password updated successfully');
+        setShowPasswordModal(false);
+        setPasswords({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setShowConfirmation(true);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="flex items-center space-x-4">
+            <div className="p-4 bg-blue-100 rounded-2xl">
+              <User className="w-10 h-10 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
+              <p className="text-lg text-gray-500">Manage your account preferences and security</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Alerts */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-4 bg-red-100 text-red-700 rounded-xl flex items-center"
+          >
+            <AlertCircle className="w-5 h-5 mr-2" />
+            {error}
+          </motion.div>
+        )}
+
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-4 bg-green-100 text-green-700 rounded-xl flex items-center"
+          >
+            <CheckCircle className="w-5 h-5 mr-2" />
+            {success}
+          </motion.div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Profile Information */}
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <Mail className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Profile Information</h2>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Email</label>
+                <p className="text-lg font-medium text-gray-900">{user.email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Account Security */}
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <Shield className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Account Security</h2>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Protect your account by updating your password regularly.</p>
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                <Key className="w-4 h-4 mr-2" />
+                Update Password
+              </button>
+            </div>
+          </div>
+
+          {/* Account Details */}
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <Calendar className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Account Details</h2>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Member Since</label>
+                <p className="text-lg font-medium text-gray-900">{joinDate}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {showPasswordModal && (
+          <PasswordChangeModal
+            show={showPasswordModal}
+            onClose={() => setShowPasswordModal(false)}
+            passwordChange={passwords}
+            setPasswordChange={setPasswords}
+            onSubmit={handleSubmit}
+          />
+        )}
+
+        {showConfirmation && (
+          <ConfirmationModal
+            show={showConfirmation}
+            onClose={() => setShowConfirmation(false)}
+            onConfirm={handleSignOut}
+            message="Your password has been updated successfully. Please sign in again with your new password."
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Settings; 

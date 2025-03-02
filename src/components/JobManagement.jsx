@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ManageJobPostings = () => {
     const [jobs, setJobs] = useState([]);
@@ -25,7 +26,14 @@ const ManageJobPostings = () => {
     const [selectedFunction, setSelectedFunction] = useState('');
     const [selectedUrgency, setSelectedUrgency] = useState('');
     const [demandedForFilter, setDemandedForFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [jobsPerPage] = useState(10); // Number of jobs per page
+    const [statusFilter, setStatusFilter] = useState('active'); // 'active', 'closed', 'all'
     const navigate = useNavigate();
+
+    // Add this to get user data
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isAdmin = user.role === 'admin';
 
     useEffect(() => {
         fetchJobs();
@@ -41,27 +49,22 @@ const ManageJobPostings = () => {
         }
     }, [successMessage]);
 
-    const fetchJobStatus = async (jobId) => {
-        try {
-            const response = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
-            const applicants = response.data;
-            
-            // If no applicants found, it will throw an error and go to catch block
-            // Check if any applicant is hired
-            const hasHiredApplicant = applicants.some(applicant => applicant.status === 'hired');
-            if (hasHiredApplicant) {
-                return 'completed';
-            }
-            
-            // If there are applicants but none hired, status is interviewing
-            return 'interviewing';
-        } catch (err) {
-            // If no applicants found
-            if (err.response?.data?.message === 'No applicants found for this job') {
-                return 'advertisement';
-            }
-            // For other errors, return a default status
-            return 'advertisement';
+    const getStatusColor = (jobStatus) => {
+        switch (jobStatus?.toLowerCase()) {
+            case 'advertisement':
+                return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+            case 'in hr round':
+                return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+            case 'in cultural round':
+                return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+            case 'in technical round':
+                return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+            case 'in final round':
+                return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+            case 'completed':
+                return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+            default:
+                return 'bg-gray-50 text-gray-600 border border-gray-200';
         }
     };
 
@@ -69,35 +72,12 @@ const ManageJobPostings = () => {
         try {
             const response = await axios.get('http://localhost:5000/api/jobs');
             const jobsData = response.data;
-            
-            // Fetch status for each job
-            const jobsWithStatus = await Promise.all(
-                jobsData.map(async (job) => {
-                    const status = await fetchJobStatus(job.id);
-                    return { ...job, currentStatus: status };
-                })
-            );
-            
-            setJobs(jobsWithStatus);
+            console.log('Jobs with jobStatus:', jobsData); // Debug log
+            setJobs(jobsData);
             setLoading(false);
         } catch (err) {
             setError('Failed to fetch jobs');
             setLoading(false);
-        }
-    };
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'advertisement':
-                return 'bg-blue-100 text-blue-800';
-            case 'interviewing':
-                return 'bg-yellow-100 text-yellow-800';
-            case 'offer':
-                return 'bg-purple-100 text-purple-800';
-            case 'completed':
-                return 'bg-green-100 text-green-800';
-            default:
-                return 'bg-gray-100 text-gray-800';
         }
     };
 
@@ -154,15 +134,15 @@ const ManageJobPostings = () => {
     const getUrgencyColor = (urgency) => {
         switch (urgency) {
             case 'Urgent - Immediate Hire':
-                return 'bg-red-100 text-red-800';
+                return 'bg-indigo-100 text-indigo-700 border border-indigo-200';
             case 'High Priority':
-                return 'bg-orange-100 text-orange-800';
+                return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
             case 'Normal':
-                return 'bg-blue-100 text-blue-800';
+                return 'bg-gray-50 text-gray-600 border border-gray-200';
             case 'Low Priority':
-                return 'bg-green-100 text-green-800';
+                return 'bg-gray-50 text-gray-600 border border-gray-200';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-gray-50 text-gray-600 border border-gray-200';
         }
     };
 
@@ -215,295 +195,206 @@ const ManageJobPostings = () => {
         );
     }
 
-    const filteredJobs = jobs.filter(job => {
-        const functionMatch = !selectedFunction || job.functionType === selectedFunction;
-        const urgencyMatch = !selectedUrgency || job.hiringUrgency === selectedUrgency;
-        const demandedForMatch = demandedForFilter === 'all' || job.demandedFor === demandedForFilter;
-        
-        return functionMatch && urgencyMatch && demandedForMatch;
-    });
+    const filteredJobs = jobs
+        .filter(job => {
+            // Filter by status
+            if (statusFilter === 'active' && job.status === 'Closed') {
+                return false;
+            }
+            if (statusFilter === 'closed' && job.status !== 'Closed') {
+                return false;
+            }
+            
+            const functionMatch = !selectedFunction || job.functionType === selectedFunction;
+            const urgencyMatch = !selectedUrgency || job.hiringUrgency === selectedUrgency;
+            const demandedForMatch = demandedForFilter === 'all' || job.demandedFor === demandedForFilter;
+            return functionMatch && urgencyMatch && demandedForMatch;
+        })
+        .sort((a, b) => {
+            // Always sort closed jobs to the bottom regardless of filter
+            if (a.status === 'Closed' && b.status !== 'Closed') return 1;
+            if (a.status !== 'Closed' && b.status === 'Closed') return -1;
+            return 0;
+        });
+
+    const indexOfLastJob = currentPage * jobsPerPage;
+    const indexOfFirstJob = indexOfLastJob - jobsPerPage;
+    const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
+    const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+
+    const Pagination = () => {
+        return (
+            <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+                <div className="flex flex-1 justify-between sm:hidden">
+                    <button
+                        onClick={() => setCurrentPage(page => Math.max(page - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                        Previous
+                    </button>
+                    <button
+                        onClick={() => setCurrentPage(page => Math.min(page + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                        Next
+                    </button>
+                </div>
+                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-sm text-gray-700">
+                            Showing <span className="font-medium">{indexOfFirstJob + 1}</span> to{' '}
+                            <span className="font-medium">
+                                {Math.min(indexOfLastJob, filteredJobs.length)}
+                            </span>{' '}
+                            of <span className="font-medium">{filteredJobs.length}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                            <button
+                                onClick={() => setCurrentPage(page => Math.max(page - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                            >
+                                <span className="sr-only">Previous</span>
+                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                            </button>
+                            {[...Array(totalPages)].map((_, idx) => (
+                                <button
+                                    key={idx + 1}
+                                    onClick={() => setCurrentPage(idx + 1)}
+                                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                                        currentPage === idx + 1
+                                            ? 'z-10 bg-indigo-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
+                                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
+                                    }`}
+                                >
+                                    {idx + 1}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setCurrentPage(page => Math.min(page + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                            >
+                                <span className="sr-only">Next</span>
+                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            {/* Success Message Toast */}
-            {successMessage && (
-                <div className="fixed top-4 right-4 z-50 animate-fade-in-out">
-                    <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center">
-                        <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        {successMessage}
-                    </div>
-                </div>
-            )}
-
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Manage Job Postings</h1>
-                <div className="flex gap-4">
-                    <button
-                        onClick={() => setShowInterviewerModal(true)}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                        Add Interviewer
-                    </button>
-                    <button
-                        onClick={() => setShowHiringManagerModal(true)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                        Add Solution Lead
-                    </button>
-                    <button
-                        onClick={handleCreateJob}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                        Create New Job
-                    </button>
-                </div>
-            </div>
-
-            {/* Filter UI */}
-            <div className="flex gap-4 mb-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Filter by Function</label>
-                    <select
-                        value={selectedFunction}
-                        onChange={(e) => setSelectedFunction(e.target.value)}
-                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                    >
-                        <option value="">All Functions</option>
-                        <option value="Data Transformation">Data Transformation</option>
-                        <option value="Analytics and AI">Analytics and AI</option>
-                        <option value="Low Code">Low Code</option>
-                        <option value="Digital Enablement">Digital Enablement</option>
-                        <option value="Innovation and Emerging Tech">Innovation and Emerging Tech</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Filter by Urgency</label>
-                    <select
-                        value={selectedUrgency}
-                        onChange={(e) => setSelectedUrgency(e.target.value)}
-                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                    >
-                        <option value="">All Urgencies</option>
-                        <option value="Urgent - Immediate Hire">Urgent - Immediate Hire</option>
-                        <option value="High Priority">High Priority</option>
-                        <option value="Normal">Normal</option>
-                        <option value="Low Priority">Low Priority</option>
-                    </select>
-                </div>
-                <div>
-                    <span className="block text-sm font-medium text-gray-700">Filter by Client/Solution:</span>
-                    <select
-                        value={demandedForFilter}
-                        onChange={(e) => setDemandedForFilter(e.target.value)}
-                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                    >
-                        <option value="all">All Demands</option>
-                        {getUniqueDemandedFor().map(value => (
-                            <option key={value} value={value}>
-                                {value}
-                            </option>
-                        ))}
-                    </select>
-                
-                </div>
-            </div>
-
-            {/* Interviewer Modal */}
-            {showInterviewerModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">Add Interviewer</h2>
-                            <button
-                                onClick={() => setShowInterviewerModal(false)}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                ×
-                            </button>
-                        </div>
-                        
-                        {interviewerError && (
-                            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-                                {interviewerError}
-                            </div>
-                        )}
-
-                        <form onSubmit={handleInterviewerSubmit}>
-                            <div className="mb-4">
-                                <label className="block text-gray-700 text-sm font-bold mb-2">
-                                    Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={interviewerForm.name}
-                                    onChange={handleInterviewerInputChange}
-                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700 text-sm font-bold mb-2">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={interviewerForm.email}
-                                    onChange={handleInterviewerInputChange}
-                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700 text-sm font-bold mb-2">
-                                    Position
-                                </label>
-                                <input
-                                    type="text"
-                                    name="position"
-                                    value={interviewerForm.position}
-                                    onChange={handleInterviewerInputChange}
-                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700 text-sm font-bold mb-2">
-                                    Interview Type
-                                </label>
-                                <select
-                                    name="interview_type"
-                                    value={interviewerForm.interview_type}
-                                    onChange={handleInterviewerInputChange}
-                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
-                                    required
-                                >
-                                    <option value="HR">HR</option>
-                                    <option value="Technical">Technical</option>
-                                    <option value="Cultural">Cultural</option>
-                                    <option value="Final">Final</option>
-                                </select>
-                            </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700 text-sm font-bold mb-2">
-                                    Function
-                                </label>
-                                <select
-                                    name="function"
-                                    value={interviewerForm.function}
-                                    onChange={handleInterviewerInputChange}
-                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
-                                    required
-                                >
-                                    <option value="Data Transformation">Data Transformation</option>
-                                    <option value="Analytics and AI">Analytics and AI</option>
-                                    <option value="Low Code">Low Code</option>
-                                    <option value="Digital Enablement">Digital Enablement</option>
-                                    <option value="Innovation and Emerging Tech">Innovation and Emerging Tech</option>
-                                </select>
-                            </div>
-                            <div className="flex justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowInterviewerModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
+        <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto space-y-6">
+                {/* Header Section */}
+                <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h1 className="text-2xl font-semibold text-gray-900">Manage Job Postings</h1>
+                    <div className="flex gap-3">
+                        {isAdmin && (
+                            <>
+                                <button className="px-4 py-2 text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors">
                                     Add Interviewer
                                 </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Hiring Manager Modal */}
-            {showHiringManagerModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">Add Solution Lead</h2>
-                            <button
-                                onClick={() => setShowHiringManagerModal(false)}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                ×
-                            </button>
-                        </div>
-                        
-                        {hiringManagerError && (
-                            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-                                {hiringManagerError}
-                            </div>
+                                <button className="px-4 py-2 text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors">
+                                    Add Solution Lead
+                                </button>
+                            </>
                         )}
-
-                        <form onSubmit={handleHiringManagerSubmit}>
-                            <div className="mb-4">
-                                <label className="block text-gray-700 text-sm font-bold mb-2">
-                                    Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={hiringManagerForm.name}
-                                    onChange={handleHiringManagerInputChange}
-                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-                            <div className="mb-4">
-                                <label className="block text-gray-700 text-sm font-bold mb-2">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={hiringManagerForm.email}
-                                    onChange={handleHiringManagerInputChange}
-                                    className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-                            <div className="flex justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowHiringManagerModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                    Add Manager
-                                </button>
-                            </div>
-                        </form>
+                        <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                            Create New Job
+                        </button>
                     </div>
                 </div>
-            )}
 
-            {error && (
-                <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
-                    {error}
+                {/* Filter section */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Filter by Function
+                            </label>
+                            <select
+                                value={selectedFunction}
+                                onChange={(e) => setSelectedFunction(e.target.value)}
+                                className="w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2.5 text-sm
+                                         focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500
+                                         hover:border-indigo-300 transition-colors"
+                            >
+                                <option value="">All Functions</option>
+                                <option value="Data Transformation">Data Transformation</option>
+                                <option value="Analytics and AI">Analytics and AI</option>
+                                <option value="Low Code">Low Code</option>
+                                <option value="Digital Enablement">Digital Enablement</option>
+                                <option value="Innovation and Emerging Tech">Innovation and Emerging Tech</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Filter by Urgency
+                            </label>
+                            <select
+                                value={selectedUrgency}
+                                onChange={(e) => setSelectedUrgency(e.target.value)}
+                                className="w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2.5 text-sm
+                                         focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500
+                                         hover:border-indigo-300 transition-colors"
+                            >
+                                <option value="">All Urgencies</option>
+                                <option value="Urgent - Immediate Hire">Urgent - Immediate Hire</option>
+                                <option value="High Priority">High Priority</option>
+                                <option value="Normal">Normal</option>
+                                <option value="Low Priority">Low Priority</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span className="block text-sm font-medium text-gray-700">Filter by Client/Solution:</span>
+                            <select
+                                value={demandedForFilter}
+                                onChange={(e) => setDemandedForFilter(e.target.value)}
+                                className="w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2.5 text-sm
+                                         focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500
+                                         hover:border-indigo-300 transition-colors"
+                            >
+                                <option value="all">All Demands</option>
+                                {getUniqueDemandedFor().map(value => (
+                                    <option key={value} value={value}>
+                                        {value}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Filter by Status
+                            </label>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-2.5 text-sm
+                                         focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500
+                                         hover:border-indigo-300 transition-colors"
+                            >
+                                <option value="active">Active Jobs</option>
+                                <option value="closed">Closed Jobs</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-            )}
 
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Table section */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <thead>
+                            <tr className="bg-gray-50">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Title
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solution</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solution Lead</th>
@@ -514,35 +405,66 @@ const ManageJobPostings = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredJobs.map((job) => (
+                        <tbody className="divide-y divide-gray-200">
+                            {currentJobs.map((job) => (
                                 <tr
                                     key={job.id}
-                                    className="hover:bg-gray-50 cursor-pointer"
+                                    className={`cursor-pointer ${
+                                        job.status === 'Closed' 
+                                            ? 'bg-gray-200 hover:bg-gray-300 text-gray-600' 
+                                            : 'hover:bg-gray-50'
+                                    }`}
                                     onClick={() => handleJobClick(job.id)}
                                 >
                                     <td className="px-6 py-4">
-                                        <div className="font-medium text-gray-900">{job.title}</div>
+                                        <div className="flex items-center">
+                                            <div className={`text-sm font-medium ${
+                                                job.status === 'Closed' ? 'text-gray-600' : 'text-gray-900'
+                                            }`}>
+                                                {job.title}
+                                            </div>
+                                            {job.status === 'Closed' && (
+                                                <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-600 text-white">
+                                                    Closed
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            job.status === 'Closed'
+                                                ? 'bg-gray-300 text-gray-700'
+                                                : 'bg-blue-100 text-blue-800'
+                                        }`}>
                                             {job.grade}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            job.status === 'Closed'
+                                                ? 'bg-gray-300 text-gray-700'
+                                                : 'bg-purple-100 text-purple-800'
+                                        }`}>
                                             {job.functionType}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-gray-600">{job.hiringManager}</td>
+                                    <td className={`px-6 py-4 ${job.status === 'Closed' ? 'text-gray-500' : 'text-gray-600'}`}>
+                                        {job.hiringManager}
+                                    </td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getUrgencyColor(job.hiringUrgency)}`}>
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            job.status === 'Closed'
+                                                ? 'bg-gray-300 text-gray-700'
+                                                : getUrgencyColor(job.hiringUrgency)
+                                        }`}>
                                             {job.hiringUrgency}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.currentStatus)}`}>
-                                            {job.currentStatus}
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            getStatusColor(job.jobStatus)
+                                        }`}>
+                                            {job.jobStatus || 'Advertisement'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{formatDate(job.createdAt)}</td>
@@ -567,6 +489,11 @@ const ManageJobPostings = () => {
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-4 py-3">
+                    <Pagination />
                 </div>
             </div>
         </div>

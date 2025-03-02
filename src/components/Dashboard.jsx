@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, TrendingUp, Users, Briefcase, Calendar, CheckSquare } from 'lucide-react';
+import { ChevronDown, TrendingUp, Users, Briefcase, Calendar, CheckSquare, Clock, FileText } from 'lucide-react';
 import axios from 'axios';
 import {
   Chart as ChartJS,
@@ -18,6 +18,8 @@ import {
 } from 'chart.js';
 import { Line, Bar, Doughnut, Radar } from 'react-chartjs-2';
 import ConfirmDialog from './ConfirmDialog';
+import InterviewsModal from './modals/InterviewsModal';
+import ProjectsModal from './modals/ProjectsModal';
 
 ChartJS.register(
   CategoryScale,
@@ -65,6 +67,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [jobsData, setJobsData] = useState([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedSolution, setSelectedSolution] = useState('all');
 
   // Add recruitment metrics state
   const [recruitmentMetrics, setRecruitmentMetrics] = useState({
@@ -97,53 +100,76 @@ const Dashboard = () => {
   // Update the state for newly onboarded employees
   const [newlyOnboarded, setNewlyOnboarded] = useState([]);
 
+  // Add new states at the top of the component
+  const [interviewerData, setInterviewerData] = useState(null);
+  const [pendingInterviews, setPendingInterviews] = useState([]);
+  const [showInterviewsModal, setShowInterviewsModal] = useState(false);
+
+  // Add this state at the top with other states
+  const [jobsBySolutionLead, setJobsBySolutionLead] = useState({});
+
   // Update dashboard navigation options
   const dashboardOptions = [
     { name: 'Recruitment Management', path: '/manage' },
     { name: 'Resource Management', path: '/employees' }
   ];
 
+  const solutionLines = [
+    'Data Transformation',
+    'Analytics and AI',
+    'Low Code',
+    'Digital Enablement',
+    'Innovation and Emerging Tech'
+  ];
+
   // Function to process jobs data into required format
   const processJobsData = (jobs) => {
+    // Filter jobs by selected solution if not 'all'
+    const filteredJobs = selectedSolution === 'all' 
+      ? jobs 
+      : jobs.filter(job => job.functionType === selectedSolution);
+
     // Count by function type
-    const byFunction = jobs.reduce((acc, job) => {
+    const byFunction = filteredJobs.reduce((acc, job) => {
       acc[job.functionType] = (acc[job.functionType] || 0) + 1;
       return acc;
     }, {});
 
     // Count by grade
-    const byGrade = jobs.reduce((acc, job) => {
+    const byGrade = filteredJobs.reduce((acc, job) => {
       acc[job.grade] = (acc[job.grade] || 0) + 1;
       return acc;
     }, {});
 
-    // Count by demanded for (clients/projects)
-    const byDemandedFor = jobs.reduce((acc, job) => {
+    // Count by demanded for
+    const byDemandedFor = filteredJobs.reduce((acc, job) => {
       acc[job.demandedFor] = (acc[job.demandedFor] || 0) + 1;
       return acc;
     }, {});
 
-    // Count by urgency
-    const byUrgency = jobs.reduce((acc, job) => {
-      acc[job.hiringUrgency] = (acc[job.hiringUrgency] || 0) + 1;
+    // Count by hiring managers (solution leads)
+    const bySolutionLead = jobs.reduce((acc, job) => {
+      if (job.hiringManager) {
+        acc[job.hiringManager] = (acc[job.hiringManager] || 0) + 1;
+      }
       return acc;
     }, {});
 
     // Count by status
-    const statusCounts = jobs.reduce((acc, job) => {
+    const statusCounts = filteredJobs.reduce((acc, job) => {
       acc[job.status] = (acc[job.status] || 0) + 1;
       return acc;
     }, {});
 
     return {
-      totalPositions: jobs.length,
+      totalPositions: filteredJobs.length,
       openPositions: statusCounts['Active'] || 0,
-      inProgress: jobs.filter(job => job.status === 'In Progress').length,
-      filled: jobs.filter(job => job.status === 'Filled').length,
+      inProgress: filteredJobs.filter(job => job.status === 'In Progress').length,
+      filled: filteredJobs.filter(job => job.status === 'Filled').length,
       byFunction,
       byGrade,
       byDemandedFor,
-      byUrgency
+      bySolutionLead
     };
   };
 
@@ -166,33 +192,70 @@ const Dashboard = () => {
     };
 
     fetchJobsData();
-  }, []);
+  }, [selectedSolution]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch employees data
         const employeesResponse = await axios.get('http://localhost:5000/api/employees');
         const employees = employeesResponse.data;
 
-        // Get employees who joined in the last 30 days
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 60);
 
         const recentEmployees = employees.filter(employee => {
           const joinDate = new Date(employee.joinDate);
-          return joinDate > thirtyDaysAgo;
+          return joinDate > thirtyDaysAgo && 
+            (selectedSolution === 'all' || employee.department === selectedSolution);
         });
 
         setNewlyOnboarded(recentEmployees);
-
-        // ... rest of your existing fetch logic ...
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       }
     };
 
     fetchData();
+  }, [selectedSolution]);
+
+  // Add new useEffect to fetch interviewer data
+  useEffect(() => {
+    const fetchInterviewerData = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const token = localStorage.getItem('token');
+
+        const interviewersResponse = await axios.get(
+          'http://localhost:5000/api/interviewers/',
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        // Find the interviewer that matches the logged-in user's email
+        const interviewer = interviewersResponse.data.find(
+          int => int.email.toLowerCase() === user.email.toLowerCase()
+        );
+
+        if (interviewer) {
+          setInterviewerData(interviewer);
+
+          // Get pending interviews for this interviewer
+          const interviewsResponse = await axios.get(
+            `http://localhost:5000/api/interviewers/${interviewer.id}/pending-interviews`,
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+
+          setPendingInterviews(interviewsResponse.data);
+        }
+      } catch (err) {
+        console.error('Error fetching interviewer data:', err);
+      }
+    };
+
+    fetchInterviewerData();
   }, []);
 
   // Single useEffect to handle back button only for dashboard
@@ -252,63 +315,113 @@ const Dashboard = () => {
     </AnimatePresence>
   );
 
-  const ProjectsModal = () => (
-    <StatModal
-      show={showProjectsModal}
-      onClose={() => setShowProjectsModal(false)}
-      title="Project Statistics"
-    >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-blue-800">Active Projects</h3>
-            <p className="text-3xl font-bold text-blue-600">{dashboardData.projectStats.active}</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-green-800">Completed Projects</h3>
-            <p className="text-3xl font-bold text-green-600">{dashboardData.projectStats.completed}</p>
-          </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-yellow-800">Upcoming Projects</h3>
-            <p className="text-3xl font-bold text-yellow-600">{dashboardData.projectStats.upcoming}</p>
-          </div>
+  const getUrgencyOrder = (urgency) => {
+    const order = {
+      'Urgent - Immediate Hire': 1,
+      'High Priority': 2,
+      'Normal': 3,
+      'Low Priority': 4
+    };
+    return order[urgency] || 5;
+  };
+
+  const getStatusOrder = (status) => {
+    const order = {
+      'interviewing': 1,
+      'Active': 2  // Active means advertisement
+    };
+    return order[status] || 3;
+  };
+
+  const ProjectsModal = () => {
+    const [jobs, setJobs] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+      const fetchJobs = async () => {
+        if (!showProjectsModal) return;
+        
+        setLoading(true);
+        try {
+          const response = await axios.get('http://localhost:5000/api/jobs');
+          // Filter only active jobs
+          const activeJobs = response.data.filter(job => job.status === 'Active');
+          setJobs(activeJobs);
+        } catch (error) {
+          console.error('Error fetching jobs:', error);
+        }
+        setLoading(false);
+      };
+
+      fetchJobs();
+    }, [showProjectsModal]);
+
+    return (
+      <StatModal
+        show={showProjectsModal}
+        onClose={() => setShowProjectsModal(false)}
+        title="Open Positions"
+      >
+        <div className="space-y-6">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {jobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900">{job.title}</h4>
+                      <div className="flex items-center space-x-6 mt-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500 font-medium">Urgency:</span>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            job.hiringUrgency === 'Urgent - Immediate Hire'
+                              ? 'bg-red-100 text-red-800'
+                              : job.hiringUrgency === 'High Priority'
+                              ? 'bg-orange-100 text-orange-800'
+                              : job.hiringUrgency === 'Normal'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            <Clock className="w-3 h-3 mr-1" />
+                            {job.hiringUrgency}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500 font-medium">Job Stage:</span>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            <Users className="w-3 h-3 mr-1" />
+                            {job.jobStatus}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/joblisting/${job.id}`);
+                        setShowProjectsModal(false);
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      View Job
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="bg-white p-4 rounded-lg shadow h-[300px]">
-          <h3 className="text-lg font-semibold mb-4">Monthly Progress</h3>
-          <Line
-            data={{
-              labels: dashboardData.projectStats.monthlyProgress.map(item => item.month),
-              datasets: [
-                {
-                  label: 'Project Progress',
-                  data: dashboardData.projectStats.monthlyProgress.map(item => item.count),
-                  borderColor: 'rgb(75, 192, 192)',
-                  tension: 0.4,
-                  fill: true,
-                  backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                }
-              ]
-            }}
-            options={{
-              responsive: true,
-              maintainAspectRatio: true,
-              plugins: { 
-                legend: { position: 'top' },
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  ticks: {
-                    stepSize: 5
-                  }
-                }
-              }
-            }}
-          />
-        </div>
-      </div>
-    </StatModal>
-  );
+      </StatModal>
+    );
+  };
 
   const PositionsModal = () => (
     <StatModal
@@ -491,15 +604,18 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="h-screen py-4">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 h-full overflow-y-auto">
+
           {/* Dashboard Selection Dropdown */}
           <div className="relative mb-8">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center justify-between w-full md:w-72 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 text-left"
             >
-              <span className="text-gray-700 font-medium">Select Dashboard</span>
+              <span className="text-gray-700 font-medium">
+                {selectedSolution === 'all' ? 'All Solutions' : selectedSolution}
+              </span>
               <ChevronDown
                 className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
                   isDropdownOpen ? 'transform rotate-180' : ''
@@ -516,16 +632,25 @@ const Dashboard = () => {
                   exit={{ opacity: 0, y: -10 }}
                   className="absolute z-10 w-full md:w-72 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
                 >
-                  {dashboardOptions.map((option) => (
+                  <button
+                    onClick={() => {
+                      setSelectedSolution('all');
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                  >
+                    All Solutions
+                  </button>
+                  {solutionLines.map((solution) => (
                     <button
-                      key={option.path}
+                      key={solution}
                       onClick={() => {
-                        navigate(option.path);
+                        setSelectedSolution(solution);
                         setIsDropdownOpen(false);
                       }}
                       className="w-full px-4 py-2 text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
                     >
-                      {option.name}
+                      {solution}
                     </button>
                   ))}
                 </motion.div>
@@ -534,71 +659,102 @@ const Dashboard = () => {
           </div>
 
           {/* Main Dashboard Content */}
-          <motion.div
+          <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="space-y-6"
+            className="space-y-4"
           >
             {/* Quick Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {/* Open Positions Card - First */}
               <motion.div
                 whileHover={{ scale: 1.02 }}
-                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md 
+                           transition-all duration-300 border border-gray-100"
                 onClick={() => setShowProjectsModal(true)}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-blue-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                    <Briefcase className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                  {jobsData.totalPositions || 0}
-                </h3>
-                <p className="text-gray-600 text-base">Total Positions</p>
-                <div className="mt-4 flex items-center text-sm">
-                  <span className="text-green-600 font-medium">+12%</span>
-                  <span className="text-gray-500 ml-2">vs last month</span>
-                </div>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-                onClick={() => setShowPositionsModal(true)}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-green-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                    <Users className="w-6 h-6 text-green-600" />
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <FileText className="w-6 h-6 text-green-600" />
                   </div>
                 </div>
                 <h3 className="text-2xl font-semibold text-gray-800 mb-2">
                   {jobsData.openPositions}
                 </h3>
-                <p className="text-gray-600 text-base">Open Positions</p>
-                <div className="mt-4 flex items-center text-sm">
-                  <span className="text-green-600 font-medium">+5%</span>
-                  <span className="text-gray-500 ml-2">vs last month</span>
+                <p className="text-gray-600">Open Positions</p>
+              </motion.div>
+
+              {/* All Positions Card - Second */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md 
+                           transition-all duration-300 border border-gray-100"
+                onClick={() => setShowAllPositionsModal(true)}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Briefcase className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-semibold text-gray-800">
+                    {jobsData.totalPositions}
+                  </h3>
+                  <p className="text-gray-600">All Positions</p>
+                  <div className="flex items-center justify-between text-sm mt-2">
+                    <span className="text-green-600">
+                      {jobsData.openPositions} Open
+                    </span>
+                    <span className="text-gray-500">
+                      {jobsData.totalPositions - jobsData.openPositions} Closed
+                    </span>
+                  </div>
                 </div>
               </motion.div>
 
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
-                onClick={() => setShowHiringModal(true)}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                    <TrendingUp className="w-6 h-6 text-purple-600" />
+              {interviewerData ? (
+                // Show upcoming interviews card for interviewers
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                  onClick={() => setShowInterviewsModal(true)}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                      <Calendar className="w-6 h-6 text-purple-600" />
+                    </div>
                   </div>
-                </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">85%</h3>
-                <p className="text-gray-600 text-base">Hiring Rate</p>
-                <div className="mt-4 flex items-center text-sm">
-                  <span className="text-green-600 font-medium">+3%</span>
-                  <span className="text-gray-500 ml-2">vs last month</span>
-                </div>
-              </motion.div>
+                  <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                    {pendingInterviews.length}
+                  </h3>
+                  <p className="text-gray-600 text-base">Upcoming Interviews</p>
+                  <div className="mt-4 flex items-center text-sm">
+                    <span className="text-purple-600 font-medium">
+                      {interviewerData.interview_type} Interviewer
+                    </span>
+                  </div>
+                </motion.div>
+              ) : (
+                // Show hiring rate card for non-interviewers
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                  onClick={() => setShowHiringModal(true)}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                      <TrendingUp className="w-6 h-6 text-purple-600" />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-semibold text-gray-800 mb-2">85%</h3>
+                  <p className="text-gray-600 text-base">Hiring Rate</p>
+                  <div className="mt-4 flex items-center text-sm">
+                    <span className="text-green-600 font-medium">+3%</span>
+                    <span className="text-gray-500 ml-2">vs last month</span>
+                  </div>
+                </motion.div>
+              )}
 
               {/* Onboarding Card */}
               <motion.div
@@ -619,7 +775,7 @@ const Dashboard = () => {
             </div>
             
             {/* Recruitment Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Jobs by Grade */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
@@ -644,6 +800,14 @@ const Dashboard = () => {
                     plugins: {
                       legend: { display: false }
                     },
+                    layout: {
+                      padding: {
+                        top: 20,
+                        right: 20,
+                        bottom: 0,
+                        left: 10
+                      }
+                    },
                     scales: {
                       y: {
                         beginAtZero: true,
@@ -651,6 +815,7 @@ const Dashboard = () => {
                       }
                     }
                   }}
+                  style={{ maxHeight: '300px' }}
                 />
               </motion.div>
 
@@ -721,23 +886,26 @@ const Dashboard = () => {
                 />
               </motion.div>
 
-              {/* Jobs by Urgency */}
+              {/* Jobs by Solution Leads */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
-                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Urgency</h3>
+                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Solution Leads</h3>
                 <Doughnut
                   data={{
-                    labels: Object.keys(jobsData.byUrgency),
+                    labels: Object.keys(jobsData.bySolutionLead),
                     datasets: [{
-                      data: Object.values(jobsData.byUrgency),
+                      data: Object.values(jobsData.bySolutionLead),
                       backgroundColor: [
-                        'rgba(239, 68, 68, 0.8)',   // Red for Urgent
-                        'rgba(249, 115, 22, 0.8)',  // Orange for High
-                        'rgba(59, 130, 246, 0.8)',  // Blue for Normal
-                        'rgba(16, 185, 129, 0.8)',  // Green for Low
+                        'rgba(99, 102, 241, 0.8)',    // Indigo
+                        'rgba(147, 51, 234, 0.8)',    // Purple
+                        'rgba(59, 130, 246, 0.8)',    // Blue
+                        'rgba(16, 185, 129, 0.8)',    // Green
+                        'rgba(249, 115, 22, 0.8)',    // Orange
+                        'rgba(239, 68, 68, 0.8)',     // Red
+                        'rgba(236, 72, 153, 0.8)',    // Pink
                       ]
                     }]
                   }}
@@ -747,10 +915,22 @@ const Dashboard = () => {
                     plugins: {
                       legend: {
                         position: 'right',
-                        labels: { padding: 20 }
+                        labels: { 
+                          padding: 20,
+                          boxWidth: 14,
+                          font: {
+                            size: 11
+                          }
+                        }
                       }
-                    }
+                    },
+                    layout: {
+                      padding: 20
+                    },
+                    width: 600,
+                    height: 600
                   }}
+                  style={{ maxWidth: '600px', maxHeight: '600px' }}
                 />
               </motion.div>
             </div>
@@ -761,6 +941,11 @@ const Dashboard = () => {
           <PositionsModal />
           <OnboardingModal />
           <HiringModal />
+          <InterviewsModal
+            show={showInterviewsModal}
+            onClose={() => setShowInterviewsModal(false)}
+            interviews={pendingInterviews}
+          />
         </div>
       </div>
       

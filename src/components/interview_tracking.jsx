@@ -152,21 +152,21 @@ const RecruitingDashboard = () => {
       const dateTime = new Date(`${date}T${time}`);
       const stage = INTERVIEW_STAGES.find(s => s.id === stageId);
       
-      // Check if this is a final round and if there are existing final round interviews
-      if (stage.id === 'FINAL') {
-        const finalInterviews = selectedApplicant.interviews.filter(
-          interview => interview.stages?.[0]?.stage_id === 4
+      // Check for multiple interviews
+      if (['CULTURAL', 'TECHNICAL', 'FINAL'].includes(stage.id)) {
+        const stageInterviews = selectedApplicant.interviews.filter(
+          interview => interview.interviewer.interview_type === stageToType[stage.id]
         );
         
-        // Only allow maximum of 2 final interviews
-        if (finalInterviews.length >= 2) {
-          throw new Error('Maximum of 2 final round interviews are allowed');
+        // Only allow maximum of 2 interviews
+        if (stageInterviews.length >= 2) {
+          throw new Error(`Maximum of 2 ${stage.name} interviews are allowed`);
         }
         
         // If there's one interview, it must be completed before scheduling second
-        if (finalInterviews.length === 1 && 
-            !['pass', 'fail'].includes(finalInterviews[0].stages?.[0]?.result)) {
-          throw new Error('Please complete the first final round interview before scheduling another');
+        if (stageInterviews.length === 1 && 
+            !['pass', 'fail'].includes(stageInterviews[0].stages?.[0]?.result)) {
+          throw new Error(`Please complete the first ${stage.name} interview before scheduling another`);
         }
       }
 
@@ -205,7 +205,6 @@ const RecruitingDashboard = () => {
       return true;
     } catch (error) {
       console.error('Error scheduling interview:', error);
-      // Show more specific error message from the backend if available
       const errorMessage = error.response?.data?.message || error.message || 'Error scheduling interview. Please try again.';
       alert(errorMessage);
       return false;
@@ -351,6 +350,33 @@ const RecruitingDashboard = () => {
     return currentStage;
   };
 
+  // Add this new function to handle interview updates
+  const handleUpdateInterviewDetails = async (interviewId, stageId, date, time, interviewerId) => {
+    try {
+
+      console.log("date_time is ", `${date}T${time}`);
+      console.log("interviewer_id is ", interviewerId);
+      const response = await axios.patch(
+        `http://localhost:5000/api/interview/schedule-stage/${interviewId}/${stageId}`,
+        {
+          date_time: `${date}T${time}`,
+          interviewer_id: interviewerId
+        }
+      );
+
+      if (response.status === 200) {
+        // Refresh the data after successful update
+        await fetchData();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error updating interview details:', error);
+      alert('Failed to update interview details');
+      return false;
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
@@ -386,6 +412,7 @@ const RecruitingDashboard = () => {
         setSelectedInterview={setSelectedInterview}
         setShowNotes={setShowNotes}
         interviewQuestions={interviewQuestions}
+        onUpdateInterview={handleUpdateInterviewDetails}
       />
 
       {/* Modals */}
@@ -394,9 +421,11 @@ const RecruitingDashboard = () => {
           isOpen={showScheduler}
           onClose={() => setShowScheduler(false)}
           onSchedule={handleScheduleInterview}
+          onUpdateInterview={handleUpdateInterviewDetails}
           stageId={selectedStage}
           interviewers={interviewers}
           jobDetails={jobDetails}
+          selectedInterview={selectedInterview}
         />
       )}
 

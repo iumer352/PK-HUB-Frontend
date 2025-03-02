@@ -27,15 +27,14 @@ const Login = () => {
         const { user } = response.data.data;
         
         // Check user role
-        if (user.role === 'admin' || user.role === 'hr') {
+        if (user.role === 'admin' || user.role === 'hr' || user.role === 'interviewer') {
           // Store the token in localStorage
           localStorage.setItem('token', response.data.token);
-          // Store user data
+          // Store user info
           localStorage.setItem('user', JSON.stringify(user));
-          // Navigate to dashboard
           navigate('/dashboard');
         } else {
-          setError('You are not authorized to access this content');
+          setError('You do not have permissions to access this application');
           // Remove any existing tokens/data
           localStorage.removeItem('token');
           localStorage.removeItem('user');

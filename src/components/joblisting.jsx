@@ -706,6 +706,118 @@ ${jobPosting.keySkillsAndCompetencies}
         }
     };
 
+    // Function to get interview status for an applicant
+    const getApplicantInterviewStatus = (applicant) => {
+        if (!applicant.interviews || applicant.interviews.length === 0) {
+            return 'No Interview Scheduled';
+        }
+
+        if (applicant.interviews.some(interview => 
+            interview.stages?.some(stage => stage.result === 'fail'))) {
+            return 'Rejected';
+        }
+
+        if (applicant.interviews.some(interview => 
+            interview.stages?.some(stage => 
+                stage.stage_id === 4 && stage.result === 'pass' && 
+                stage.offer_status === 'pending'))) {
+            return 'Offer Stage';
+        }
+
+        if (applicant.offer_status === 'accepted') {
+            return 'Hired';
+        }
+
+        if (applicant.offer_status === 'rejected') {
+            return 'Offer Rejected';
+        }
+
+        // Get the current stage
+        let currentStageId = 1;
+        applicant.interviews.forEach(interview => {
+            if (interview.stages?.[0]) {
+                const stageId = interview.stages[0].stage_id;
+                if (stageId > currentStageId) {
+                    currentStageId = stageId;
+                }
+            }
+        });
+
+        switch (currentStageId) {
+            case 1: return 'In HR Round';
+            case 2: return 'In Cultural Round';
+            case 3: return 'In Technical Round';
+            case 4: return 'In Final Round';
+            default: return 'No Interview Scheduled';
+        }
+    };
+
+    // Function to determine the latest round across all applicants for a job
+    const getLatestRoundForJob = (applicants) => {
+        // If no applicants or no interviews scheduled for any applicant
+        if (!applicants.length || applicants.every(applicant => 
+            getApplicantInterviewStatus(applicant) === 'No Interview Scheduled')) {
+            return 'Advertisement';
+        }
+
+        // If any applicant is hired, job is completed
+        if (applicants.some(applicant => 
+            getApplicantInterviewStatus(applicant) === 'Hired')) {
+            return 'Completed';
+        }
+
+        const stageOrder = {
+            'No Interview Scheduled': 0,
+            'In HR Round': 1,
+            'In Cultural Round': 2,
+            'In Technical Round': 3,
+            'In Final Round': 4,
+            'Offer Stage': 5,
+            'Hired': 6,
+            'Offer Rejected': 7,
+            'Rejected': 8
+        };
+
+        let latestStage = 'No Interview Scheduled';
+        let highestStageNumber = -1;
+
+        applicants.forEach(applicant => {
+            const status = getApplicantInterviewStatus(applicant);
+            const stageNumber = stageOrder[status];
+
+            // Only update if it's an active stage (not rejected)
+            if (stageNumber > highestStageNumber && 
+                !['Rejected', 'Offer Rejected'].includes(status)) {
+                highestStageNumber = stageNumber;
+                latestStage = status;
+            }
+        });
+
+        return latestStage;
+    };
+
+    // Function to update job status
+    const updateJobStatus = async (jobId, applicants) => {
+        try {
+            const jobStatus = getLatestRoundForJob(applicants);
+            
+            await axios.patch(`http://localhost:5000/api/jobs/${jobId}/jobStatus`, {
+                jobStatus: jobStatus
+            });
+
+            console.log(`Updated job ${jobId} status to: ${jobStatus}`);
+        } catch (error) {
+            console.error('Error updating job status:', error);
+        }
+    };
+
+    // Update job status whenever applicants change
+    useEffect(() => {
+        if (jobId && applicants && applicants.length > 0) {
+            updateJobStatus(jobId, applicants);
+        }
+    }, [jobId, applicants]);
+
     return (
         <div className="min-h-screen bg-gray-100">
             <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

@@ -260,7 +260,7 @@ const JobPosting = () => {
 
                                     <div className="space-y-1">
                                         <label className="block text-sm font-medium text-gray-700">
-                                            Hiring Manager
+                                            Solution Lead
                                         </label>
                                         {loadingManagers ? (
                                             <div className="animate-pulse bg-gray-200 h-10 rounded"></div>
@@ -273,7 +273,7 @@ const JobPosting = () => {
                                                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                                 required
                                             >
-                                                <option value="">Select Hiring Manager</option>
+                                                <option value="">Select Solution Lead</option>
                                                 {hiringManagers.map((manager) => (
                                                     <option key={manager.id} value={manager.name}>
                                                         {manager.name}

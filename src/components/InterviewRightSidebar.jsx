@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Briefcase, Calendar, Clock, User, ChevronDown, Lock, Code, DollarSign } from 'lucide-react';
+import { Mail, Briefcase, Calendar, Clock, User, ChevronDown, Lock, Code, DollarSign, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import HRResultModal from './modals/HRResultModal';
 import OfferLetterModal from './modals/OfferLetterModal';
+import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmationModal from './modals/ConfirmationModal';
+import OnboardSuccessModal from './modals/OnboardSuccessModal';
 
 const InterviewRightSidebar = ({ 
   selectedApplicant,
@@ -32,6 +35,7 @@ const InterviewRightSidebar = ({
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerStatus, setOfferStatus] = useState(null);
   const [showQuestions, setShowQuestions] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Debug log for job details and interview questions
   useEffect(() => {
@@ -44,9 +48,9 @@ const InterviewRightSidebar = ({
 
   // Map stage names to their corresponding interview types
   const stageToType = {
-    'HR': 'HR',
-    'TECHNICAL': 'Technical',
+    'HR': 'HR',  
     'CULTURAL': 'Cultural', 
+    'TECHNICAL': 'Technical',
     'FINAL': 'Final',
     'OFFER': 'Offer'
   };
@@ -57,8 +61,8 @@ const InterviewRightSidebar = ({
   // Map stage names to their corresponding icons
   const stageIcons = {
     'HR': User,
-    'TECHNICAL': Code,
     'CULTURAL': ChevronDown,
+    'TECHNICAL': Code,
     'FINAL': Lock,
     'OFFER': DollarSign
   };
@@ -126,6 +130,7 @@ const InterviewRightSidebar = ({
 
   // Handle onboard button click
   const handleOnboard = async () => {
+    console.log('Onboard function called');
     try {
       const response = await axios.post('http://localhost:5000/api/employees/', {
         name: selectedApplicant.name,
@@ -136,12 +141,13 @@ const InterviewRightSidebar = ({
         grade: jobDetails.grade
       });
 
+      console.log('Employee creation response:', response);
+
       if (response.status === 201) {
         setOnboardingSuccess(true);
-        // Update applicant status to reflect onboarding completion
-        await axios.patch(`http://localhost:5000/api/applicant/${selectedApplicant.id}/status`, {
-          status: 'onboarded'
-        });
+        
+        console.log('Setting show success modal to true');
+        setShowSuccessModal(true); // Show success modal
       }
     } catch (error) {
       console.error('Error creating employee:', error);
@@ -170,37 +176,32 @@ const InterviewRightSidebar = ({
   useEffect(() => {
     if (!selectedApplicant?.interviews) return;
 
-    console.log('Selected Applicant:', selectedApplicant);
-    console.log('Interviews:', selectedApplicant.interviews);
+    console.log('Processing Interviews:', selectedApplicant.interviews);
     
     const newStageResults = {};
-    let hasChanges = false;
     
     selectedApplicant.interviews.forEach((interview) => {
       if (!interview.stages || interview.stages.length === 0) {
-        console.warn('No stages found for interview:', interview);
+        console.log('No stages found for interview:', interview);
         return;
       }
       
       const stage = interview.stages[0];
-      const currentResult = stageResults[interview.id]?.result;
-      const newResult = stage.result || 'pending';
-      
-      if (currentResult !== newResult) {
-        hasChanges = true;
-      }
+      console.log('Processing stage:', {
+        interviewId: interview.id,
+        stage,
+        result: stage.result || 'pending'
+      });
       
       newStageResults[interview.id] = {
-        result: newResult,
+        result: stage.result || 'pending',
         completed_at: stage.completed_at
       };
     });
 
-    // Only update if there are actual changes
-    if (hasChanges) {
-      setStageResults(newStageResults);
-    }
-  }, [selectedApplicant]); // Only depend on selectedApplicant
+    console.log('New Stage Results:', newStageResults);
+    setStageResults(newStageResults);
+  }, [selectedApplicant]);
 
   console.log('Current stageResults:', stageResults);
 
@@ -219,24 +220,67 @@ const InterviewRightSidebar = ({
     return stageResults[interview?.id]?.result || 'pending';
   };
 
-  // Modify the canScheduleAnotherFinal function
-  const canScheduleAnotherFinal = () => {
-    const finalInterviews = selectedApplicant?.interviews?.filter(
-      interview => interview.interviewer.interview_type === 'Final'
-    ) || [];
+  // Add this function to check if we can schedule another interview for a stage
+  const canScheduleAnotherInterview = (stage, interviews) => {
+    // Get all interviews for this stage
+    const stageInterviews = interviews.filter(interview => 
+      interview.interviewer.interview_type === stageToType[stage]
+    );
 
-    // Can schedule if no interviews yet
-    if (finalInterviews.length === 0) return true;
+    // For Cultural, Technical, and Final rounds, allow up to 2 interviews
+    if (['CULTURAL', 'TECHNICAL', 'FINAL'].includes(stage)) {
+      // If no interviews yet, can schedule
+      if (stageInterviews.length === 0) return true;
 
-    // Can schedule second interview if first one is completed and total is less than 2
-    if (finalInterviews.length === 1) {
-      return finalInterviews[0].stages?.[0]?.result === 'pass' || 
-             finalInterviews[0].stages?.[0]?.result === 'fail';
+      // If one interview exists, check if it's completed before allowing second
+      if (stageInterviews.length === 1) {
+        return ['pass', 'fail'].includes(stageResults[stageInterviews[0].id]?.result);
+      }
+
+      // Don't allow more than 2 interviews
+      return stageInterviews.length < 2;
     }
 
-    // Cannot schedule more than 2 final interviews
-    return false;
+    // For other stages (HR, OFFER), only allow one interview
+    return stageInterviews.length === 0;
   };
+
+  // Function to determine the latest stage
+  const getLatestStage = (interviews) => {
+    let latestStage = 'HR'; // Default to HR
+    
+    for (const stage of stageOrder) {
+      const interview = interviews?.find(i => 
+        i.interviewer.interview_type === stageToType[stage]
+      );
+      
+      // If no interview or pending result, this is the current stage
+      if (!interview || !stageResults[interview.id]?.result) {
+        return stage;
+      }
+      
+      // If interview failed, this is the current stage
+      if (stageResults[interview.id]?.result === 'fail') {
+        return stage;
+      }
+      
+      // If interview passed, continue to next stage
+      if (stageResults[interview.id]?.result === 'pass') {
+        latestStage = stage;
+        // Continue checking next stages
+      }
+    }
+    
+    return latestStage;
+  };
+
+  // Set active stage to latest stage only when applicant changes, not on every interview update
+  useEffect(() => {
+    if (selectedApplicant?.interviews) {
+      const latestStage = getLatestStage(selectedApplicant.interviews);
+      setActiveStage(latestStage);
+    }
+  }, [selectedApplicant?.id]); // Only update when applicant changes
 
   if (!selectedApplicant) {
     return (
@@ -352,7 +396,8 @@ const InterviewRightSidebar = ({
             {showOnboardButton && (
               <button
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevent column click event
+                  e.preventDefault();
+                  console.log('Onboard button clicked');
                   handleOnboard();
                 }}
                 className="absolute top-full mt-2 px-4 py-1 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
@@ -522,7 +567,21 @@ const InterviewRightSidebar = ({
                       Update Result
                     </button>
 
-                    {/* Show Proceed button if interview is passed and not the final stage */}
+                    {/* Only show Update Interview Details when status is pending */}
+                    {(stageResults[interview.id]?.result === 'pending') && (
+                      <button
+                        onClick={() => {
+                          setSelectedInterview(interview);
+                          setSelectedStage(interview.stages[0].stage_id);
+                          setShowScheduler(true);
+                        }}
+                        className="font-medium px-4 py-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                      >
+                        Update Interview Details
+                      </button>
+                    )}
+
+                    {/* Show Move to Next Round button if interview is passed and not the final stage */}
                     {stageResults[interview.id]?.result === 'pass' && 
                      stageOrder.indexOf(activeStage) < stageOrder.length - 1 && (
                       <button
@@ -531,14 +590,11 @@ const InterviewRightSidebar = ({
                           const nextStage = stageOrder[currentStageIndex + 1];
                           if (nextStage) {
                             setActiveStage(nextStage);
-                            // Open scheduler for next stage
-                            setSelectedStage(nextStage);
-                            setShowScheduler(true);
                           }
                         }}
                         className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       >
-                        Schedule {stageOrder[stageOrder.indexOf(activeStage) + 1]} Interview
+                        Move to {stageOrder[stageOrder.indexOf(activeStage) + 1]} Round
                       </button>
                     )}
 
@@ -546,7 +602,11 @@ const InterviewRightSidebar = ({
                     {stageResults[interview.id]?.result === 'pass' && 
                      activeStage === stageOrder[stageOrder.length - 1] && (
                       <button
-                        onClick={handleOnboard}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          console.log('Onboard button clicked');
+                          handleOnboard();
+                        }}
                         className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                       >
                         Proceed to Onboarding
@@ -560,20 +620,35 @@ const InterviewRightSidebar = ({
         </div>
       </div>
 
-      {/* Add a Schedule Another Interview button for Final round */}
-      {activeStage === 'FINAL' && canScheduleAnotherFinal() && (
-        <button
-          onClick={() => {
-            setSelectedStage('FINAL');
-            setShowScheduler(true);
-          }}
-          className="mt-4 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Schedule {selectedApplicant?.interviews?.some(i => i.interviewer.interview_type === 'Final') 
-            ? 'Second Final Interview' 
-            : 'Final Interview'}
-        </button>
-      )}
+      {/* Show interview cards */}
+      {selectedApplicant?.interviews
+        .filter(interview => interview.interviewer.interview_type === stageToType[activeStage])
+        .map(interview => (
+          <div key={interview.id}>
+            {/* ... existing interview card content ... */}
+
+            {/* Show Schedule Another button only after first interview is completed with result */}
+            {['CULTURAL', 'TECHNICAL', 'FINAL'].includes(activeStage) &&
+              stageResults[interview.id]?.result && // Check if first interview has result
+              canScheduleAnotherInterview(activeStage, selectedApplicant?.interviews) && (
+              <button
+                onClick={() => {
+                  setSelectedStage(activeStage);
+                  setShowScheduler(true);
+                }}
+                className="mt-4 mb-6 w-full px-4 py-2 text-sm font-medium text-blue-700 
+                         bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors 
+                         focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                {activeStage === 'FINAL' 
+                  ? 'Schedule Second Final Interview'
+                  : `Schedule Another ${activeStage} Interview`}
+              </button>
+            )}
+          </div>
+        ))}
+
+     
 
       {/* AI Interview Questions Section (Beta) */}
       {interviewQuestions && (
@@ -693,6 +768,14 @@ const InterviewRightSidebar = ({
           }
         }}
         applicantId={selectedApplicant?.id}
+      />
+
+      {/* Success Modal */}
+      <OnboardSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        jobId={jobDetails?.id}
+        employeeName={selectedApplicant?.name}
       />
     </div>
   );

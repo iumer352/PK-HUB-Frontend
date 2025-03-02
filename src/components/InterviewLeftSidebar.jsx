@@ -116,15 +116,15 @@ const InterviewLeftSidebar = ({
           {/* Interview Rounds */}
           <div className="space-y-4">
             {INTERVIEW_STAGES.map((stage) => {
-              const stageIdMap = { 'HR': 1, 'TECHNICAL': 2, 'CULTURAL': 3, 'FINAL': 4, 'OFFER': 5 };
+              const stageIdMap = { 'HR': 1, 'TECHNICAL': 3, 'CULTURAL': 2, 'FINAL': 4, 'OFFER': 5 };
               const numericStageId = stageIdMap[stage.id];
               
               // Get all interviews for this stage
-              const stageInterviews = applicant.interviews.filter(i => 
+              const stageInterviews = applicant.interviews?.filter(i => 
                 i.stages && i.stages.length > 0 && i.stages[0].stage_id === numericStageId
-              );
+              ) || [];
 
-              const status = getStageStatus(applicant.interviews, stage.id);
+              const status = getStageStatus(applicant.interviews || [], stage.id);
               const isHRStage = stage.id === 'HR';
               const isOfferStage = stage.id === 'OFFER';
               const isFinalStage = stage.id === 'FINAL';
@@ -139,18 +139,24 @@ const InterviewLeftSidebar = ({
                       : 'border-l-gray-300 bg-gray-50'
                   }`}
                 >
-                  {/* For non-final stages, show compact header */}
+                  {/* Show stage name for all stages */}
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-800">{stage.name}</h4>
+                    {status === 'completed' && (
+                      <span className="text-sm text-green-600 font-medium">Completed</span>
+                    )}
+                  </div>
+
+                  {/* For non-final stages, show interviewer and feedback */}
                   {!isFinalStage && stageInterviews.map((interview) => {
                     const interviewKey = `${interview.id}-${interview.stages[0].stage_id}`;
                     const feedback = stageFeedback[interviewKey];
                     
                     return (
-                      <div key={interview.id} className="space-y-2">
-                        <div className="flex items-center justify-between mb-2">
+                      <div key={interview.id} className="space-y-2 mt-2">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            <h4 className="font-medium text-gray-800">{stage.name}</h4>
-                            <span className="mx-2 text-gray-400">•</span>
-                            <span className="text-sm text-gray-600">{interview.interviewer.name}</span>
+                            <span className="text-sm text-gray-600">Interviewer: {interview.interviewer.name}</span>
                           </div>
                           <span>
                             {getResultIcon(feedback?.result)}
@@ -170,13 +176,6 @@ const InterviewLeftSidebar = ({
                   {/* For Final Stage, keep the original detailed format */}
                   {isFinalStage && (
                     <>
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-800">{stage.name}</h4>
-                        {status === 'completed' && (
-                          <span className="text-sm text-green-600 font-medium">Completed</span>
-                        )}
-                      </div>
-                      
                       {stageInterviews.length > 0 && (
                         <div className="space-y-4">
                           {stageInterviews.map((interview, index) => {
@@ -191,21 +190,15 @@ const InterviewLeftSidebar = ({
                                     : feedback?.result === 'fail'
                                     ? 'bg-red-50'
                                     : 'bg-white'
-                                } border border-gray-200`}
+                                } border border-gray-200 mt-2`}
                               >
-                                {/* Keep existing Final round interview display */}
                                 <div className="flex items-center justify-between mb-2">
-                                  <span className="font-medium text-gray-700">
-                                    Final Interview {index + 1}
+                                  <span className="text-sm text-gray-600">
+                                    Interviewer: {interview.interviewer.name}
                                   </span>
                                   <span className="ml-2">
                                     {getResultIcon(feedback?.result)}
                                   </span>
-                                </div>
-
-                                <div className="text-sm text-gray-600 mb-2">
-                                  <span className="font-medium">Interviewer: </span>
-                                  {interview.interviewer.name}
                                 </div>
 
                                 {feedback?.feedback && (

@@ -19,6 +19,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ProtectedRoute from './components/protectedroutes';   // Import your ProtectedRoute
 import AdminCenter from './components/AdminCenter';
+import Settings from './components/Settings';
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
             <Route path="/timesheet/:employeeId" element={<MonthlyTimesheet />} />
             <Route path="/edit-job/:jobId" element={<EditJob />} />
             <Route path="/admin-center" element={<AdminCenter />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>
 

@@ -2,12 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, User, AlertCircle, CheckCircle } from 'lucide-react';
 import axios from 'axios';
+import Modal from './modals/Modal';
+import PasswordChangeModal from './modals/PasswordChangeModal';
+import RegisterUserModal from './modals/RegisterUserModal';
+import ConfirmationModal from './modals/ConfirmationModal';
+import { useNavigate } from 'react-router-dom';
 
 const AdminCenter = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [formValues, setFormValues] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'user'
+  });
+  const [passwordChange, setPasswordChange] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchUsers();
@@ -72,6 +92,70 @@ const AdminCenter = () => {
     }
   };
 
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        'http://localhost:5000/api/auth/register',
+        formValues,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      setSuccessMessage('User registered successfully');
+      setShowRegisterModal(false);
+      fetchUsers(); // Refresh users list
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to register user');
+    }
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage('');
+
+    if (passwordChange.newPassword !== passwordChange.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(
+        'http://localhost:5000/api/auth/updatePassword',
+        {
+          currentPassword: passwordChange.currentPassword,
+          newPassword: passwordChange.newPassword
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        setSuccessMessage('Password updated successfully');
+        setShowPasswordModal(false);
+        setPasswordChange({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setShowConfirmation(true);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update password');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -85,13 +169,29 @@ const AdminCenter = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-indigo-100 rounded-xl">
-              <Shield className="w-8 h-8 text-indigo-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-indigo-100 rounded-xl">
+                <Shield className="w-8 h-8 text-indigo-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Admin Center</h1>
+                <p className="text-gray-500">Manage user roles and permissions</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Admin Center</h1>
-              <p className="text-gray-500">Manage user roles and permissions</p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setShowRegisterModal(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Register New User
+              </button>
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Change Password
+              </button>
             </div>
           </div>
         </div>
@@ -153,6 +253,7 @@ const AdminCenter = () => {
                     >
                       <option value="user">User</option>
                       <option value="hr">HR</option>
+                      <option value="interviewer">Interviewer</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>
@@ -165,6 +266,34 @@ const AdminCenter = () => {
             )}
           </div>
         </div>
+
+        {showPasswordModal && (
+          <PasswordChangeModal
+            show={showPasswordModal}
+            onClose={() => setShowPasswordModal(false)}
+            passwordChange={passwordChange}
+            setPasswordChange={setPasswordChange}
+            onSubmit={handlePasswordChange}
+          />
+        )}
+        {showRegisterModal && (
+          <RegisterUserModal
+            show={showRegisterModal}
+            onClose={() => setShowRegisterModal(false)}
+            formValues={formValues}
+            setFormValues={setFormValues}
+            onSubmit={handleRegister}
+          />
+        )}
+
+        {showConfirmation && (
+          <ConfirmationModal
+            show={showConfirmation}
+            onClose={() => setShowConfirmation(false)}
+            onConfirm={handleSignOut}
+            message="Your password has been updated successfully. Please sign in again with your new password."
+          />
+        )}
       </div>
     </div>
   );
