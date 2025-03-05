@@ -298,29 +298,29 @@ const InterviewRightSidebar = ({
   );
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+    <div className="w-2/3 bg-white p-4 lg:p-3 xl:p-6 2xl:p-8 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-sm p-4 lg:p-3 xl:p-6 2xl:p-8 mb-6 lg:mb-4 xl:mb-8 2xl:mb-10">
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            <h2 className="text-xl lg:text-base xl:text-3xl 2xl:text-4xl font-bold text-gray-800 mb-2 lg:mb-1.5 xl:mb-3">
               {selectedApplicant.name}
             </h2>
-            <div className="space-y-2">
-              <p className="text-gray-600 flex items-center">
-                <Mail className="w-4 h-4 mr-2 text-gray-400" />
+            <div className="space-y-2 lg:space-y-1.5 xl:space-y-3">
+              <p className="text-sm lg:text-[10px] xl:text-lg 2xl:text-xl text-gray-600 flex items-center">
+                <Mail className="w-4 lg:w-3 xl:w-6 2xl:w-7 h-4 lg:h-3 xl:h-6 2xl:h-7 mr-2 lg:mr-1.5 text-gray-400" />
                 {selectedApplicant.email}
               </p>
-              <p className="text-gray-600 flex items-center">
-                <Briefcase className="w-4 h-4 mr-2 text-gray-400" />
+              <p className="text-sm lg:text-[10px] xl:text-lg 2xl:text-xl text-gray-600 flex items-center">
+                <Briefcase className="w-4 lg:w-3 xl:w-6 2xl:w-7 h-4 lg:h-3 xl:h-6 2xl:h-7 mr-2 lg:mr-1.5 text-gray-400" />
                 Applied for: {jobDetails?.title || 'Position Not Available'}
               </p>
             </div>
           </div>
-          <div className="relative mt-4">
 
-            {/* Stage Selection Dropdown */}
+          {/* Stage Selection Dropdown */}
+          <div className="relative mt-4 lg:mt-3">
             {showStageDropdown && availableStages.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+              <div className="absolute top-full left-0 right-0 mt-2 lg:mt-1.5 bg-white rounded-lg shadow-lg border border-gray-200 py-2 lg:py-1.5 xl:py-3 z-50">
                 {availableStages.map(stage => (
                   <button
                     key={stage.id}
@@ -329,9 +329,16 @@ const InterviewRightSidebar = ({
                       setShowScheduler(true);
                       setShowStageDropdown(false);
                     }}
-                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2"
+                    className="w-full px-3 lg:px-2 xl:px-5 2xl:px-6 
+                             py-2 lg:py-1.5 xl:py-3 2xl:py-4 
+                             text-sm lg:text-[10px] xl:text-lg 2xl:text-xl 
+                             text-left hover:bg-gray-50 
+                             flex items-center space-x-2 lg:space-x-1.5"
                   >
-                    <div className={`w-2 h-2 rounded-full ${getStageColor(stage.id)}`} />
+                    <div className={`w-2 lg:w-1.5 xl:w-3 2xl:w-3.5 
+                                  h-2 lg:h-1.5 xl:h-3 2xl:h-3.5 
+                                  rounded-full ${getStageColor(stage.id)}`} 
+                    />
                     <span>{stage.name}</span>
                   </button>
                 ))}
@@ -449,7 +456,7 @@ const InterviewRightSidebar = ({
         <div className="space-y-6">
           {!canProceedToStage(activeStage) ? (
             <div className="text-center py-8 bg-white rounded-xl border-2 border-dashed border-gray-200">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+              <div className="w-16 h-16 lg:w-12 lg:h-12 xl:w-16 xl:h-16 2xl:w-16 2xl:h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                 <Lock className="w-8 h-8 text-gray-400" />
               </div>
               <p className="text-gray-500 text-lg">Complete previous stages to unlock {activeStage} round</p>
@@ -652,28 +659,32 @@ const InterviewRightSidebar = ({
 
       {/* AI Interview Questions Section (Beta) */}
       {interviewQuestions && (
-        <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
+        <div className="mt-6 lg:mt-4 xl:mt-8 2xl:mt-10 
+                      bg-white rounded-xl shadow-sm 
+                      p-4 lg:p-3 xl:p-6 2xl:p-8">
           <button 
             onClick={() => setShowQuestions(!showQuestions)}
-            className="w-full flex items-center justify-between mb-4 focus:outline-none"
+            className="w-full flex items-center justify-between mb-3 lg:mb-2 xl:mb-4 focus:outline-none"
           >
             <div className="flex items-center">
-              <h3 className="text-xl font-semibold text-gray-800">
+              <h3 className="text-lg lg:text-base xl:text-2xl 2xl:text-3xl font-semibold text-gray-800">
                 AI Suggested Interview Questions
               </h3>
-              <span className="ml-2 px-2 py-1 text-xs font-medium text-purple-600 bg-purple-100 rounded-full">
+              <span className="ml-2 lg:ml-1.5 px-2 lg:px-1.5 py-1 lg:py-0.5 
+                           text-xs lg:text-[10px] xl:text-base 2xl:text-lg 
+                           font-medium text-purple-600 bg-purple-100 rounded-full">
                 Beta
               </span>
             </div>
             <ChevronDown 
-              className={`w-5 h-5 text-gray-500 transform transition-transform duration-200 ${
-                showQuestions ? 'rotate-180' : ''
-              }`}
+              className={`w-5 lg:w-4 xl:w-6 2xl:w-7 h-5 lg:h-4 xl:h-6 2xl:h-7 
+                       text-gray-500 transform transition-transform duration-200 
+                       ${showQuestions ? 'rotate-180' : ''}`}
             />
           </button>
 
           {showQuestions && (
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 lg:space-y-3 mt-4 lg:mt-3">
               {(() => {
                 let questions = [];
                 switch(activeStage) {
@@ -694,17 +705,27 @@ const InterviewRightSidebar = ({
                 }
 
                 return questions.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-3 lg:space-y-2">
                     {questions.map((question, index) => (
                       <div 
                         key={index}
-                        className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors"
+                        className="p-4 lg:p-3 xl:p-5 2xl:p-6 
+                                 bg-gray-50 rounded-lg border border-gray-200 
+                                 hover:border-purple-300 transition-colors"
                       >
                         <div className="flex items-start">
-                          <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-purple-100 text-purple-600 text-sm font-medium mr-3">
+                          <span className="flex-shrink-0 w-6 lg:w-5 xl:w-7 2xl:w-8 
+                                         h-6 lg:h-5 xl:h-7 2xl:h-8 
+                                         flex items-center justify-center 
+                                         rounded-full bg-purple-100 
+                                         text-purple-600 
+                                         text-sm lg:text-xs xl:text-base 2xl:text-lg 
+                                         font-medium mr-3 lg:mr-2">
                             {index + 1}
                           </span>
-                          <p className="text-gray-700">{question}</p>
+                          <p className="text-sm lg:text-[10px] xl:text-base 2xl:text-lg text-gray-700">
+                            {question}
+                          </p>
                         </div>
                       </div>
                     ))}

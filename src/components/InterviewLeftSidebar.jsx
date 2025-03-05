@@ -105,16 +105,17 @@ const InterviewLeftSidebar = ({
   };
 
   return (
-    <div className="w-1/3 bg-white p-6 overflow-y-auto border-r border-gray-200 shadow-sm">
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-bold text-gray-800">Interview Progress</h2>
+    <div className="w-1/3 bg-white p-4 lg:p-3 xl:p-6 2xl:p-8 overflow-y-auto border-r border-gray-200 shadow-sm">
+      <div className="flex items-center justify-between mb-6 lg:mb-4 xl:mb-8 2xl:mb-10">
+        <h2 className="text-xl lg:text-base xl:text-3xl 2xl:text-4xl font-bold text-gray-800">
+          Interview Progress
+        </h2>
       </div>
 
       {applicantsToShow.map((applicant) => (
         <div key={applicant.id}>
-
           {/* Interview Rounds */}
-          <div className="space-y-4">
+          <div className="space-y-3 lg:space-y-2 xl:space-y-5 2xl:space-y-6">
             {INTERVIEW_STAGES.map((stage) => {
               const stageIdMap = { 'HR': 1, 'TECHNICAL': 3, 'CULTURAL': 2, 'FINAL': 4, 'OFFER': 5 };
               const numericStageId = stageIdMap[stage.id];
@@ -131,7 +132,7 @@ const InterviewLeftSidebar = ({
 
               return (
                 <div key={stage.id} 
-                  className={`p-4 rounded-lg border-l-4 ${
+                  className={`p-3 lg:p-2 xl:p-5 2xl:p-6 rounded-lg border-l-4 ${
                     status === 'completed' 
                       ? 'border-l-green-500 bg-green-50' 
                       : status === 'current'
@@ -139,11 +140,14 @@ const InterviewLeftSidebar = ({
                       : 'border-l-gray-300 bg-gray-50'
                   }`}
                 >
-                  {/* Show stage name for all stages */}
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-800">{stage.name}</h4>
+                  <div className="flex items-center justify-between mb-2 lg:mb-1.5 xl:mb-3">
+                    <h4 className="text-sm lg:text-xs xl:text-lg 2xl:text-xl font-medium text-gray-800">
+                      {stage.name}
+                    </h4>
                     {status === 'completed' && (
-                      <span className="text-sm text-green-600 font-medium">Completed</span>
+                      <span className="text-xs lg:text-[10px] xl:text-base 2xl:text-lg text-green-600 font-medium">
+                        Completed
+                      </span>
                     )}
                   </div>
 
@@ -153,18 +157,18 @@ const InterviewLeftSidebar = ({
                     const feedback = stageFeedback[interviewKey];
                     
                     return (
-                      <div key={interview.id} className="space-y-2 mt-2">
+                      <div key={interview.id} className="space-y-2 lg:space-y-1.5 mt-2 lg:mt-1.5 xl:mt-3">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <span className="text-sm text-gray-600">Interviewer: {interview.interviewer.name}</span>
-                          </div>
-                          <span>
+                          <span className="text-xs lg:text-[10px] xl:text-base 2xl:text-lg text-gray-600">
+                            Interviewer: {interview.interviewer.name}
+                          </span>
+                          <span className="w-5 lg:w-4 xl:w-7 2xl:w-8 h-5 lg:h-4 xl:h-7 2xl:h-8">
                             {getResultIcon(feedback?.result)}
                           </span>
                         </div>
 
                         {feedback?.feedback && (
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs lg:text-[10px] xl:text-base 2xl:text-lg text-gray-600">
                             <span className="font-medium">Feedback: </span>
                             {feedback.feedback}
                           </div>
@@ -217,7 +221,9 @@ const InterviewLeftSidebar = ({
 
                   {/* Keep HR and Offer stage details */}
                   {isHRStage && hrData && (
-                    <div className="mt-3 space-y-2 text-sm text-gray-600 border-t border-gray-200 pt-3">
+                    <div className="mt-3 lg:mt-2 xl:mt-3 space-y-2 lg:space-y-1.5 xl:space-y-2 
+                                  text-xs lg:text-[10px] xl:text-base 2xl:text-lg text-gray-600 
+                                  border-t border-gray-200 pt-3 lg:pt-2 xl:pt-3">
                       <div className="flex items-center justify-between">
                         <span>Current Salary:</span>
                         <span className="font-medium">{formatSalary(hrData.current_salary)}</span>
@@ -242,8 +248,10 @@ const InterviewLeftSidebar = ({
                   )}
 
                   {isOfferStage && offerStatus && (
-                    <div className="mt-3 space-y-2 text-sm border-t border-gray-200 pt-3">
-                      <div className={`px-3 py-2 rounded-lg ${getOfferStatusColor(offerStatus)}`}>
+                    <div className="mt-3 lg:mt-2 xl:mt-3 space-y-2 lg:space-y-1.5 xl:space-y-2 
+                                  text-xs lg:text-[10px] xl:text-base 2xl:text-lg 
+                                  border-t border-gray-200 pt-3 lg:pt-2 xl:pt-3">
+                      <div className={`px-3 lg:px-2 xl:px-3 py-2 lg:py-1.5 xl:py-2 rounded-lg ${getOfferStatusColor(offerStatus)}`}>
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Offer Status:</span>
                           <span className="font-medium">

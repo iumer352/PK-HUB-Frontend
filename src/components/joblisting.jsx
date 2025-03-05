@@ -15,7 +15,7 @@ const ApplicantRow = React.memo(({
     // Function to store AI result in database
     const storeAiResult = async (result) => {
         try {
-            await axios.put(`c/api/applicant/${applicant.id}/ai-result`, {
+            await axios.put(`http://localhost:5000/api/applicant/${applicant.id}/ai-result`, {
                 ai_result: result
             });
         } catch (error) {
@@ -139,22 +139,36 @@ const ApplicantRow = React.memo(({
             className="hover:bg-gray-50 transition-colors cursor-pointer"
             onClick={(e) => handleApplicantClick(e, applicant.id)}
         >
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                         py-4 lg:py-3 xl:py-3 2xl:py-4 
+                         whitespace-nowrap 
+                         text-sm lg:text-sm xl:text-sm 2xl:text-base text-gray-500">
                 {applicant.name}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                         py-4 lg:py-3 xl:py-3 2xl:py-4 
+                         whitespace-nowrap 
+                         text-sm lg:text-sm xl:text-sm 2xl:text-base text-gray-500">
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         viewResume(applicant.id);
                     }}
-                    className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                    className="px-3 lg:px-3 xl:px-3 2xl:px-4 
+                             py-1 lg:py-1 xl:py-1 2xl:py-1.5 
+                             text-sm lg:text-sm xl:text-sm 2xl:text-base 
+                             font-medium text-white bg-green-600 
+                             rounded-md hover:bg-green-700"
                 >
                     View Resume
                 </button>
             </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                         py-4 lg:py-3 xl:py-3 2xl:py-4 whitespace-nowrap">
+                <span className={`px-2 lg:px-2 xl:px-2 2xl:px-2.5 
+                               py-1 lg:py-1 xl:py-1 2xl:py-1 
+                               inline-flex text-xs lg:text-xs xl:text-xs 2xl:text-sm 
+                               leading-5 font-semibold rounded-full ${
                     interviewStatus === 'Rejected' || interviewStatus === 'Offer Rejected' 
                         ? 'bg-red-100 text-red-800' 
                         : interviewStatus === 'Hired' 
@@ -166,17 +180,26 @@ const ApplicantRow = React.memo(({
                     {interviewStatus}
                 </span>
             </td>
-            <td 
-                className="px-6 py-4 whitespace-nowrap text-sm font-medium cursor-help relative"
+            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                         py-4 lg:py-3 xl:py-3 2xl:py-4 
+                         whitespace-nowrap 
+                         text-sm lg:text-sm xl:text-sm 2xl:text-base 
+                         font-medium cursor-help relative"
                 onMouseEnter={(e) => handleScoreHover(e, applicant.resume)}
                 onMouseLeave={() => setShowScoreDetails(null)}
             >
-                <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800">
+                <span className="px-3 lg:px-3 xl:px-3 2xl:px-3 
+                               py-1 lg:py-1 xl:py-1 2xl:py-1.5 
+                               rounded-full bg-indigo-100 text-indigo-800">
                     {score !== null && !isNaN(score) ? `${Number(score).toFixed(1)}%` : 'N/A'}
                 </span>
             </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                         py-4 lg:py-3 xl:py-3 2xl:py-4 whitespace-nowrap">
+                <span className={`px-2 lg:px-2 xl:px-2 2xl:px-2.5 
+                               py-1 lg:py-1 xl:py-1 2xl:py-1 
+                               inline-flex text-xs lg:text-xs xl:text-xs 2xl:text-sm 
+                               leading-5 font-semibold rounded-full ${
                     aiStatus === 'rejected' 
                         ? 'bg-red-100 text-red-800' 
                         : aiStatus === 'shortlisted'
@@ -186,17 +209,32 @@ const ApplicantRow = React.memo(({
                     {aiStatus.charAt(0).toUpperCase() + aiStatus.slice(1)}
                 </span>
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div className="flex space-x-2">
+            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                         py-4 lg:py-3 xl:py-3 2xl:py-4 
+                         whitespace-nowrap 
+                         text-sm lg:text-sm xl:text-sm 2xl:text-base font-medium">
+                <div className="flex space-x-2 lg:space-x-2 xl:space-x-2 2xl:space-x-2.5">
                     <button
                         onClick={(e) => handleStatusUpdate(e, 'shortlisted')}
-                        className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 transition-colors w-16"
+                        className="inline-flex items-center justify-center 
+                                 px-3 lg:px-3 xl:px-3 2xl:px-3 
+                                 py-1.5 lg:py-1.5 xl:py-1.5 2xl:py-1.5 
+                                 border border-transparent 
+                                 text-xs lg:text-xs xl:text-xs 2xl:text-sm 
+                                 font-medium rounded-md text-green-700 
+                                 bg-green-100 hover:bg-green-200 transition-colors w-16 lg:w-16 xl:w-16 2xl:w-18"
                     >
                         Accept
                     </button>
                     <button
                         onClick={(e) => handleStatusUpdate(e, 'rejected')}
-                        className="inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors w-16"
+                        className="inline-flex items-center justify-center 
+                                 px-3 lg:px-3 xl:px-3 2xl:px-3 
+                                 py-1.5 lg:py-1.5 xl:py-1.5 2xl:py-1.5 
+                                 border border-transparent 
+                                 text-xs lg:text-xs xl:text-xs 2xl:text-sm 
+                                 font-medium rounded-md text-red-700 
+                                 bg-red-100 hover:bg-red-200 transition-colors w-16 lg:w-16 xl:w-16 2xl:w-18"
                     >
                         Reject
                     </button>
@@ -671,19 +709,35 @@ ${jobPosting.keySkillsAndCompetencies}
         setShowJobDetails(!showJobDetails);
     };
 
-    // Add function to filter applicants
+    // Update the getFilteredApplicants function
     const getFilteredApplicants = () => {
-        // Sort applicants by score first
+        // First sort applicants by score in descending order
         const sortedApplicants = [...applicants].sort((a, b) => {
-            const scoreA = getApplicantScore(a) || 0;
-            const scoreB = getApplicantScore(b) || 0;
+            const scoreA = getApplicantScore(a);
+            const scoreB = getApplicantScore(b);
             return scoreB - scoreA;
         });
 
-        // Apply filter
+        // Then apply the selected filter
         switch (applicantFilter) {
-            case 'top2':
-                return sortedApplicants.slice(0, 2);
+            case 'shortlisted':
+                return sortedApplicants.filter(applicant => {
+                    try {
+                        const resumeData = JSON.parse(applicant.resume);
+                        return resumeData?.ai_result === 'shortlisted';
+                    } catch (error) {
+                        return false;
+                    }
+                });
+            case 'rejected':
+                return sortedApplicants.filter(applicant => {
+                    try {
+                        const resumeData = JSON.parse(applicant.resume);
+                        return resumeData?.ai_result === 'rejected';
+                    } catch (error) {
+                        return false;
+                    }
+                });
             case 'top5':
                 return sortedApplicants.slice(0, 5);
             case 'top10':
@@ -695,13 +749,13 @@ ${jobPosting.keySkillsAndCompetencies}
         }
     };
 
-    // Helper function to get applicant score
+    // Helper function to get applicant score (if not already present)
     const getApplicantScore = (applicant) => {
         try {
             const resumeData = JSON.parse(applicant.resume);
-            const score = resumeData?.score?.Overall_Score;
-            return score ? Number(score) : 0;
+            return resumeData?.score?.Overall_Score || 0;
         } catch (error) {
+            console.error('Error parsing resume score:', error);
             return 0;
         }
     };
@@ -820,24 +874,47 @@ ${jobPosting.keySkillsAndCompetencies}
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                {/* Header Section */}
-                <div className="mb-8 flex justify-between items-center">
+            <style jsx global>{`
+                @media (max-width: 1280px) {
+                    .scale-container {
+                        transform: scale(0.8);
+                        transform-origin: top left;
+                        width: 125%; /* Compensate for scale to maintain layout */
+                        height: 125%;
+                    }
+                    
+                    /* Add specific scale for EditJob dropdown */
+                    .edit-job-scale {
+                        transform: scale(0.9);
+                        transform-origin: top center;
+                        width: 111.11%; /* Compensate for 0.9 scale (100/0.9) */
+                        margin-left: -5.55%; /* Center the wider content */
+                    }
+                }
+            `}</style>
+            
+            <div className="max-w-8xl mx-auto py-8 lg:py-6 xl:py-8 2xl:py-10 px-4 sm:px-6 lg:px-8 2xl:px-10 scale-container">
+                {/* Header Section - bigger for 2xl */}
+                <div className="mb-8 lg:mb-6 xl:mb-8 2xl:mb-10 flex justify-between items-center">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
+                        <h1 className="text-2xl lg:text-xl xl:text-2xl 2xl:text-4xl font-bold text-gray-900">
                             Job Posting
                         </h1>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm lg:text-xs xl:text-sm 2xl:text-lg text-gray-500">
                             Manage job posting and applicants
                         </p>
                     </div>
                     <button
                         onClick={toggleJobDetails}
-                        className="px-4 py-2 text-sm font-medium text-indigo-600 bg-white rounded-md shadow-sm hover:bg-indigo-50 flex items-center gap-2"
+                        className="px-4 lg:px-3 xl:px-4 2xl:px-6 
+                                 py-2 lg:py-1.5 xl:py-2 2xl:py-3 
+                                 text-sm lg:text-xs xl:text-sm 2xl:text-lg 
+                                 font-medium text-indigo-600 bg-white rounded-md 
+                                 shadow-sm hover:bg-indigo-50 flex items-center gap-2"
                     >
                         {showJobDetails ? 'Hide Details' : 'View Details'}
                         <svg 
-                            className={`w-5 h-5 transition-transform ${showJobDetails ? 'transform rotate-180' : ''}`} 
+                            className={`w-5 h-5 lg:w-4 lg:h-4 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6 transition-transform ${showJobDetails ? 'transform rotate-180' : ''}`} 
                             fill="none" 
                             stroke="currentColor" 
                             viewBox="0 0 24 24"
@@ -849,7 +926,7 @@ ${jobPosting.keySkillsAndCompetencies}
 
                 {/* Job Details Dropdown */}
                 {showJobDetails && (
-                    <div className="mb-8 transition-all duration-300 ease-in-out">
+                    <div className="mb-8 transition-all duration-300 ease-in-out edit-job-scale">
                         <EditJob 
                             jobId={jobId} 
                             onSuccess={() => setShowJobDetails(false)} 
@@ -868,54 +945,95 @@ ${jobPosting.keySkillsAndCompetencies}
                     </div>
                 )}
 
-                {/* Add Filter Section */}
-                <div className="mb-6 flex items-center justify-between">
-                    <div className="flex space-x-4">
-                        <button
-                            onClick={() => setApplicantFilter('all')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                applicantFilter === 'all'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            All Candidates
-                        </button>
-                        <button
-                            onClick={() => setApplicantFilter('top5')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                applicantFilter === 'top5'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            Top 5
-                        </button>
-                        <button
-                            onClick={() => setApplicantFilter('top10')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                applicantFilter === 'top10'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            Top 10
-                        </button>
-                        <button
-                            onClick={() => setApplicantFilter('top15')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                applicantFilter === 'top15'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            Top 15
-                        </button>
+                {/* Add Filter Section - bigger for 2xl */}
+                <div className="mb-6 lg:mb-5 xl:mb-6 2xl:mb-8 flex flex-col space-y-4">
+                    {/* Status Filters */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex space-x-4 lg:space-x-4 xl:space-x-4 2xl:space-x-6">
+                            <button
+                                onClick={() => setApplicantFilter('all')}
+                                className={`px-4 lg:px-4 xl:px-4 2xl:px-6 
+                                         py-2 lg:py-2 xl:py-2 2xl:py-3 
+                                         rounded-md text-sm lg:text-base xl:text-base 2xl:text-lg font-medium ${
+                                    applicantFilter === 'all'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
+                            >
+                                All Candidates
+                            </button>
+                            <button
+                                onClick={() => setApplicantFilter('shortlisted')}
+                                className={`px-4 lg:px-4 xl:px-4 2xl:px-6 
+                                         py-2 lg:py-2 xl:py-2 2xl:py-3 
+                                         rounded-md text-sm lg:text-base xl:text-base 2xl:text-lg font-medium ${
+                                    applicantFilter === 'shortlisted'
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
+                            >
+                                Shortlisted
+                            </button>
+                            <button
+                                onClick={() => setApplicantFilter('rejected')}
+                                className={`px-4 lg:px-4 xl:px-4 2xl:px-6 
+                                         py-2 lg:py-2 xl:py-2 2xl:py-3 
+                                         rounded-md text-sm lg:text-base xl:text-base 2xl:text-lg font-medium ${
+                                    applicantFilter === 'rejected'
+                                        ? 'bg-red-600 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
+                            >
+                                Rejected
+                            </button>
+                        </div>
                     </div>
-                    
-                    {/* Show count of displayed applicants */}
-                    <div className="text-sm text-gray-600">
-                        Showing {getFilteredApplicants().length} of {applicants.length} candidates
+
+                    {/* Top N Filters */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex space-x-4 lg:space-x-4 xl:space-x-4 2xl:space-x-6">
+                            <button
+                                onClick={() => setApplicantFilter('top5')}
+                                className={`px-4 lg:px-4 xl:px-4 2xl:px-6 
+                                         py-2 lg:py-2 xl:py-2 2xl:py-3 
+                                         rounded-md text-sm lg:text-base xl:text-base 2xl:text-lg font-medium ${
+                                    applicantFilter === 'top5'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
+                            >
+                                Top 5
+                            </button>
+                            <button
+                                onClick={() => setApplicantFilter('top10')}
+                                className={`px-4 lg:px-4 xl:px-4 2xl:px-6 
+                                         py-2 lg:py-2 xl:py-2 2xl:py-3 
+                                         rounded-md text-sm lg:text-base xl:text-base 2xl:text-lg font-medium ${
+                                    applicantFilter === 'top10'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
+                            >
+                                Top 10
+                            </button>
+                            <button
+                                onClick={() => setApplicantFilter('top15')}
+                                className={`px-4 lg:px-4 xl:px-4 2xl:px-6 
+                                         py-2 lg:py-2 xl:py-2 2xl:py-3 
+                                         rounded-md text-sm lg:text-base xl:text-base 2xl:text-lg font-medium ${
+                                    applicantFilter === 'top15'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
+                            >
+                                Top 15
+                            </button>
+                        </div>
+
+                        {/* Show count of displayed applicants */}
+                        <div className="text-sm lg:text-base xl:text-base 2xl:text-lg text-gray-600">
+                            Showing {getFilteredApplicants().length} of {applicants.length} candidates
+                        </div>
                     </div>
                 </div>
 
@@ -980,8 +1098,10 @@ ${jobPosting.keySkillsAndCompetencies}
                                         <tr>
                                             <th 
                                                 scope="col" 
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                                                onClick={() => requestSort('name')}
+                                                className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                                                         py-3 lg:py-3 xl:py-3 2xl:py-4 
+                                                         text-left text-xs lg:text-[11px] xl:text-xs 2xl:text-base 
+                                                         font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             >
                                                 <div className="flex items-center space-x-1">
                                                     <span>Name</span>
@@ -993,7 +1113,10 @@ ${jobPosting.keySkillsAndCompetencies}
                                             </th>
                                             <th 
                                                 scope="col" 
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                                                className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                                                         py-3 lg:py-3 xl:py-3 2xl:py-4 
+                                                         text-left text-xs lg:text-[11px] xl:text-xs 2xl:text-base 
+                                                         font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             >
                                                 <button
                                                     className="flex items-center space-x-1"
@@ -1005,7 +1128,10 @@ ${jobPosting.keySkillsAndCompetencies}
                                             </th>
                                             <th 
                                                 scope="col" 
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                                                className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                                                         py-3 lg:py-3 xl:py-3 2xl:py-4 
+                                                         text-left text-xs lg:text-[11px] xl:text-xs 2xl:text-base 
+                                                         font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             >
                                                 <div className="flex items-center space-x-1">
                                                     <span>Score</span>
@@ -1014,7 +1140,10 @@ ${jobPosting.keySkillsAndCompetencies}
                                             </th>
                                             <th 
                                                 scope="col" 
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                                                className="px-6 lg:px-5 xl:px-6 2xl:px-7 
+                                                         py-3 lg:py-3 xl:py-3 2xl:py-4 
+                                                         text-left text-xs lg:text-[11px] xl:text-xs 2xl:text-base 
+                                                         font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             >
                                                 <button
                                                     className="flex items-center space-x-1"
@@ -1043,12 +1172,19 @@ ${jobPosting.keySkillsAndCompetencies}
                                 </table>
                             </div>
                         ) : (
-                            <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="text-center py-12 lg:py-8 xl:py-12 2xl:py-16 
+                                            bg-white rounded-lg border-2 border-dashed border-gray-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 lg:h-10 xl:h-12 2xl:h-16 
+                                                  w-12 lg:w-10 xl:w-12 2xl:w-16 text-gray-400" 
+                                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                 </svg>
-                                <h3 className="mt-2 text-sm font-medium text-gray-900">No applicants yet</h3>
-                                <p className="mt-1 text-sm text-gray-500">Get started by importing CVs for this position</p>
+                                <h3 className="mt-2 text-sm lg:text-xs xl:text-sm 2xl:text-lg font-medium text-gray-900">
+                                    No applicants yet
+                                </h3>
+                                <p className="mt-1 text-sm lg:text-xs xl:text-sm 2xl:text-base text-gray-500">
+                                    Get started by importing CVs for this position
+                                </p>
                             </div>
                         )}
                     </div>

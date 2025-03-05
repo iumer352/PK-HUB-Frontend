@@ -45,7 +45,7 @@ const JobPosting = () => {
     const urgencyLevels = [
         'Urgent - Immediate Hire',
         'High Priority',
-        'Medium Priority',
+        'Normal',
         'Low Priority'
     ];
 

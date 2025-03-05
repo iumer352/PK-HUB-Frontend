@@ -6,12 +6,10 @@ import AddEmployee from './components/AddEmployee';
 import ViewEmployees from './components/ViewEmployees';
 import JobPosting from './components/JobPosting';
 import ManageJobPostings from './components/JobManagement';
-import JobPostingForm from './components/joblisting';
 import RecruitingDashboard from './components/interview_tracking';
 import ProjectDashboard from './components/projectDashboard';
 import EmployeeDashboard from './components/EmployeeDashboard';
 import EmployeeMonthlyView from './components/EmployeeMonthlyView';
-import ApplicantInterviewTracking from './components/ApplicantInterviewTracking';
 import OnboardingChecklist from './components/OnboardingChecklist';
 import MonthlyTimesheet from './components/timesheet';
 import EditJob from './components/EditJob.jsx';
@@ -20,6 +18,7 @@ import Register from './components/Register';
 import ProtectedRoute from './components/protectedroutes';   // Import your ProtectedRoute
 import AdminCenter from './components/AdminCenter';
 import Settings from './components/Settings';
+import JobListing from './components/Joblisting';
 
 function App() {
   return (
@@ -38,13 +37,12 @@ function App() {
             <Route path="/projectDashboard" element={<ProjectDashboard />} />
             <Route path="/manage" element={<ManageJobPostings />} />
             <Route path="/projects" element={<Dashboard />} /> 
-            <Route path="/joblisting/:jobId" element={<JobPostingForm />} />
+            <Route path="/joblisting/:jobId" element={<JobListing />} />
             <Route path="/jobposting" element={<JobPosting />} />
             <Route path="/add-employee" element={<AddEmployee />} />
             <Route path="/view-employees" element={<ViewEmployees />} />
             <Route path="/interview-status/:jobId" element={<RecruitingDashboard />} />
             <Route path="/interview-tracking/:applicantId" element={<RecruitingDashboard />} />
-            <Route path="/applicant-interview" element={<ApplicantInterviewTracking />} />
             <Route path="/employees/:employeeId/monthly" element={<EmployeeMonthlyView />} />
             <Route path="/onboarding/:employeeId" element={<OnboardingChecklist />} />
             <Route path="/timesheet/:employeeId" element={<MonthlyTimesheet />} />

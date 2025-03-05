@@ -125,18 +125,26 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
     };
 
     return (
-        <div className={isDropdown ? "" : "min-h-screen bg-gray-100"}>
-            <div className={isDropdown ? "" : "max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8"}>
-                {/* Only show header when not in dropdown */}
+        <div className={`${isDropdown ? "" : "min-h-screen bg-gray-100"}`}>
+            <div className={isDropdown ? "" : "mx-auto py-3 lg:py-4 xl:py-6 2xl:py-8 px-2 lg:px-3 xl:px-5 2xl:px-6 max-w-7xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl"}>
+                {/* Header section - smaller for lg */}
                 {!isDropdown && (
-                    <div className="mb-8 flex justify-between items-center">
+                    <div className="mb-0 lg:mb-1 xl:mb-2 2xl:mb-3 flex justify-between items-center">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Job Posting Details</h1>
-                            <p className="mt-1 text-sm text-gray-500">View and update job details</p>
+                            <h1 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-bold text-gray-900">
+                                Job Posting Details
+                            </h1>
+                            <p className="mt-1 text-xs lg:text-xs xl:text-sm 2xl:text-base text-gray-500">
+                                View and update job details
+                            </p>
                         </div>
                         <button
                             onClick={handleBack}
-                            className="px-4 py-2 text-sm font-medium text-gray-600 bg-white rounded-md shadow-sm hover:bg-gray-50"
+                            className="px-2 lg:px-3 xl:px-4 2xl:px-5 
+                                     py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                     text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                     font-medium text-gray-600 bg-white rounded-md 
+                                     shadow-sm hover:bg-gray-50"
                         >
                             Back to Jobs
                         </button>
@@ -146,40 +154,68 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
                 {/* Form Section */}
                 <div className={`bg-white ${!isDropdown && "shadow-sm"} rounded-lg overflow-hidden`}>
                     <form onSubmit={handleSubmit} className="divide-y divide-gray-200">
+                        {/* Messages */}
                         {successMessage && (
-                            <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg">
+                            <div className="mb-2 lg:mb-3 xl:mb-4 2xl:mb-5 
+                                          p-2 lg:p-3 xl:p-4 2xl:p-5 
+                                          text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                          bg-green-100 text-green-700 rounded-lg">
                                 {successMessage}
                             </div>
                         )}
                         {error && (
-                            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+                            <div className="mb-2 lg:mb-3 xl:mb-4 2xl:mb-5 
+                                          p-2 lg:p-3 xl:p-4 2xl:p-5 
+                                          text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                          bg-red-100 text-red-700 rounded-lg">
                                 {error}
                             </div>
                         )}
 
                         {/* Basic Info Section */}
-                        <div className="p-7">
-                            <h2 className="text-lg font-medium text-gray-900 mb-5">Basic Information</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <div className="p-3 lg:p-4 xl:p-6 2xl:p-7">
+                            <h2 className="text-base lg:text-base xl:text-lg 2xl:text-xl 
+                                         font-medium text-gray-900 
+                                         mb-3 lg:mb-4 xl:mb-5 2xl:mb-6">
+                                Basic Information
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 
+                                          gap-2 lg:gap-3 xl:gap-4 2xl:gap-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
+                                    <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                    font-medium text-gray-700 
+                                                    mb-1 lg:mb-1 xl:mb-2">
+                                        Job Title
+                                    </label>
                                     <input
                                         type="text"
                                         name="title"
                                         value={jobPosting.title}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                        className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                 py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                 text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                 border border-gray-300 rounded-md shadow-sm 
+                                                 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         required
                                     />
                                 </div>
                                 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
+                                    <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                    font-medium text-gray-700 
+                                                    mb-1 lg:mb-1 xl:mb-2">
+                                        Grade Level
+                                    </label>
                                     <select
                                         name="grade"
                                         value={jobPosting.grade}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                        className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                 py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                 text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                 border border-gray-300 rounded-md shadow-sm 
+                                                 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         required
                                     >
                                         <option value="">Select Grade</option>
@@ -190,29 +226,45 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Hiring Manager</label>
+                                    <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                    font-medium text-gray-700 
+                                                    mb-1 lg:mb-1 xl:mb-2">
+                                        Solution Lead
+                                    </label>
                                     <select
                                         name="hiringManager"
                                         value={jobPosting.hiringManager}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                        className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                 py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                 text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                 border border-gray-300 rounded-md shadow-sm 
+                                                 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         required
                                     >
-                                        <option value="">Select Hiring Manager</option>
+                                        <option value="">Select Solution Lead</option>
                                         {hiringManagers.map((manager) => (
                                             <option key={manager.id} value={manager.name}>{manager.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                <div className="lg:col-span-2 grid grid-cols-2 gap-5">
+                                <div className="lg:col-span-2 grid grid-cols-2 gap-2 lg:gap-3 xl:gap-4 2xl:gap-5">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Function</label>
+                                        <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                        font-medium text-gray-700 
+                                                        mb-1 lg:mb-1 xl:mb-2">
+                                            Function
+                                        </label>
                                         <select
                                             name="functionType"
                                             value={jobPosting.functionType}
                                             onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                            className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                     py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                     text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                     border border-gray-300 rounded-md shadow-sm 
+                                                     focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             required
                                         >
                                             <option value="">Select Function</option>
@@ -223,12 +275,20 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Hiring Urgency</label>
+                                        <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                        font-medium text-gray-700 
+                                                        mb-1 lg:mb-1 xl:mb-2">
+                                            Hiring Urgency
+                                        </label>
                                         <select
                                             name="hiringUrgency"
                                             value={jobPosting.hiringUrgency}
                                             onChange={handleInputChange}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                            className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                     py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                     text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                     border border-gray-300 rounded-md shadow-sm 
+                                                     focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                             required
                                         >
                                             <option value="">Select Urgency</option>
@@ -240,14 +300,22 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Demanded For</label>
+                                    <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                    font-medium text-gray-700 
+                                                    mb-1 lg:mb-1 xl:mb-2">
+                                        Demanded For
+                                    </label>
                                     <input
                                         type="text"
                                         name="demandedFor"
                                         value={jobPosting.demandedFor}
                                         onChange={handleInputChange}
                                         placeholder="Enter client/solution"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                        className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                 py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                 text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                 border border-gray-300 rounded-md shadow-sm 
+                                                 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         required
                                     />
                                 </div>
@@ -255,51 +323,87 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
                         </div>
 
                         {/* Job Details Section */}
-                        <div className="p-7">
-                            <h2 className="text-lg font-medium text-gray-900 mb-5">Job Details</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="p-3 lg:p-4 xl:p-6 2xl:p-7">
+                            <h2 className="text-base lg:text-base xl:text-lg 2xl:text-xl 
+                                         font-medium text-gray-900 
+                                         mb-3 lg:mb-4 xl:mb-5 2xl:mb-6">
+                                Job Details
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-3 xl:gap-4 2xl:gap-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Role Overview</label>
+                                    <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                    font-medium text-gray-700 
+                                                    mb-1 lg:mb-1 xl:mb-2">
+                                        Role Overview
+                                    </label>
                                     <textarea
                                         name="roleOverview"
                                         value={jobPosting.roleOverview}
                                         onChange={handleInputChange}
                                         rows={4}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                        className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                 py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                 text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                 border border-gray-300 rounded-md shadow-sm 
+                                                 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Key Responsibilities</label>
+                                    <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                    font-medium text-gray-700 
+                                                    mb-1 lg:mb-1 xl:mb-2">
+                                        Key Responsibilities
+                                    </label>
                                     <textarea
                                         name="keyResponsibilities"
                                         value={jobPosting.keyResponsibilities}
                                         onChange={handleInputChange}
                                         rows={4}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                        className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                 py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                 text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                 border border-gray-300 rounded-md shadow-sm 
+                                                 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         required
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Key Skills and Competencies</label>
+                                    <label className="block text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                    font-medium text-gray-700 
+                                                    mb-1 lg:mb-1 xl:mb-2">
+                                        Key Skills and Competencies
+                                    </label>
                                     <textarea
                                         name="keySkillsAndCompetencies"
                                         value={jobPosting.keySkillsAndCompetencies}
                                         onChange={handleInputChange}
                                         rows={4}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                        className="w-full px-2 lg:px-2 xl:px-3 2xl:px-4 
+                                                 py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                                 text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                                 border border-gray-300 rounded-md shadow-sm 
+                                                 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         required
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Only show form actions when not in dropdown */}
+                        {/* Form actions */}
                         {!isDropdown && (
-                            <div className="px-7 py-4 bg-gray-50 flex justify-end space-x-3">
+                            <div className="px-3 lg:px-4 xl:px-6 2xl:px-7 
+                                          py-2 lg:py-3 xl:py-4 2xl:py-5 
+                                          bg-gray-50 flex justify-end space-x-2 lg:space-x-3">
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    className="px-2 lg:px-3 xl:px-4 2xl:px-5 
+                                             py-1 lg:py-1.5 xl:py-2 2xl:py-2.5 
+                                             text-xs lg:text-xs xl:text-sm 2xl:text-base 
+                                             font-medium text-white bg-indigo-600 
+                                             rounded-md shadow-sm 
+                                             hover:bg-indigo-700 
+                                             focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                     disabled={loading}
                                 >
                                     {loading ? 'Saving...' : 'Update Job'}

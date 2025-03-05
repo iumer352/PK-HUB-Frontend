@@ -122,12 +122,27 @@ const Dashboard = () => {
     'Innovation and Emerging Tech'
   ];
 
-  // Add role check at the top of the component
+  // Update the role check at the top of the component
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isInterviewer = user.role === 'interviewer';
+  const isInterviewerOrHR = user.role === 'interviewer' || user.role === 'hr';
 
   // Add this with other state declarations at the top
   const [showAllPositionsModal, setShowAllPositionsModal] = useState(false);
+
+  // Add this constant at the top of the file with other constants
+  const gradeOrder = [
+    'Analyst',
+    'Associate',
+    'Consultant',
+    'Senior Consultant',
+    'Senior Associate',
+    'Assistant Manager',
+    'Manager',
+    'Manager-1',
+    'Senior Manager',
+    'Associate Director',
+    'Director'
+  ];
 
   // Function to process jobs data into required format
   const processJobsData = (jobs) => {
@@ -351,9 +366,12 @@ const Dashboard = () => {
         setLoading(true);
         try {
           const response = await axios.get('http://localhost:5000/api/jobs');
-          // Filter only active jobs
-          const activeJobs = response.data.filter(job => job.status === 'Active');
-          setJobs(activeJobs);
+          // Filter jobs by both status and selected solution
+          const filteredJobs = response.data.filter(job => 
+            job.status === 'Active' && 
+            (selectedSolution === 'all' || job.functionType === selectedSolution)
+          );
+          setJobs(filteredJobs);
         } catch (error) {
           console.error('Error fetching jobs:', error);
         }
@@ -361,18 +379,22 @@ const Dashboard = () => {
       };
 
       fetchJobs();
-    }, [showProjectsModal]);
+    }, [showProjectsModal, selectedSolution]); // Add selectedSolution as dependency
 
     return (
       <StatModal
         show={showProjectsModal}
         onClose={() => setShowProjectsModal(false)}
-        title="Open Positions"
+        title={`Open Positions ${selectedSolution !== 'all' ? `- ${selectedSolution}` : ''}`}
       >
         <div className="space-y-6">
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No open positions found {selectedSolution !== 'all' ? `for ${selectedSolution}` : ''}
             </div>
           ) : (
             <div className="grid gap-4">
@@ -714,14 +736,15 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="h-screen py-4">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 h-full overflow-y-auto">
-
+      <div className="h-screen py-2 lg:py-2 xl:py-4 2xl:py-8">
+        <div className="max-w-8xl mx-auto px-4 sm:px-4 lg:px-4 xl:px-8 2xl:px-16 2xl:m-auto h-full overflow-y-auto">
           {/* Dashboard Selection Dropdown */}
-          <div className="relative mb-8">
+          <div className="relative mb-3 lg:mb-4 xl:mb-6 2xl:mb-8">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center justify-between w-full md:w-72 px-4 py-3 bg-white rounded-lg shadow-sm border border-gray-200 text-left"
+              className="flex items-center justify-between w-full sm:w-56 lg:w-60 xl:w-72 2xl:w-96 
+                       px-3 py-1.5 lg:px-3 lg:py-2 xl:px-4 2xl:px-6 xl:py-2.5 2xl:py-3
+                       bg-white rounded-lg shadow-sm border border-gray-200 text-left mt-3 2xl:mt-4"
             >
               <span className="text-gray-700 font-medium">
                 {selectedSolution === 'all' ? 'All Solutions' : selectedSolution}
@@ -740,7 +763,7 @@ const Dashboard = () => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute z-10 w-full md:w-72 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
+                  className="absolute z-10 w-full sm:w-64 lg:w-72 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
                 >
                   <button
                     onClick={() => {
@@ -770,49 +793,51 @@ const Dashboard = () => {
 
           {/* Main Dashboard Content */}
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-4"
+            className="space-y-3 lg:space-y-4 xl:space-y-6 2xl:space-y-8"
           >
             {/* Quick Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {/* Open Positions Card - First */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 xl:gap-4 2xl:gap-6 mb-3 lg:mb-4 xl:mb-6 2xl:mb-8">
+              {/* Update card padding and spacing */}
               <motion.div
                 whileHover={{ scale: 1.02 }}
-                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md 
-                           transition-all duration-300 border border-gray-100"
+                className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-8
+                         cursor-pointer hover:shadow-md transition-all duration-300 
+                         border border-gray-100"
                 onClick={() => setShowProjectsModal(true)}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <FileText className="w-6 h-6 text-green-600" />
+                <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4 2xl:mb-5">
+                  <div className="p-1.5 lg:p-2 xl:p-3 2xl:p-4 bg-green-100 rounded-lg">
+                    <FileText className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 2xl:w-8 2xl:h-8 text-green-600" />
                   </div>
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                <h3 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-semibold text-gray-800 mb-1 lg:mb-2 2xl:mb-3">
                   {jobsData.openPositions}
                 </h3>
-                <p className="text-gray-600">Open Positions</p>
+                <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg text-gray-600">
+                  Open Positions
+                </p>
               </motion.div>
 
-              {/* All Positions Card - Second */}
+              {/* All Positions Card */}
               <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md 
-                           transition-all duration-300 border border-gray-100"
+                className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-6
+                         cursor-pointer hover:shadow-md transition-all duration-300 
+                         border border-gray-100"
                 onClick={() => setShowAllPositionsModal(true)}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Briefcase className="w-6 h-6 text-blue-600" />
+                <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4">
+                  <div className="p-1.5 lg:p-2 xl:p-3 bg-blue-100 rounded-lg">
+                    <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 text-blue-600" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-2xl font-semibold text-gray-800">
+                  <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-800">
                     {jobsData.totalPositions}
                   </h3>
-                  <p className="text-gray-600">All Positions</p>
-                  <div className="flex items-center justify-between text-sm mt-2">
+                  <p className="text-xs lg:text-sm xl:text-base text-gray-600">
+                    All Positions
+                  </p>
+                  <div className="flex items-center justify-between text-xs mt-2">
                     <span className="text-green-600">
                       {jobsData.openPositions} Open
                     </span>
@@ -824,22 +849,25 @@ const Dashboard = () => {
               </motion.div>
 
               {/* Show Upcoming Interviews card only for interviewers */}
-              {isInterviewer ? (
+              {isInterviewerOrHR ? (
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                  className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-6
+                           cursor-pointer hover:shadow-md transition-all duration-300 
+                           border border-gray-100"
                   onClick={() => setShowInterviewsModal(true)}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                      <Calendar className="w-6 h-6 text-purple-600" />
+                  <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4">
+                    <div className="p-1.5 lg:p-2 xl:p-3 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                      <Calendar className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 text-purple-600" />
                     </div>
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                  <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-800 mb-1 lg:mb-2">
                     {pendingInterviews.length}
                   </h3>
-                  <p className="text-gray-600 text-base">Upcoming Interviews</p>
-                  <div className="mt-4 flex items-center text-sm">
+                  <p className="text-xs lg:text-sm xl:text-base text-gray-600">
+                    Upcoming Interviews
+                  </p>
+                  <div className="mt-4 flex items-center text-xs">
                     <span className="text-purple-600 font-medium">
                       {interviewerData?.interview_type} Interviewer
                     </span>
@@ -848,18 +876,23 @@ const Dashboard = () => {
               ) : (
                 // Show Hiring Rate card for non-interviewers
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                  className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-6
+                           cursor-pointer hover:shadow-md transition-all duration-300 
+                           border border-gray-100"
                   onClick={() => setShowHiringModal(true)}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                      <TrendingUp className="w-6 h-6 text-purple-600" />
+                  <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4">
+                    <div className="p-1.5 lg:p-2 xl:p-3 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                      <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 text-purple-600" />
                     </div>
                   </div>
-                  <h3 className="text-2xl font-semibold text-gray-800 mb-2">85%</h3>
-                  <p className="text-gray-600 text-base">Hiring Rate</p>
-                  <div className="mt-4 flex items-center text-sm">
+                  <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-800 mb-1 lg:mb-2">
+                    85%
+                  </h3>
+                  <p className="text-xs lg:text-sm xl:text-base text-gray-600">
+                    Hiring Rate
+                  </p>
+                  <div className="mt-4 flex items-center text-xs">
                     <span className="text-green-600 font-medium">+3%</span>
                     <span className="text-gray-500 ml-2">vs last month</span>
                   </div>
@@ -868,180 +901,266 @@ const Dashboard = () => {
 
               {/* Onboarding Card */}
               <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="bg-white rounded-lg shadow-sm p-5 cursor-pointer hover:shadow-md transition-all duration-300 border border-gray-100"
+                className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-6
+                         cursor-pointer hover:shadow-md transition-all duration-300 
+                         border border-gray-100"
                 onClick={() => setShowOnboardingModal(true)}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                    <Users className="w-6 h-6 text-purple-600" />
+                <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4">
+                  <div className="p-1.5 lg:p-2 xl:p-3 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                    <Users className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 text-purple-600" />
                   </div>
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-800 mb-1 lg:mb-2">
                   {newlyOnboarded.length}
                 </h3>
-                <p className="text-gray-600 text-base">Newly Onboarded</p>
+                <p className="text-xs lg:text-sm xl:text-base text-gray-600">
+                  Newly Onboarded
+                </p>
               </motion.div>
             </div>
             
             {/* Recruitment Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Jobs by Grade */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3 xl:gap-4 2xl:gap-6">
+              {/* Bar Chart Container */}
               <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+                className="bg-white rounded-xl shadow-lg 
+                         p-3 lg:p-4 xl:p-6 2xl:p-8
+                         h-[220px] lg:h-[300px] xl:h-[350px] 2xl:h-[450px] 
+                         transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
-                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Grade</h3>
-                <Bar
-                  data={{
-                    labels: Object.keys(jobsData.byGrade),
-                    datasets: [{
-                      label: 'Number of Positions',
-                      data: Object.values(jobsData.byGrade),
-                      backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                      borderColor: 'rgba(99, 102, 241, 1)',
-                      borderWidth: 1
-                    }]
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                      legend: { display: false }
-                    },
-                    layout: {
-                      padding: {
-                        top: 20,
-                        right: 20,
-                        bottom: 0,
-                        left: 10
+                <h3 className="text-base lg:text-lg xl:text-xl 2xl:text-2xl mb-3 lg:mb-4 xl:mb-6 2xl:mb-8 font-semibold text-gray-800 text-center">
+                  Jobs by Grade
+                </h3>
+                <div className="flex justify-center items-center h-[calc(100%-40px)]">
+                  <Bar
+                    data={{
+                      labels: Object.keys(jobsData.byGrade).sort((a, b) => 
+                        gradeOrder.indexOf(a) - gradeOrder.indexOf(b)
+                      ),
+                      datasets: [{
+                        label: 'Number of Positions',
+                        data: Object.keys(jobsData.byGrade)
+                          .sort((a, b) => gradeOrder.indexOf(a) - gradeOrder.indexOf(b))
+                          .map(grade => jobsData.byGrade[grade]),
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { 
+                          display: false,
+                          labels: {
+                            font: {
+                              size: 12,
+                              weight: 'bold',
+                              
+                            }
+                          }
+                        }
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: { 
+                            stepSize: 1,
+                            font: {
+                              size: 11,
+                              weight: '500',
+                             
+                            }
+                          }
+                        },
+                        x: {
+                          ticks: {
+                            font: {
+                              size: 11,
+                              weight: '500',
+                           
+                            }
+                          }
+                        }
                       }
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 }
-                      }
-                    }
-                  }}
-                  style={{ maxHeight: '300px' }}
-                />
+                    }}
+                    style={{ 
+                      maxHeight: '85%',
+                      width: '85%'
+                    }}
+                  />
+                </div>
               </motion.div>
 
-              {/* Jobs by Function */}
+              {/* Doughnut Chart Container */}
               <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+                className="bg-white rounded-xl shadow-lg 
+                         p-3 lg:p-4 lg:pr-2 xl:p-6 2xl:p-8
+                         h-[220px] lg:h-[300px] xl:h-[350px] 2xl:h-[450px] 
+                         transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
-                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Solutions</h3>
-                <Doughnut
-                  data={{
-                    labels: Object.keys(jobsData.byFunction),
-                    datasets: [{
-                      data: Object.values(jobsData.byFunction),
-                      backgroundColor: [
-                        'rgba(59, 130, 246, 0.8)',
-                        'rgba(147, 51, 234, 0.8)',
-                        'rgba(16, 185, 129, 0.8)',
-                        'rgba(249, 115, 22, 0.8)',
-                      ]
-                    }]
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                      legend: {
-                        position: 'right',
-                        labels: { padding: 20 }
+                <h3 className="text-base lg:text-lg xl:text-xl 2xl:text-2xl mb-3 lg:mb-4 xl:mb-6 2xl:mb-8 font-semibold text-gray-800 text-center">
+                  Jobs by Solutions
+                </h3>
+                <div className="flex justify-center items-center h-[calc(100%-40px)]">
+                  <Doughnut
+                    data={{
+                      labels: Object.keys(jobsData.byFunction),
+                      datasets: [{
+                        data: Object.values(jobsData.byFunction),
+                        backgroundColor: [
+                          'rgba(59, 130, 246, 0.8)',    // Blue
+                          'rgba(147, 51, 234, 0.8)',    // Purple
+                          'rgba(16, 185, 129, 0.8)',    // Green
+                          'rgba(249, 115, 22, 0.8)',    // Orange
+                        ]
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          position: 'right',
+                          labels: { 
+                            padding: 15,
+                            boxWidth: 10,
+                            font: {
+                              size: 11,
+                              weight: '500',
+                             
+                            }
+                          }
+                        }
                       }
-                    }
-                  }}
-                />
+                    }}
+                    style={{
+                      maxHeight: '70%',
+                      width: '55%',
+                      margin: '0 10%'
+                    }}
+                  />
+                </div>
               </motion.div>
 
               {/* Jobs by Demanded For */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+                className="bg-white rounded-xl shadow-lg 
+                         p-3 lg:p-4 xl:p-6
+                         h-[220px] lg:h-[300px] xl:h-[350px] 2xl:h-[400px] 
+                         transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
-                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Clients/Solutions</h3>
-                <Bar
-                  data={{
-                    labels: Object.keys(jobsData.byDemandedFor),
-                    datasets: [{
-                      label: 'Number of Positions',
-                      data: Object.values(jobsData.byDemandedFor),
-                      backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                      borderColor: 'rgba(16, 185, 129, 1)',
-                      borderWidth: 1
-                    }]
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                      legend: { display: false }
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 }
+                <h3 className="text-base lg:text-lg xl:text-xl mb-3 lg:mb-4 xl:mb-6 font-semibold text-gray-800 text-center">
+                  Jobs by Clients/Solutions
+                </h3>
+                <div className="flex justify-center items-center h-[calc(100%-40px)]">
+                  <Bar
+                    data={{
+                      labels: Object.keys(jobsData.byDemandedFor),
+                      datasets: [{
+                        label: 'Number of Positions',
+                        data: Object.values(jobsData.byDemandedFor),
+                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { 
+                          display: false,
+                          labels: {
+                            font: {
+                              size: 12,
+                              weight: 'bold'
+                            }
+                          }
+                        }
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: { 
+                            stepSize: 1,
+                            font: {
+                              size: 11,
+                              weight: '500'
+                            }
+                          }
+                        },
+                        x: {
+                          ticks: {
+                            font: {
+                              size: 11,
+                              weight: '500'
+                            }
+                          }
+                        }
                       }
-                    }
-                  }}
-                />
+                    }}
+                    style={{ 
+                      maxHeight: '85%',
+                      width: '85%'
+                    }}
+                  />
+                </div>
               </motion.div>
 
               {/* Jobs by Solution Leads */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-8 rounded-xl shadow-lg h-[400px] transition-all duration-300 hover:shadow-xl border border-gray-100"
+                className="bg-white rounded-xl shadow-lg 
+                         p-3 lg:p-4 xl:p-6
+                         h-[220px] lg:h-[300px] xl:h-[350px] 2xl:h-[400px] 
+                         transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
-                <h3 className="text-xl font-semibold mb-6 text-gray-800">Jobs by Solution Leads</h3>
-                <Doughnut
-                  data={{
-                    labels: Object.keys(jobsData.bySolutionLead),
-                    datasets: [{
-                      data: Object.values(jobsData.bySolutionLead),
-                      backgroundColor: [
-                        'rgba(99, 102, 241, 0.8)',    // Indigo
-                        'rgba(147, 51, 234, 0.8)',    // Purple
-                        'rgba(59, 130, 246, 0.8)',    // Blue
-                        'rgba(16, 185, 129, 0.8)',    // Green
-                        'rgba(249, 115, 22, 0.8)',    // Orange
-                        'rgba(239, 68, 68, 0.8)',     // Red
-                        'rgba(236, 72, 153, 0.8)',    // Pink
-                      ]
-                    }]
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                      legend: {
-                        position: 'right',
-                        labels: { 
-                          padding: 20,
-                          boxWidth: 14,
-                          font: {
-                            size: 11
+                <h3 className="text-base lg:text-lg xl:text-xl mb-3 lg:mb-4 xl:mb-6 font-semibold text-gray-800 text-center">
+                  Jobs by Solution Leads
+                </h3>
+                <div className="flex justify-center items-center h-[calc(100%-40px)]">
+                  <Doughnut
+                    data={{
+                      labels: Object.keys(jobsData.bySolutionLead),
+                      datasets: [{
+                        data: Object.values(jobsData.bySolutionLead),
+                        backgroundColor: [
+                          'rgba(59, 130, 246, 0.8)',    // Blue
+                          'rgba(147, 51, 234, 0.8)',    // Purple
+                          'rgba(16, 185, 129, 0.8)',    // Green
+                          'rgba(249, 115, 22, 0.8)',    // Orange
+                          'rgba(239, 68, 68, 0.8)',     // Red
+                          'rgba(236, 72, 153, 0.8)',    // Pink
+                        ]
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          position: 'right',
+                          align: 'center',
+                          labels: { 
+                            padding: 15,
+                            boxWidth: 10,
+                            font: {
+                              size: 11,
+                              weight: '500'
+                            }
                           }
                         }
                       }
-                    },
-                    layout: {
-                      padding: 20
-                    },
-                    width: 600,
-                    height: 600
-                  }}
-                  style={{ maxWidth: '600px', maxHeight: '600px' }}
-                />
+                    }}
+                    style={{
+                      maxHeight: '70%',
+                      width: '55%',
+                      margin: '0  10%'
+                    }}
+                  />
+                </div>
               </motion.div>
             </div>
           </motion.div>
@@ -1068,7 +1187,6 @@ const Dashboard = () => {
         isOpen={showConfirmDialog}
         onClose={() => {
           setShowConfirmDialog(false);
-          // Push state again to maintain the behavior
           window.history.pushState({ page: 'dashboard' }, '', window.location.pathname);
         }}
         onConfirm={() => {
