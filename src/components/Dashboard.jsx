@@ -107,6 +107,7 @@ const Dashboard = () => {
 
   // Add this state at the top with other states
   const [jobsBySolutionLead, setJobsBySolutionLead] = useState({});
+  const [fontSize, setFontSize] = useState(10); // Default size
 
   // Update dashboard navigation options
   const dashboardOptions = [
@@ -194,6 +195,23 @@ const Dashboard = () => {
       bySolutionLead
     };
   };
+
+  useEffect(() => {
+    const updateFontSize = () => {
+      if (window.innerWidth < 1300) {
+        setFontSize(11); // Small screens (e.g., mobile)
+      } else if (window.innerWidth < 1500) {
+        setFontSize(13); // Medium screens (e.g., tablets)
+      } else {
+        setFontSize(15); // Large screens (e.g., desktops)
+      }
+    };
+
+    updateFontSize(); // Set initial font size
+    window.addEventListener("resize", updateFontSize); // Update on resize
+
+    return () => window.removeEventListener("resize", updateFontSize);
+  }, []);
 
   useEffect(() => {
     const fetchJobsData = async () => {
@@ -795,7 +813,7 @@ const Dashboard = () => {
           <motion.div 
             className="space-y-3 lg:space-y-4 xl:space-y-6 2xl:space-y-8"
           >
-            {/* Quick Stats Cards */}
+            {/* Open Positions Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 xl:gap-4 2xl:gap-6 mb-3 lg:mb-4 xl:mb-6 2xl:mb-8">
               {/* Update card padding and spacing */}
               <motion.div
@@ -820,24 +838,24 @@ const Dashboard = () => {
 
               {/* All Positions Card */}
               <motion.div
-                className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-6
+                className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-8
                          cursor-pointer hover:shadow-md transition-all duration-300 
                          border border-gray-100"
                 onClick={() => setShowAllPositionsModal(true)}
               >
-                <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4">
-                  <div className="p-1.5 lg:p-2 xl:p-3 bg-blue-100 rounded-lg">
-                    <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 text-blue-600" />
+                <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4 2xl:mb-5">
+                  <div className="p-1.5 lg:p-2 xl:p-3 2xl:p-4 bg-blue-100 rounded-lg">
+                    <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 2xl:w-8 2xl:h-8 text-blue-600" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-800">
+                  <h3 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-semibold text-gray-800">
                     {jobsData.totalPositions}
                   </h3>
-                  <p className="text-xs lg:text-sm xl:text-base text-gray-600">
+                  <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg text-gray-600">
                     All Positions
                   </p>
-                  <div className="flex items-center justify-between text-xs mt-2">
+                  <div className="flex items-center justify-between text-xs 2xl:text-sm mt-2">
                     <span className="text-green-600">
                       {jobsData.openPositions} Open
                     </span>
@@ -851,23 +869,23 @@ const Dashboard = () => {
               {/* Show Upcoming Interviews card only for interviewers */}
               {isInterviewerOrHR ? (
                 <motion.div
-                  className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-6
+                  className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-8
                            cursor-pointer hover:shadow-md transition-all duration-300 
                            border border-gray-100"
                   onClick={() => setShowInterviewsModal(true)}
                 >
-                  <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4">
-                    <div className="p-1.5 lg:p-2 xl:p-3 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
-                      <Calendar className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 text-purple-600" />
+                  <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4 2xl:mb-5">
+                    <div className="p-1.5 lg:p-2 xl:p-3 2xl:p-4 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                      <Calendar className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 2xl:w-8 2xl:h-8 text-purple-600" />
                     </div>
                   </div>
-                  <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-800 mb-1 lg:mb-2">
+                  <h3 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-semibold text-gray-800 mb-1 lg:mb-2 2xl:mb-3">
                     {pendingInterviews.length}
                   </h3>
-                  <p className="text-xs lg:text-sm xl:text-base text-gray-600">
+                  <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg text-gray-600">
                     Upcoming Interviews
                   </p>
-                  <div className="mt-4 flex items-center text-xs">
+                  <div className="mt-4 flex items-center text-xs 2xl:text-sm">
                     <span className="text-purple-600 font-medium">
                       {interviewerData?.interview_type} Interviewer
                     </span>
@@ -876,45 +894,45 @@ const Dashboard = () => {
               ) : (
                 // Show Hiring Rate card for non-interviewers
                 <motion.div
-                  className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-6
+                  className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-8
                            cursor-pointer hover:shadow-md transition-all duration-300 
                            border border-gray-100"
                   onClick={() => setShowHiringModal(true)}
                 >
-                  <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4">
-                    <div className="p-1.5 lg:p-2 xl:p-3 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                  <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4 2xl:mb-5">
+                    <div className="p-1.5 lg:p-2 xl:p-3 2xl:p-4 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
                       <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 text-purple-600" />
                     </div>
                   </div>
-                  <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-800 mb-1 lg:mb-2">
+                  <h3 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-semibold text-gray-800 mb-1 lg:mb-2 2xl:mb-3">
                     85%
                   </h3>
-                  <p className="text-xs lg:text-sm xl:text-base text-gray-600">
+                  <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg text-gray-600">
                     Hiring Rate
                   </p>
-                  <div className="mt-4 flex items-center text-xs">
-                    <span className="text-green-600 font-medium">+3%</span>
-                    <span className="text-gray-500 ml-2">vs last month</span>
+                  <div className="mt-4 flex items-center text-xs 2xl:text-sm">
+                    <span className="text-green-600 font-medium 2xl:text-sm">+3%</span>
+                    <span className="text-gray-500 ml-2 2xl:text-sm">vs last month</span>
                   </div>
                 </motion.div>
               )}
 
               {/* Onboarding Card */}
               <motion.div
-                className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-6
+                className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-8
                          cursor-pointer hover:shadow-md transition-all duration-300 
                          border border-gray-100"
                 onClick={() => setShowOnboardingModal(true)}
               >
-                <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4">
-                  <div className="p-1.5 lg:p-2 xl:p-3 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
+                <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4 2xl:mb-5">
+                  <div className="p-1.5 lg:p-2 xl:p-3 2xl:p-4 bg-purple-100 rounded-lg transform transition-transform duration-300 hover:rotate-12">
                     <Users className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 text-purple-600" />
                   </div>
                 </div>
-                <h3 className="text-lg lg:text-xl xl:text-2xl font-semibold text-gray-800 mb-1 lg:mb-2">
+                <h3 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-semibold text-gray-800 mb-1 lg:mb-2 2xl:mb-3">
                   {newlyOnboarded.length}
                 </h3>
-                <p className="text-xs lg:text-sm xl:text-base text-gray-600">
+                <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg text-gray-600">
                   Newly Onboarded
                 </p>
               </motion.div>
@@ -978,7 +996,7 @@ const Dashboard = () => {
                         x: {
                           ticks: {
                             font: {
-                              size: 11,
+                              size: fontSize,
                               weight: '500',
                            
                             }
@@ -1028,7 +1046,7 @@ const Dashboard = () => {
                             padding: 15,
                             boxWidth: 10,
                             font: {
-                              size: 11,
+                              size: fontSize,
                               weight: '500',
                              
                             }
@@ -1052,7 +1070,7 @@ const Dashboard = () => {
                          h-[220px] lg:h-[300px] xl:h-[350px] 2xl:h-[400px] 
                          transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
-                <h3 className="text-base lg:text-lg xl:text-xl mb-3 lg:mb-4 xl:mb-6 font-semibold text-gray-800 text-center">
+                <h3 className="text-base lg:text-lg xl:text-xl 2xl:text-2xl mb-3 lg:mb-4 xl:mb-6 font-semibold text-gray-800 text-center">
                   Jobs by Clients/Solutions
                 </h3>
                 <div className="flex justify-center items-center h-[calc(100%-40px)]">
@@ -1075,8 +1093,8 @@ const Dashboard = () => {
                           display: false,
                           labels: {
                             font: {
-                              size: 12,
-                              weight: 'bold'
+                              size: fontSize,
+                              weight: '500'
                             }
                           }
                         }
@@ -1117,7 +1135,7 @@ const Dashboard = () => {
                          h-[220px] lg:h-[300px] xl:h-[350px] 2xl:h-[400px] 
                          transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
-                <h3 className="text-base lg:text-lg xl:text-xl mb-3 lg:mb-4 xl:mb-6 font-semibold text-gray-800 text-center">
+                <h3 className="text-base lg:text-lg xl:text-xl 2xl:text-2xl mb-3 lg:mb-4 xl:mb-6 font-semibold text-gray-800 text-center">
                   Jobs by Solution Leads
                 </h3>
                 <div className="flex justify-center items-center h-[calc(100%-40px)]">
@@ -1147,7 +1165,7 @@ const Dashboard = () => {
                             padding: 15,
                             boxWidth: 10,
                             font: {
-                              size: 11,
+                              size: fontSize,
                               weight: '500'
                             }
                           }

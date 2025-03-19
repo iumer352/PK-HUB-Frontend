@@ -27,7 +27,9 @@ const ApplicantRow = React.memo(({
     const fetchAiResult = async () => {
         try {
             const response = await axios.get(`http://localhost:5000/api/applicant/${applicant.id}/ai-result`);
+            console.log("ai result is: ",response.data.applicant.ai_result)
             return response.data.applicant.ai_result;
+            
         } catch (error) {
             console.error('Error fetching AI result:', error);
             return null;
@@ -720,20 +722,18 @@ ${jobPosting.keySkillsAndCompetencies}
 
         // Then apply the selected filter
         switch (applicantFilter) {
-            case 'shortlisted':
+            case 'Shortlisted':
                 return sortedApplicants.filter(applicant => {
                     try {
-                        const resumeData = JSON.parse(applicant.resume);
-                        return resumeData?.ai_result === 'shortlisted';
+                        return applicant?.ai_result === 'shortlisted';
                     } catch (error) {
                         return false;
                     }
                 });
-            case 'rejected':
+            case 'Rejected':
                 return sortedApplicants.filter(applicant => {
                     try {
-                        const resumeData = JSON.parse(applicant.resume);
-                        return resumeData?.ai_result === 'rejected';
+                        return applicant?.ai_result === 'rejected';
                     } catch (error) {
                         return false;
                     }
@@ -963,11 +963,11 @@ ${jobPosting.keySkillsAndCompetencies}
                                 All Candidates
                             </button>
                             <button
-                                onClick={() => setApplicantFilter('shortlisted')}
+                                onClick={() => setApplicantFilter('Shortlisted')}
                                 className={`px-4 lg:px-4 xl:px-4 2xl:px-6 
                                          py-2 lg:py-2 xl:py-2 2xl:py-3 
                                          rounded-md text-sm lg:text-base xl:text-base 2xl:text-lg font-medium ${
-                                    applicantFilter === 'shortlisted'
+                                    applicantFilter === 'Shortlisted'
                                         ? 'bg-green-600 text-white'
                                         : 'bg-white text-gray-700 hover:bg-gray-50'
                                 }`}
@@ -975,11 +975,11 @@ ${jobPosting.keySkillsAndCompetencies}
                                 Shortlisted
                             </button>
                             <button
-                                onClick={() => setApplicantFilter('rejected')}
+                                onClick={() => setApplicantFilter('Rejected')}
                                 className={`px-4 lg:px-4 xl:px-4 2xl:px-6 
                                          py-2 lg:py-2 xl:py-2 2xl:py-3 
                                          rounded-md text-sm lg:text-base xl:text-base 2xl:text-lg font-medium ${
-                                    applicantFilter === 'rejected'
+                                    applicantFilter === 'Rejected'
                                         ? 'bg-red-600 text-white'
                                         : 'bg-white text-gray-700 hover:bg-gray-50'
                                 }`}
