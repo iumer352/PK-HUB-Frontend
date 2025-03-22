@@ -20,6 +20,7 @@ import { Line, Bar, Doughnut, Radar } from 'react-chartjs-2';
 import ConfirmDialog from './ConfirmDialog';
 import InterviewsModal from './modals/InterviewsModal';
 import ProjectsModal from './modals/ProjectsModal';
+import AllApplicantsModal from './AllApplicantsModal';
 
 ChartJS.register(
   CategoryScale,
@@ -41,7 +42,7 @@ const Dashboard = () => {
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [showPositionsModal, setShowPositionsModal] = useState(false);
   const [showHiringModal, setShowHiringModal] = useState(false);
-  const [onboardedEmployees, setOnboardedEmployees] = useState([]);
+  const [employeeData, setEmployeeData] = useState([]);
   const [dashboardData, setDashboardData] = useState({
     projectStats: {
       total: 0,
@@ -129,6 +130,8 @@ const Dashboard = () => {
 
   // Add this with other state declarations at the top
   const [showAllPositionsModal, setShowAllPositionsModal] = useState(false);
+  const [showAllApplicantsModal, setShowAllApplicantsModal] = useState(false);
+  const [applicantsData, setApplicantsData] = useState([]);
 
   // Add this constant at the top of the file with other constants
   const gradeOrder = [
@@ -144,6 +147,20 @@ const Dashboard = () => {
     'Associate Director',
     'Director'
   ];
+
+  // Add this useEffect to fetch employee data
+  useEffect(() => {
+    const fetchEmployeeData = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/employees');
+        setEmployeeData(response.data);
+      } catch (error) {
+        console.error('Error fetching employee data:', error);
+      }
+    };
+
+    fetchEmployeeData();
+  }, []);
 
   // Function to process jobs data into required format
   const processJobsData = (jobs) => {
@@ -577,58 +594,115 @@ const Dashboard = () => {
     </StatModal>
   );
 
-  const OnboardingModal = () => (
-    <AnimatePresence>
-      {showOnboardingModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={() => setShowOnboardingModal(false)}
-        >
+  // Function to filter employees based on joining date
+  const categorizeEmployees = (employees) => {
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+
+    return {
+      newlyOnboarded: employees.filter(emp => {
+        const joinDate = new Date(emp.joinDate);
+        return joinDate <= currentDate;
+      }),
+      incoming: employees.filter(emp => {
+        const joinDate = new Date(emp.joinDate);
+        return joinDate > currentDate;
+      })
+    };
+  };
+
+  // Modify the OnboardingModal component
+  const OnboardingModal = () => {
+    const [activeTab, setActiveTab] = useState('newly');
+    const { newlyOnboarded, incoming } = categorizeEmployees(employeeData);
+
+    return (
+      <AnimatePresence>
+        {showOnboardingModal && (
           <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 20, opacity: 0 }}
-            className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            onClick={() => setShowOnboardingModal(false)}
           >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Newly Onboarded Employees</h2>
-              <button
-                onClick={() => setShowOnboardingModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ×
-              </button>
-            </div>
-            <div className="space-y-4">
-              {newlyOnboarded.map((employee) => (
-                <div key={employee.id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-800">{employee.name}</h3>
-                      <p className="text-gray-600">{employee.jobTitle}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">Joined: {new Date(employee.joinDate).toLocaleDateString()}</p>
-                      <button
-                        onClick={() => navigate(`/onboarding/${employee._id}`)}
-                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                      >
-                        View Details
-                      </button>
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+              className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Employee Onboarding Status</h2>
+                <button
+                  onClick={() => setShowOnboardingModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="flex space-x-4 mb-6">
+                <button
+                  onClick={() => setActiveTab('newly')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    activeTab === 'newly'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Newly Onboarded ({newlyOnboarded.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('incoming')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    activeTab === 'incoming'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Incoming ({incoming.length})
+                </button>
+              </div>
+
+              {/* Employee List */}
+              <div className="space-y-4">
+                {(activeTab === 'newly' ? newlyOnboarded : incoming).map((employee) => (
+                  <div key={employee.id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-800">{employee.name}</h3>
+                        <p className="text-gray-600">{employee.jobTitle}</p>
+                        <p className="text-sm text-gray-500">{employee.department}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">
+                          {activeTab === 'newly' ? 'Joined' : 'Joining'}: {new Date(employee.joinDate).toLocaleDateString()}
+                        </p>
+                        <button
+                          onClick={() => navigate(`/onboarding/${employee._id}`)}
+                          className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+                {(activeTab === 'newly' ? newlyOnboarded : incoming).length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    No {activeTab === 'newly' ? 'newly onboarded' : 'incoming'} employees found
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+        )}
+      </AnimatePresence>
+    );
+  };
 
   // Add AllPositionsModal component
   const AllPositionsModal = ({ show, onClose, jobsData }) => {
@@ -733,6 +807,20 @@ const Dashboard = () => {
     );
   };
 
+  // Fetch all applicants data
+  useEffect(() => {
+    const fetchApplicantsData = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/applicant/');
+        setApplicantsData(response.data);
+      } catch (error) {
+        console.error('Error fetching applicants data:', error);
+      }
+    };
+
+    fetchApplicantsData();
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -836,33 +924,25 @@ const Dashboard = () => {
                 </p>
               </motion.div>
 
-              {/* All Positions Card */}
+              {/* All Applicants Card */}
               <motion.div
                 className="bg-white rounded-lg shadow-sm p-3 lg:p-3.5 xl:p-5 2xl:p-8
                          cursor-pointer hover:shadow-md transition-all duration-300 
                          border border-gray-100"
-                onClick={() => setShowAllPositionsModal(true)}
+                onClick={() => setShowAllApplicantsModal(true)}
               >
                 <div className="flex items-center justify-between mb-2 lg:mb-3 xl:mb-4 2xl:mb-5">
                   <div className="p-1.5 lg:p-2 xl:p-3 2xl:p-4 bg-blue-100 rounded-lg">
-                    <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 2xl:w-8 2xl:h-8 text-blue-600" />
+                    <Users className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 2xl:w-8 2xl:h-8 text-blue-600" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-semibold text-gray-800">
-                    {jobsData.totalPositions}
+                    {applicantsData.length}
                   </h3>
                   <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg text-gray-600">
-                    All Positions
+                    Total Applicants
                   </p>
-                  <div className="flex items-center justify-between text-xs 2xl:text-sm mt-2">
-                    <span className="text-green-600">
-                      {jobsData.openPositions} Open
-                    </span>
-                    <span className="text-gray-500">
-                      {jobsData.totalPositions - jobsData.openPositions} Closed
-                    </span>
-                  </div>
                 </div>
               </motion.div>
 
@@ -930,10 +1010,10 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <h3 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-semibold text-gray-800 mb-1 lg:mb-2 2xl:mb-3">
-                  {newlyOnboarded.length}
+                  {employeeData.length}
                 </h3>
                 <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg text-gray-600">
-                  Newly Onboarded
+                  Onboarding Status
                 </p>
               </motion.div>
             </div>
@@ -1197,6 +1277,11 @@ const Dashboard = () => {
             show={showAllPositionsModal}
             onClose={() => setShowAllPositionsModal(false)}
             jobsData={jobsData}
+          />
+          <AllApplicantsModal 
+            show={showAllApplicantsModal}
+            onClose={() => setShowAllApplicantsModal(false)}
+            applicantsData={applicantsData}
           />
         </div>
       </div>

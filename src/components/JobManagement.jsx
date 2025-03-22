@@ -49,6 +49,9 @@ const ManageJobPostings = () => {
     const [showAddInterviewerModal, setShowAddInterviewerModal] = useState(false);
     const [showAddSolutionLeadModal, setShowAddSolutionLeadModal] = useState(false);
 
+    // Add this to your state declarations at the top
+    const [searchQuery, setSearchQuery] = useState('');
+
     useEffect(() => {
         fetchJobs();
     }, []);
@@ -238,9 +241,14 @@ const ManageJobPostings = () => {
         );
     }
 
+    // Modify the filteredJobs const to include the search filter
     const filteredJobs = jobs
         .filter(job => {
-            // Filter by status
+            // First filter by search query
+            const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase());
+            if (!matchesSearch) return false;
+
+            // Then apply existing filters
             if (statusFilter === 'active' && job.status === 'Closed') {
                 return false;
             }
@@ -607,6 +615,19 @@ const ManageJobPostings = () => {
                                 Create New Job
                             </button>
                         </div>
+                    </div>
+
+                    {/* Add Search Bar */}
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                        <input
+                            type="text"
+                            placeholder="Search jobs by title..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg 
+                                     focus:outline-none focus:ring-2 focus:ring-indigo-500 
+                                     focus:border-transparent text-sm"
+                        />
                     </div>
 
                     {/* Filter section - bigger for xl and 2xl */}

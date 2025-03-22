@@ -10,6 +10,7 @@ const ApplicantRow = React.memo(({
     setShowScoreDetails
 }) => {
     const [aiStatus, setAiStatus] = React.useState('pending');
+    const [interviewStatus, setInterviewStatus] = useState(applicant.interview_status || 'No Interview Scheduled');
 
     
     // Function to store AI result in database
@@ -88,17 +89,32 @@ const ApplicantRow = React.memo(({
         console.error('Error parsing resume data:', error);
     }
 
-    const interviewStatus = !applicant.interviews || applicant.interviews.length === 0
-        ? 'No Interview Scheduled'
-        : applicant.interviews.some(interview => interview.stages?.some(stage => stage.result === 'fail'))
-        ? 'Rejected'
-        : applicant.interviews.some(interview => interview.stages?.some(stage => stage.stage_id === 4 && stage.result === 'pass' && stage.offer_status === 'pending'))
-        ? 'Offer Stage'
-        : applicant.offer_status === 'accepted'
-        ? 'Hired'
-        : applicant.offer_status === 'rejected'
-        ? 'Offer Rejected'
-        : (() => {
+    // Function to update interview status in the database
+    const updateInterviewStatus = async (newStatus) => {
+        try {
+            await axios.put(`http://localhost:5000/api/applicant/${applicant.id}/status`, {
+                status: newStatus
+            });
+            setInterviewStatus(newStatus);
+        } catch (error) {
+            console.error('Error updating interview status:', error);
+        }
+    };
+
+    // Function to determine and update the interview status
+    const determineInterviewStatus = () => {
+        let newStatus = 'No Interview Scheduled';
+        if (!applicant.interviews || applicant.interviews.length === 0) {
+            newStatus = 'No Interview Scheduled';
+        } else if (applicant.interviews.some(interview => interview.stages?.some(stage => stage.result === 'fail'))) {
+            newStatus = 'Rejected';
+        } else if (applicant.interviews.some(interview => interview.stages?.some(stage => stage.stage_id === 4 && stage.result === 'pass' && stage.offer_status === 'pending'))) {
+            newStatus = 'Offer Stage';
+        } else if (applicant.offer_status === 'accepted') {
+            newStatus = 'Offer Accepted';
+        } else if (applicant.offer_status === 'rejected') {
+            newStatus = 'Offer Rejected';
+        } else {
             let currentStageId = 1;
             applicant.interviews.forEach(interview => {
                 if (interview.stages?.[0]) {
@@ -109,13 +125,19 @@ const ApplicantRow = React.memo(({
                 }
             });
             switch (currentStageId) {
-                case 1: return 'In HR Round';
-                case 2: return 'In Cultural Round';
-                case 3: return 'In Technical Round';
-                case 4: return 'In Final Round';
-                default: return 'No Interview Scheduled';
+                case 1: newStatus = 'In HR Round'; break;
+                case 2: newStatus = 'In Cultural Round'; break;
+                case 3: newStatus = 'In Technical Round'; break;
+                case 4: newStatus = 'In Final Round'; break;
+                default: newStatus = 'No Interview Scheduled';
             }
-        })();
+        }
+        updateInterviewStatus(newStatus);
+    };
+
+    useEffect(() => {
+        determineInterviewStatus();
+    }, [applicant.interviews, applicant.offer_status]);
 
     // Add viewResume function here
     const viewResume = async (applicantId) => {
@@ -141,32 +163,30 @@ const ApplicantRow = React.memo(({
             className="hover:bg-gray-50 transition-colors cursor-pointer"
             onClick={(e) => handleApplicantClick(e, applicant.id)}
         >
-            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                         py-4 lg:py-3 xl:py-3 2xl:py-4 
+            <td className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                         py-4 lg:py-2 xl:px-3 2xl:py-4 
                          whitespace-nowrap 
-                         text-sm lg:text-sm xl:text-sm 2xl:text-base text-gray-500">
+                         text-sm lg:text-xs xl:text-sm 2xl:text-base text-gray-500">
                 {applicant.name}
             </td>
-            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                         py-4 lg:py-3 xl:py-3 2xl:py-4 
-                         whitespace-nowrap 
-                         text-sm lg:text-sm xl:text-sm 2xl:text-base text-gray-500">
+            <td className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                         py-4 lg:py-2 xl:px-3 2xl:py-4 whitespace-nowrap">
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         viewResume(applicant.id);
                     }}
-                    className="px-3 lg:px-3 xl:px-3 2xl:px-4 
-                             py-1 lg:py-1 xl:py-1 2xl:py-1.5 
-                             text-sm lg:text-sm xl:text-sm 2xl:text-base 
+                    className="px-3 lg:px-2 xl:px-3 2xl:px-4 
+                             py-1 lg:py-0.5 xl:py-1 2xl:py-1.5 
+                             text-sm lg:text-xs xl:text-sm 2xl:text-base 
                              font-medium text-white bg-green-600 
                              rounded-md hover:bg-green-700"
                 >
                     View Resume
                 </button>
             </td>
-            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                         py-4 lg:py-3 xl:py-3 2xl:py-4 whitespace-nowrap">
+            <td className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                         py-4 lg:py-2 xl:px-3 2xl:py-4 whitespace-nowrap">
                 <span className={`px-2 lg:px-2 xl:px-2 2xl:px-2.5 
                                py-1 lg:py-1 xl:py-1 2xl:py-1 
                                inline-flex text-xs lg:text-xs xl:text-xs 2xl:text-sm 
@@ -182,10 +202,10 @@ const ApplicantRow = React.memo(({
                     {interviewStatus}
                 </span>
             </td>
-            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                         py-4 lg:py-3 xl:py-3 2xl:py-4 
+            <td className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                         py-4 lg:py-2 xl:px-3 2xl:py-4 
                          whitespace-nowrap 
-                         text-sm lg:text-sm xl:text-sm 2xl:text-base 
+                         text-sm lg:text-xs xl:text-sm 2xl:text-base 
                          font-medium cursor-help relative"
                 onMouseEnter={(e) => handleScoreHover(e, applicant.resume)}
                 onMouseLeave={() => setShowScoreDetails(null)}
@@ -196,8 +216,8 @@ const ApplicantRow = React.memo(({
                     {score !== null && !isNaN(score) ? `${Number(score).toFixed(1)}%` : 'N/A'}
                 </span>
             </td>
-            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                         py-4 lg:py-3 xl:py-3 2xl:py-4 whitespace-nowrap">
+            <td className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                         py-4 lg:py-2 xl:px-3 2xl:py-4 whitespace-nowrap">
                 <span className={`px-2 lg:px-2 xl:px-2 2xl:px-2.5 
                                py-1 lg:py-1 xl:py-1 2xl:py-1 
                                inline-flex text-xs lg:text-xs xl:text-xs 2xl:text-sm 
@@ -211,15 +231,13 @@ const ApplicantRow = React.memo(({
                     {aiStatus.charAt(0).toUpperCase() + aiStatus.slice(1)}
                 </span>
             </td>
-            <td className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                         py-4 lg:py-3 xl:py-3 2xl:py-4 
-                         whitespace-nowrap 
-                         text-sm lg:text-sm xl:text-sm 2xl:text-base font-medium">
+            <td className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                         py-4 lg:py-2 xl:px-3 2xl:py-4 whitespace-nowrap">
                 <div className="flex space-x-2 lg:space-x-2 xl:space-x-2 2xl:space-x-2.5">
                     <button
                         onClick={(e) => handleStatusUpdate(e, 'shortlisted')}
                         className="inline-flex items-center justify-center 
-                                 px-3 lg:px-3 xl:px-3 2xl:px-3 
+                                 px-3 lg:px-2 xl:px-3 2xl:px-4 
                                  py-1.5 lg:py-1.5 xl:py-1.5 2xl:py-1.5 
                                  border border-transparent 
                                  text-xs lg:text-xs xl:text-xs 2xl:text-sm 
@@ -231,7 +249,7 @@ const ApplicantRow = React.memo(({
                     <button
                         onClick={(e) => handleStatusUpdate(e, 'rejected')}
                         className="inline-flex items-center justify-center 
-                                 px-3 lg:px-3 xl:px-3 2xl:px-3 
+                                 px-3 lg:px-2 xl:px-3 2xl:px-4 
                                  py-1.5 lg:py-1.5 xl:py-1.5 2xl:py-1.5 
                                  border border-transparent 
                                  text-xs lg:text-xs xl:text-xs 2xl:text-sm 
@@ -268,7 +286,7 @@ const JobPostingForm = () => {
     });
 
     const [applicants, setApplicants] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [stageResults, setStageResults] = useState({});
 
@@ -285,7 +303,7 @@ const JobPostingForm = () => {
     const [showJobDetails, setShowJobDetails] = useState(false);
 
     // Add state for filter
-    const [applicantFilter, setApplicantFilter] = useState('all'); // 'all', 'top5', 'top10', 'top15'
+    const [applicantFilter, setApplicantFilter] = useState('Shortlisted'); // 'all', 'top5', 'top10', 'top15'
 
     useEffect(() => {
         const fetchHiringManagers = async () => {
@@ -669,6 +687,8 @@ ${jobPosting.keySkillsAndCompetencies}
 
                 } catch (err) {
                     console.error('Error:', err);
+                } finally {
+                    setLoading(false);
                 }
             };
             fetchJobData();
@@ -874,30 +894,11 @@ ${jobPosting.keySkillsAndCompetencies}
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <style jsx global>{`
-                @media (max-width: 1280px) {
-                    .scale-container {
-                        transform: scale(0.8);
-                        transform-origin: top left;
-                        width: 125%; /* Compensate for scale to maintain layout */
-                        height: 125%;
-                    }
-                    
-                    /* Add specific scale for EditJob dropdown */
-                    .edit-job-scale {
-                        transform: scale(0.9);
-                        transform-origin: top center;
-                        width: 111.11%; /* Compensate for 0.9 scale (100/0.9) */
-                        margin-left: -5.55%; /* Center the wider content */
-                    }
-                }
-            `}</style>
-            
-            <div className="max-w-8xl mx-auto py-8 lg:py-6 xl:py-8 2xl:py-10 px-4 sm:px-6 lg:px-8 2xl:px-10 scale-container">
+            <div className="max-w-8xl mx-auto py-8 lg:py-6 xl:py-8 2xl:py-10 px-4 sm:px-6 lg:px-8 2xl:px-10">
                 {/* Header Section - bigger for 2xl */}
-                <div className="mb-8 lg:mb-6 xl:mb-8 2xl:mb-10 flex justify-between items-center">
+                <div className="mb-8 lg:mb-4 xl:mb-8 2xl:mb-10 flex justify-between items-center">
                     <div>
-                        <h1 className="text-2xl lg:text-xl xl:text-2xl 2xl:text-4xl font-bold text-gray-900">
+                        <h1 className="text-xl lg:text-lg xl:text-2xl 2xl:text-4xl font-bold text-gray-900">
                             Job Posting
                         </h1>
                         <p className="mt-1 text-sm lg:text-xs xl:text-sm 2xl:text-lg text-gray-500">
@@ -906,15 +907,15 @@ ${jobPosting.keySkillsAndCompetencies}
                     </div>
                     <button
                         onClick={toggleJobDetails}
-                        className="px-4 lg:px-3 xl:px-4 2xl:px-6 
-                                 py-2 lg:py-1.5 xl:py-2 2xl:py-3 
+                        className="px-4 lg:px-2 xl:px-4 2xl:px-6 
+                                 py-2 lg:py-1 xl:py-2 2xl:py-3 
                                  text-sm lg:text-xs xl:text-sm 2xl:text-lg 
                                  font-medium text-indigo-600 bg-white rounded-md 
                                  shadow-sm hover:bg-indigo-50 flex items-center gap-2"
                     >
                         {showJobDetails ? 'Hide Details' : 'View Details'}
                         <svg 
-                            className={`w-5 h-5 lg:w-4 lg:h-4 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6 transition-transform ${showJobDetails ? 'transform rotate-180' : ''}`} 
+                            className={`w-5 h-5 lg:w-3 lg:h-3 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6 transition-transform ${showJobDetails ? 'transform rotate-180' : ''}`} 
                             fill="none" 
                             stroke="currentColor" 
                             viewBox="0 0 24 24"
@@ -926,7 +927,7 @@ ${jobPosting.keySkillsAndCompetencies}
 
                 {/* Job Details Dropdown */}
                 {showJobDetails && (
-                    <div className="mb-8 transition-all duration-300 ease-in-out edit-job-scale">
+                    <div className="mb-8 transition-all duration-300 ease-in-out">
                         <EditJob 
                             jobId={jobId} 
                             onSuccess={() => setShowJobDetails(false)} 
@@ -1069,14 +1070,10 @@ ${jobPosting.keySkillsAndCompetencies}
                             </div>
                         </div>
 
+                        {/* Loading Bar */}
                         {loading && (
-                            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-                                <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full">
-                                    <div className="flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-                                    </div>
-                                    <p className="mt-4 text-center text-gray-600">Processing applications...</p>
-                                </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                                <div className="bg-blue-600 h-2.5 rounded-full animate-pulse" style={{ width: '50%' }}></div>
                             </div>
                         )}
 
@@ -1098,8 +1095,8 @@ ${jobPosting.keySkillsAndCompetencies}
                                         <tr>
                                             <th 
                                                 scope="col" 
-                                                className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                                                         py-3 lg:py-3 xl:py-3 2xl:py-4 
+                                                className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                                                         py-3 lg:py-2 xl:py-3 2xl:py-4 
                                                          text-left text-xs lg:text-[11px] xl:text-xs 2xl:text-base 
                                                          font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             >
@@ -1113,8 +1110,8 @@ ${jobPosting.keySkillsAndCompetencies}
                                             </th>
                                             <th 
                                                 scope="col" 
-                                                className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                                                         py-3 lg:py-3 xl:py-3 2xl:py-4 
+                                                className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                                                         py-3 lg:py-2 xl:py-3 2xl:py-4 
                                                          text-left text-xs lg:text-[11px] xl:text-xs 2xl:text-base 
                                                          font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             >
@@ -1128,8 +1125,8 @@ ${jobPosting.keySkillsAndCompetencies}
                                             </th>
                                             <th 
                                                 scope="col" 
-                                                className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                                                         py-3 lg:py-3 xl:py-3 2xl:py-4 
+                                                className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                                                         py-3 lg:py-2 xl:py-3 2xl:py-4 
                                                          text-left text-xs lg:text-[11px] xl:text-xs 2xl:text-base 
                                                          font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             >
@@ -1140,8 +1137,8 @@ ${jobPosting.keySkillsAndCompetencies}
                                             </th>
                                             <th 
                                                 scope="col" 
-                                                className="px-6 lg:px-5 xl:px-6 2xl:px-7 
-                                                         py-3 lg:py-3 xl:py-3 2xl:py-4 
+                                                className="px-6 lg:px-3 xl:px-6 2xl:px-7 
+                                                         py-3 lg:py-2 xl:py-3 2xl:py-4 
                                                          text-left text-xs lg:text-[11px] xl:text-xs 2xl:text-base 
                                                          font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             >

@@ -264,13 +264,16 @@ const EmployeeDashboard = () => {
                       Name
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
+                      Solution
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Department
+                      Job Title
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Projects
+                      Grade
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Join Date
                     </th>
                   </tr>
                 </thead>
@@ -286,38 +289,19 @@ const EmployeeDashboard = () => {
                         className="hover:bg-gray-50"
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <motion.div
-                              whileHover={{ scale: 1.1 }}
-                              className="h-10 w-10 flex-shrink-0"
-                            >
-                              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-[#1e40af] to-[#3b82f6] flex items-center justify-center text-white font-medium">
-                                {employee.name.split(' ').map(n => n[0]).join('')}
-                              </div>
-                            </motion.div>
-                            <div className="ml-4">
-                              <div 
-                                className="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600"
-                                onClick={() => navigate(`/timesheet/${employee._id || employee.id}`)}
-                              >
-                                {employee.name}
-                              </div>
-                            </div>
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{employee.name}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{employee.role}</div>
+                          <div className="text-sm text-gray-900">{employee.department}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <motion.span
-                            whileHover={{ scale: 1.1 }}
-                            className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#10b981] text-white"
-                          >
-                            {employee.department}
-                          </motion.span>
+                          <div className="text-sm text-gray-900">{employee.jobTitle}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {employee.projects ? employee.projects.length : 0} projects
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{employee.grade}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{new Date(employee.joinDate).toLocaleDateString()}</div>
                         </td>
                       </motion.tr>
                     ))}
