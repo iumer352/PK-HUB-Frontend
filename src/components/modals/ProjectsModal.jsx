@@ -1,132 +1,137 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { AlertCircle, Clock, Users } from 'lucide-react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import StatModal from './StatModal';
+import { Bar } from 'react-chartjs-2';
 
-const ProjectsModal = ({ isOpen, onClose }) => {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/jobs');
-        setJobs(response.data);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching jobs:', err);
-        setError('Failed to fetch jobs');
-        setLoading(false);
-      }
-    };
-
-    if (isOpen) {
-      fetchJobs();
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const getStatusColor = (jobStatus) => {
-    switch (jobStatus?.toLowerCase()) {
-      case 'advertisement':
-        return 'bg-blue-100 text-blue-800';
-      case 'in hr round':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'in cultural round':
-        return 'bg-purple-100 text-purple-800';
-      case 'in technical round':
-        return 'bg-violet-100 text-violet-800';
-      case 'in final round':
-        return 'bg-fuchsia-100 text-fuchsia-800';
-      case 'completed':
-        return 'bg-emerald-100 text-emerald-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+const ProjectsModal = ({ show, onClose, projectStats, jobsData }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filter jobs based on search term
+  const filteredJobs = Array.isArray(jobsData) ? jobsData.filter(job => 
+    job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.functionType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.demandedFor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.hiringManager?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/50"
-        />
-
-        {/* Modal Content */}
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl overflow-hidden"
-        >
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-xl font-semibold text-gray-900">Active Projects</h3>
+    <StatModal show={show} onClose={onClose} title="Projects Overview">
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="text-sm font-semibold text-blue-800">Total Projects</h3>
+            <p className="text-2xl font-bold text-blue-600">{projectStats?.total || 0}</p>
           </div>
-
-          {/* Content */}
-          <div className="p-6">
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
-            ) : error ? (
-              <div className="text-center text-red-500 py-8">{error}</div>
-            ) : (
-              <div className="grid gap-4">
-                {jobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-lg font-medium text-gray-900">{job.title}</h4>
-                        <div className="flex items-center space-x-4 mt-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            job.hiringUrgency === 'Urgent - Immediate Hire'
-                              ? 'bg-red-100 text-red-800'
-                              : job.hiringUrgency === 'High Priority'
-                              ? 'bg-orange-100 text-orange-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            <Clock className="w-3 h-3 mr-1" />
-                            {job.hiringUrgency}
-                          </span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            getStatusColor(job.jobStatus)
-                          }`}>
-                            <Users className="w-3 h-3 mr-1" />
-                            {job.jobStatus || 'Advertisement'}
-                          </span>
-                        </div>
-                      </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h3 className="text-sm font-semibold text-green-800">Active</h3>
+            <p className="text-2xl font-bold text-green-600">{projectStats?.active || 0}</p>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <h3 className="text-sm font-semibold text-purple-800">Completed</h3>
+            <p className="text-2xl font-bold text-purple-600">{projectStats?.completed || 0}</p>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <h3 className="text-sm font-semibold text-yellow-800">Upcoming</h3>
+            <p className="text-2xl font-bold text-yellow-600">{projectStats?.upcoming || 0}</p>
+          </div>
+        </div>
+        
+        <div className="bg-white p-4 rounded-lg shadow h-[300px]">
+          <h3 className="text-lg font-semibold mb-4">Monthly Progress</h3>
+          <Bar
+            data={{
+              labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+              datasets: [{
+                label: 'Completed Projects',
+                data: projectStats?.monthlyProgress || [2, 3, 4, 3, 5, 4],
+                backgroundColor: 'rgba(79, 70, 229, 0.5)',
+                borderColor: 'rgb(79, 70, 229)',
+                borderWidth: 1
+              }]
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: true,
+              plugins: { 
+                legend: { position: 'top' }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    stepSize: 1
+                  }
+                }
+              }
+            }}
+          />
+        </div>
+        
+        <div className="mt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Current Projects</h3>
+            <input
+              type="text"
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+            <div className="grid grid-cols-7 gap-2 px-4 py-3 bg-gray-100 border-b border-gray-200">
+              <div className="text-xs font-semibold text-gray-600 uppercase">Project Name</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase">Solution</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase">Client</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase">Grade</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase">Status</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase">Manager</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase">Priority</div>
+            </div>
+            
+            <div className="divide-y divide-gray-200">
+              {filteredJobs.length > 0 ? (
+                filteredJobs.map((job) => (
+                  <div key={job.id} className="grid grid-cols-7 gap-2 px-4 py-3 hover:bg-gray-100">
+                    <div className="text-sm font-medium text-gray-900">{job.title}</div>
+                    <div>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {job.functionType || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600">{job.demandedFor || 'N/A'}</div>
+                    <div className="text-sm text-gray-600">{job.grade}</div>
+                    <div>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        job.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                        job.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' : 
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {job.status}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600">{job.hiringManager}</div>
+                    <div>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        job.hiringUrgency?.toLowerCase().includes('high') ? 'bg-red-100 text-red-800' :
+                        job.hiringUrgency?.toLowerCase().includes('normal') ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {job.hiringUrgency || 'N/A'}
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              ) : (
+                <div className="px-4 py-6 text-center text-gray-500">
+                  No projects found matching your search.
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Close
-            </button>
-          </div>
-        </motion.div>
+        </div>
       </div>
-    </div>
+    </StatModal>
   );
 };
 

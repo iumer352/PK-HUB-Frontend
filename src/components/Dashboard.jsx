@@ -20,7 +20,12 @@ import { Line, Bar, Doughnut, Radar } from 'react-chartjs-2';
 import ConfirmDialog from './ConfirmDialog';
 import InterviewsModal from './modals/InterviewsModal';
 import ProjectsModal from './modals/ProjectsModal';
-import AllApplicantsModal from './AllApplicantsModal';
+import PositionsModal from './modals/PositionsModal';
+import OnboardingModal from './modals/OnboardingModal';
+import HiringModal from './modals/HiringModal';
+import AllPositionsModal from './modals/AllPositionsModal';
+import AllApplicantsModal from './modals/AllApplicantsModal';
+import OpenPositionsModal from './modals/OpenPositionsModal';
 
 ChartJS.register(
   CategoryScale,
@@ -390,103 +395,6 @@ const Dashboard = () => {
     return order[status] || 3;
   };
 
-  const ProjectsModal = () => {
-    const [jobs, setJobs] = useState([]);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-      const fetchJobs = async () => {
-        if (!showProjectsModal) return;
-        
-        setLoading(true);
-        try {
-          const response = await axios.get('http://localhost:5000/api/jobs');
-          // Filter jobs by both status and selected solution
-          const filteredJobs = response.data.filter(job => 
-            job.status === 'Active' && 
-            (selectedSolution === 'all' || job.functionType === selectedSolution)
-          );
-          setJobs(filteredJobs);
-        } catch (error) {
-          console.error('Error fetching jobs:', error);
-        }
-        setLoading(false);
-      };
-
-      fetchJobs();
-    }, [showProjectsModal, selectedSolution]); // Add selectedSolution as dependency
-
-    return (
-      <StatModal
-        show={showProjectsModal}
-        onClose={() => setShowProjectsModal(false)}
-        title={`Open Positions ${selectedSolution !== 'all' ? `- ${selectedSolution}` : ''}`}
-      >
-        <div className="space-y-6">
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : jobs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No open positions found {selectedSolution !== 'all' ? `for ${selectedSolution}` : ''}
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {jobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900">{job.title}</h4>
-                      <div className="flex items-center space-x-6 mt-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-500 font-medium">Urgency:</span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            job.hiringUrgency === 'Urgent - Immediate Hire'
-                              ? 'bg-red-100 text-red-800'
-                              : job.hiringUrgency === 'High Priority'
-                              ? 'bg-orange-100 text-orange-800'
-                              : job.hiringUrgency === 'Normal'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            <Clock className="w-3 h-3 mr-1" />
-                            {job.hiringUrgency}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-500 font-medium">Job Stage:</span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            <Users className="w-3 h-3 mr-1" />
-                            {job.jobStatus}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/joblisting/${job.id}`);
-                        setShowProjectsModal(false);
-                      }}
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      View Job
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </StatModal>
-    );
-  };
-
   const PositionsModal = () => (
     <StatModal
       show={showPositionsModal}
@@ -821,6 +729,19 @@ const Dashboard = () => {
     fetchApplicantsData();
   }, []);
 
+  // First, create a function to get the filtered applicants count
+  const getFilteredApplicantsCount = () => {
+    if (selectedSolution === 'all') {
+      return applicantsData.length;
+    }
+    
+    return applicantsData.filter(applicant => 
+      applicant.Job && 
+      applicant.Job.functionType && 
+      applicant.Job.functionType.toLowerCase() === selectedSolution.toLowerCase()
+    ).length;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -938,10 +859,10 @@ const Dashboard = () => {
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-semibold text-gray-800">
-                    {applicantsData.length}
+                    {getFilteredApplicantsCount()}
                   </h3>
                   <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg text-gray-600">
-                    Total Applicants
+                    {selectedSolution === 'all' ? 'Total Applicants' : `${selectedSolution} Applicants`}
                   </p>
                 </div>
               </motion.div>
@@ -1264,24 +1185,46 @@ const Dashboard = () => {
           </motion.div>
           
           {/* Modals */}
-          <ProjectsModal />
-          <PositionsModal />
-          <OnboardingModal />
-          <HiringModal />
+          <OpenPositionsModal 
+            show={showProjectsModal}
+            onClose={() => setShowProjectsModal(false)}
+            selectedSolution={selectedSolution}
+          />
+
+          <PositionsModal 
+            show={showPositionsModal}
+            onClose={() => setShowPositionsModal(false)}
+            jobsData={jobsData}
+          />
+
+          <OnboardingModal 
+            show={showOnboardingModal}
+            onClose={() => setShowOnboardingModal(false)}
+            employeeData={employeeData}
+          />
+
+          <HiringModal 
+            show={showHiringModal}
+            onClose={() => setShowHiringModal(false)}
+          />
+
           <InterviewsModal
             show={showInterviewsModal}
             onClose={() => setShowInterviewsModal(false)}
             interviews={pendingInterviews}
           />
+
           <AllPositionsModal 
             show={showAllPositionsModal}
             onClose={() => setShowAllPositionsModal(false)}
             jobsData={jobsData}
           />
+
           <AllApplicantsModal 
             show={showAllApplicantsModal}
             onClose={() => setShowAllApplicantsModal(false)}
             applicantsData={applicantsData}
+            selectedSolution={selectedSolution}
           />
         </div>
       </div>
