@@ -95,7 +95,7 @@ const ManageJobPostings = () => {
 
     const fetchJobs = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/jobs');
+            const response = await axios.get('/api/jobs');
             const jobsData = response.data;
             console.log('Jobs with jobStatus:', jobsData); // Debug log
             setJobs(jobsData);
@@ -111,7 +111,7 @@ const ManageJobPostings = () => {
         setHiringManagerError(null);
         
         try {
-            await axios.post('http://localhost:5000/api/hiring-managers', hiringManagerForm);
+            await axios.post('/api/hiring-managers', hiringManagerForm);
             setShowHiringManagerModal(false);
             setHiringManagerForm({ name: '', email: '' });
             setSuccessMessage('Hiring Manager added successfully!');
@@ -133,7 +133,7 @@ const ManageJobPostings = () => {
         setInterviewerError(null);
         
         try {
-            await axios.post('http://localhost:5000/api/interviewers', interviewerForm);
+            await axios.post('/api/interviewers', interviewerForm);
             setShowInterviewerModal(false);
             setInterviewerForm({
                 name: '',
@@ -190,7 +190,7 @@ const ManageJobPostings = () => {
     const handleDeleteJob = async (jobId) => {
         if (window.confirm('Are you sure you want to delete this job posting?')) {
             try {
-                await axios.delete(`http://localhost:5000/api/jobs/${jobId}`);
+                await axios.delete(`/api/jobs/${jobId}`);
                 fetchJobs();
             } catch (err) {
                 setError('Failed to delete job');
@@ -215,7 +215,7 @@ const ManageJobPostings = () => {
     // Add handlers
     const handleAddInterviewer = async (formData) => {
         try {
-            const response = await axios.post('http://localhost:5000/api/interviewers', formData);
+            const response = await axios.post('/api/interviewers', formData);
             // Handle success
             setShowAddInterviewerModal(false);
         } catch (error) {
@@ -225,7 +225,7 @@ const ManageJobPostings = () => {
 
     const handleAddSolutionLead = async (formData) => {
         try {
-            const response = await axios.post('http://localhost:5000/api/solution-leads', formData);
+            const response = await axios.post('/api/solution-leads', formData);
             // Handle success
             setShowAddSolutionLeadModal(false);
         } catch (error) {

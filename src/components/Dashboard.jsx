@@ -157,7 +157,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/employees');
+        const response = await axios.get('/api/employees');
         setEmployeeData(response.data);
       } catch (error) {
         console.error('Error fetching employee data:', error);
@@ -239,7 +239,7 @@ const Dashboard = () => {
     const fetchJobsData = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5000/api/jobs', {
+        const response = await axios.get('/api/jobs', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -259,7 +259,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const employeesResponse = await axios.get('http://localhost:5000/api/employees');
+        const employeesResponse = await axios.get('/api/employees');
         const employees = employeesResponse.data;
 
         const thirtyDaysAgo = new Date();
@@ -288,7 +288,7 @@ const Dashboard = () => {
         const token = localStorage.getItem('token');
 
         const interviewersResponse = await axios.get(
-          'http://localhost:5000/api/interviewers/',
+          '/api/interviewers/',
           {
             headers: { Authorization: `Bearer ${token}` }
           }
@@ -304,7 +304,7 @@ const Dashboard = () => {
 
           // Get pending interviews for this interviewer
           const interviewsResponse = await axios.get(
-            `http://localhost:5000/api/interviewers/${interviewer.id}/pending-interviews`,
+            `/api/interviewers/${interviewer.id}/pending-interviews`,
             {
               headers: { Authorization: `Bearer ${token}` }
             }
@@ -719,7 +719,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchApplicantsData = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/applicant/');
+        const response = await axios.get('/api/applicant/');
         setApplicantsData(response.data);
       } catch (error) {
         console.error('Error fetching applicants data:', error);

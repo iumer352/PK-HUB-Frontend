@@ -46,6 +46,7 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
     ];
 
     const functions = [
+        'Digital Lighthouse',
         'Analytics and AI',
         'Data Transformation',
         'Low Code',
@@ -56,7 +57,7 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
     useEffect(() => {
         const fetchHiringManagers = async () => {
             try {
-                const response = await axios.get('http://localhost:5000/api/hiring-managers');
+                const response = await axios.get('/api/hiring-managers');
                 setHiringManagers(response.data);
             } catch (err) {
                 console.error('Error fetching hiring managers:', err);
@@ -70,7 +71,7 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
         if (urlJobId) {
             const fetchJobData = async () => {
                 try {
-                    const response = await axios.get(`http://localhost:5000/api/jobs/${urlJobId}`);
+                    const response = await axios.get(`/api/jobs/${urlJobId}`);
                     setJobPosting(response.data);
                 } catch (err) {
                     console.error('Error:', err);
@@ -101,7 +102,7 @@ const EditJob = ({ jobId, onSuccess, isDropdown = false }) => {
             };
 
             console.log('Job posting is:', jobData);
-            const response = await axios.put(`http://localhost:5000/api/jobs/${urlJobId}`, jobData);
+            const response = await axios.put(`/api/jobs/${urlJobId}`, jobData);
             
             // Check if the response is successful
             if (response.status === 200) {

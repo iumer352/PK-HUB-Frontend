@@ -96,13 +96,13 @@ const RecruitingDashboard = () => {
   const fetchData = async () => {
     try {
       const [InterviewerRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/interviewers/')
+        axios.get('/api/interviewers/')
       ]);
 
       if (applicantId) {
         // If we have an applicantId, fetch just that applicant
-        const applicantRes = await axios.get(`http://localhost:5000/api/applicant/${applicantId}`);
-        const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicantId}`);
+        const applicantRes = await axios.get(`/api/applicant/${applicantId}`);
+        const interviewsRes = await axios.get(`/api/interview/applicant/${applicantId}`);
         console.log('Applicant data check:', applicantRes.data.resume);
         const applicantWithInterviews = {
           ...applicantRes.data,
@@ -113,10 +113,10 @@ const RecruitingDashboard = () => {
         setSelectedApplicant(applicantWithInterviews);
       } else if (jobId) {
         // If we have a jobId, fetch all applicants for that job
-        const applicantsRes = await axios.get(`http://localhost:5000/api/applicant/job/${jobId}`);
+        const applicantsRes = await axios.get(`/api/applicant/job/${jobId}`);
         const applicantsWithInterviews = await Promise.all(
           applicantsRes.data.map(async (applicant) => {
-            const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
+            const interviewsRes = await axios.get(`/api/interview/applicant/${applicant.id}`);
             return {
               ...applicant,
               interviews: interviewsRes.data
@@ -143,7 +143,7 @@ const RecruitingDashboard = () => {
     }
 
     try {
-      const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${applicant.id}`);
+      const interviewsRes = await axios.get(`/api/interview/applicant/${applicant.id}`);
       const updatedApplicant = {
         ...applicant,
         interviews: interviewsRes.data
@@ -191,10 +191,10 @@ const RecruitingDashboard = () => {
       };
       
       // Use schedule-stage for all interviews
-      const response = await axios.post('http://localhost:5000/api/interview/schedule-stage', requestData);
+      const response = await axios.post('/api/interview/schedule-stage', requestData);
       
       // Get updated interview data
-      const interviewsRes = await axios.get(`http://localhost:5000/api/interview/applicant/${selectedApplicant.id}`);
+      const interviewsRes = await axios.get(`/api/interview/applicant/${selectedApplicant.id}`);
       
       // Update the applicants state with new interview data
       setApplicants(prev => prev.map(applicant => 
@@ -222,9 +222,48 @@ const RecruitingDashboard = () => {
     }
   };
 
+  const fetchInterviewResult = async (interviewId, stageId) => {
+    try {
+      const response = await axios.get(
+        `/api/interview/stages/${interviewId}/${stageId}/result`
+      );
+      // Return the specific fields we need from the response
+      return {
+        result: response.data.result,
+        feedback: response.data.feedback,
+        notes: response.data.notes,
+        completed_at: response.data.completed_at,
+        stage: response.data.stage
+      };
+    } catch (error) {
+      console.error('Error fetching interview result:', error);
+      return null;
+    }
+  };
+
+  const handleOpenResultModal = async (interview) => {
+    try {
+      if (interview && interview.stages && interview.stages[0]) {
+        const stageId = interview.stages[0].stage_id;
+        const result = await fetchInterviewResult(interview.id, stageId);
+        
+        // Set the interview with fetched result data
+        setSelectedInterview({
+          ...interview,
+          currentResult: result // Store the result data in a clear property
+        });
+        setShowResultModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching interview result:', error);
+      alert('Error loading interview result. Please try again.');
+    }
+  };
+  
+
   const handleUpdateNotes = async (notes) => {
     try {
-      const response = await axios.patch(`http://localhost:5000/api/interview/${selectedInterview.id}/feedback`, {
+      const response = await axios.patch(`/api/interview/${selectedInterview.id}/feedback`, {
         notes
       });
 
@@ -271,7 +310,7 @@ const RecruitingDashboard = () => {
   const handleUpdateResult = async (interviewId, resultData) => {
     try {
       // Save the result to backend
-      await axios.post(`http://localhost:5000/api/interview/stages/${interviewId}/${resultData.stageId}/feedback`, {
+      await axios.post(`/api/interview/stages/${interviewId}/${resultData.stageId}/feedback`, {
         result: resultData.result,
         feedback: resultData.feedback,
         notes: resultData.notes
@@ -279,8 +318,8 @@ const RecruitingDashboard = () => {
 
       // Get updated interview data
       const [interviewsRes, feedbackRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/interview/applicant/${selectedApplicant.id}`),
-        axios.get(`http://localhost:5000/api/interview/stages/${interviewId}/${resultData.stageId}/result`)
+        axios.get(`/api/interview/applicant/${selectedApplicant.id}`),
+        axios.get(`/api/interview/stages/${interviewId}/${resultData.stageId}/result`)
       ]);
       
       // Update the applicants state with new interview data
@@ -303,6 +342,32 @@ const RecruitingDashboard = () => {
           feedback: feedbackRes.data
         };
         setSelectedInterview(updatedInterview);
+      }
+
+      // If this was a skipped round and not the final stage, automatically schedule the next round
+      if (resultData.feedback === 'Round skipped') {
+        const currentStage = INTERVIEW_STAGES.find(stage => stage.id === resultData.stageId);
+        const currentStageIndex = INTERVIEW_STAGES.indexOf(currentStage);
+        
+        if (currentStageIndex < INTERVIEW_STAGES.length - 1) {
+          const nextStage = INTERVIEW_STAGES[currentStageIndex + 1];
+          const nextStageId = nextStage.id;
+          
+          // Get the first available interviewer for the next stage
+          const nextStageInterviewer = interviewers.find(interviewer => 
+            interviewer.interview_type === stageToType[nextStageId]
+          );
+
+          if (nextStageInterviewer) {
+            // Schedule the next round automatically
+            await handleScheduleInterview(
+              nextStageId,
+              new Date().toISOString().split('T')[0], // Today's date
+              new Date().toLocaleTimeString('en-US', { hour12: false }), // Current time
+              nextStageInterviewer.id
+            );
+          }
+        }
       }
 
       alert('Interview result updated successfully!');
@@ -364,14 +429,42 @@ const RecruitingDashboard = () => {
   // Add this new function to handle interview updates
   const handleUpdateInterviewDetails = async (interviewId, stageId, date, time, interviewerId) => {
     try {
+      // Convert stageId to number if it's a string
+      let numericStageId = stageId;
+      if (typeof stageId === 'string') {
+        switch(stageId.toUpperCase()) {
+          case 'HR':
+            numericStageId = 1;
+            break;
+          case 'CULTURAL':
+            numericStageId = 2;
+            break;
+          case 'TECHNICAL':
+            numericStageId = 3;
+            break;
+          case 'FINAL':
+            numericStageId = 4;
+            break;
+          default:
+            numericStageId = stageId;
+        }
+      }
 
-      console.log("date_time is ", `${date}T${time}`);
-      console.log("interviewer_id is ", interviewerId);
+      // Format the date and time properly
+      const formattedDateTime = `${date}T${time}:00.000Z`;
+
+      console.log('Updating interview with data:', {
+        interviewId,
+        stageId: numericStageId,
+        dateTime: formattedDateTime,
+        interviewerId
+      });
+
       const response = await axios.patch(
-        `http://localhost:5000/api/interview/schedule-stage/${interviewId}/${stageId}`,
+        `/api/interview/schedule-stage/${interviewId}/${numericStageId}`,
         {
-          date_time: `${date}T${time}`,
-          interviewer_id: interviewerId
+          date_time: formattedDateTime,
+          interviewer_id: parseInt(interviewerId, 10) // Ensure interviewer_id is a number
         }
       );
 
@@ -383,7 +476,21 @@ const RecruitingDashboard = () => {
       return false;
     } catch (error) {
       console.error('Error updating interview details:', error);
-      alert('Failed to update interview details');
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+        alert(`Failed to update interview details: ${error.response.data.message || 'Unknown error'}`);
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('Error request:', error.request);
+        alert('No response received from server. Please check your connection.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error message:', error.message);
+        alert('Error setting up the request. Please try again.');
+      }
       return false;
     }
   };
@@ -410,6 +517,7 @@ const RecruitingDashboard = () => {
 
       <InterviewRightSidebar
         selectedApplicant={selectedApplicant}
+        onOpenResultModal={handleOpenResultModal}
         jobDetails={jobDetails}
         INTERVIEW_STAGES={INTERVIEW_STAGES}
         getCurrentStage={getCurrentStage}
@@ -449,13 +557,16 @@ const RecruitingDashboard = () => {
             setSelectedInterview(null);
           }}
           onSave={async (resultData) => {
-            console.log('Interview ID:', selectedInterview.id);
-            console.log('Stage ID:', selectedInterview.stages[0].stage_id);
-            const success = await handleUpdateResult(selectedInterview.id, { ...resultData, stageId: selectedInterview.stages[0].stage_id });
+            const success = await handleUpdateResult(
+              selectedInterview.id, 
+              { 
+                ...resultData, 
+                stageId: selectedInterview.stages[0].stage_id 
+              }
+            );
             if (success) {
               setShowResultModal(false);
               setSelectedInterview(null);
-              // Refresh data after modal is closed
               fetchData();
             }
           }}

@@ -53,7 +53,7 @@ const Settings = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.patch(
-        'http://localhost:5000/api/auth/updatePassword',
+        '/api/auth/updatePassword',
         {
           currentPassword: passwords.currentPassword,
           newPassword: passwords.newPassword

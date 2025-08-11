@@ -10,7 +10,7 @@ const OnboardSuccessModal = ({ isOpen, onClose, jobId, employeeName }) => {
   const handleCloseJob = async () => {
     try {
       setIsClosing(true);
-      const response = await axios.patch(`http://localhost:5000/api/jobs/${jobId}/status`, {
+      const response = await axios.patch(`/api/jobs/${jobId}/status`, {
         status: 'Closed'
       });
 

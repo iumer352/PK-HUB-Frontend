@@ -36,7 +36,7 @@ const AdminCenter = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/auth/users', {
+      const response = await axios.get('/api/auth/users', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -61,7 +61,7 @@ const AdminCenter = () => {
       console.log('Updating role:', { userId, newRole });
       
       await axios.patch(  // Changed from put to patch
-        'http://localhost:5000/api/auth/updateUserRole',
+        '/api/auth/updateUserRole',
         {
           userId,
           newRole  // Changed from role to newRole to match API
@@ -97,7 +97,7 @@ const AdminCenter = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        'http://localhost:5000/api/auth/register',
+        '/api/auth/register',
         formValues,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -131,7 +131,7 @@ const AdminCenter = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.patch(
-        'http://localhost:5000/api/auth/updatePassword',
+        '/api/auth/updatePassword',
         {
           currentPassword: passwordChange.currentPassword,
           newPassword: passwordChange.newPassword

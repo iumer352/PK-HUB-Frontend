@@ -1,10 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BaseModal from './BaseModal';
 
 const InterviewResultModal = ({ isOpen, interview, onClose, onSave }) => {
-  const [result, setResult] = useState(interview?.result || 'pending');
-  const [feedback, setFeedback] = useState(interview?.feedback || '');
-  const [notes, setNotes] = useState(interview?.notes || '');
+  const [result, setResult] = useState('pending');
+  const [feedback, setFeedback] = useState('');
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (isOpen && interview) {
+      // Get result from the currentResult property which contains the API response
+      const currentResult = interview.currentResult || {};
+      
+      setResult(currentResult.result || 'pending');
+      setFeedback(currentResult.feedback || '');
+      setNotes(currentResult.notes || '');
+
+      console.log('Updating modal state:', {
+        result: currentResult.result,
+        feedback: currentResult.feedback,
+        notes: currentResult.notes
+      });
+    }
+  }, [isOpen, interview]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setResult('pending');
+      setFeedback('');
+      setNotes('');
+    }
+  }, [isOpen]);
 
   const handleSave = () => {
     onSave({ result, feedback, notes });
@@ -17,20 +43,23 @@ const InterviewResultModal = ({ isOpen, interview, onClose, onSave }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Result</label>
           <div className="flex space-x-4">
-            {['pass', 'fail', 'pending'].map((option) => (
-              <button
-                key={option}
-                onClick={() => setResult(option)}
-                className={`px-4 py-2 rounded-lg capitalize ${
-                  result === option
-                    ? option === 'pass'
-                      ? 'bg-green-100 text-green-800 border-2 border-green-500'
-                      : option === 'fail'
-                      ? 'bg-red-100 text-red-800 border-2 border-red-500'
-                      : 'bg-gray-100 text-gray-800 border-2 border-gray-500'
-                    : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
-                }`}
-              >
+            {['pass', 'fail', 'pending', 'Withdrawn'].map((option) => (
+                        <button
+                        key={option}
+                        onClick={() => setResult(option)}
+                        className={`px-4 py-2 rounded-lg capitalize ${
+                          result === option
+                            ? option === 'pass'
+                              ? 'bg-green-100 text-green-800 border-2 border-green-500'
+                              : option === 'fail'
+                              ? 'bg-red-100 text-red-800 border-2 border-red-500'
+                              : option === 'Withdrawn'
+                              ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-500'
+                              : 'bg-gray-100 text-gray-800 border-2 border-gray-500'
+                            : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+            
                 {option}
               </button>
             ))}

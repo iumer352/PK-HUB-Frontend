@@ -37,7 +37,7 @@ const EmployeeDashboard = () => {
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/employees');
+      const response = await axios.get('/api/employees');
       const employees = response.data;
       setEmployees(employees);
       
@@ -49,7 +49,7 @@ const EmployeeDashboard = () => {
 
       // Process role distribution
       const roleGroups = employees.reduce((acc, emp) => {
-        acc[emp.role] = (acc[emp.role] || 0) + 1;
+        acc[emp.grade] = (acc[emp.grade] || 0) + 1;
         return acc;
       }, {});
 
@@ -58,13 +58,15 @@ const EmployeeDashboard = () => {
         departmentData: Object.entries(departmentGroups).map(([name, value]) => ({ name, value })),
         roleData: Object.entries(roleGroups).map(([name, value]) => ({ name, value })),
         totalEmployees: employees.length,
-        activeEmployees: employees.filter(emp => emp.status === 'active').length,
+        activeEmployees: employees.length,
         newHires: employees.filter(emp => {
           const hireDate = new Date(emp.joinDate);
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          return hireDate >= thirtyDaysAgo;
+          const currentDate = new Date();
+          
+          // Check if the employee's joinDate is in the current month and year
+          return hireDate.getFullYear() === currentDate.getFullYear() && hireDate.getMonth() === currentDate.getMonth();
         }).length
+        
       });
       
       setLoading(false);
@@ -115,20 +117,7 @@ const EmployeeDashboard = () => {
     <div className="p-6 bg-white rounded-lg shadow">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-[#1e40af]">Employee Dashboard</h1>
-        <div className="space-x-3">
-          <button
-            onClick={() => navigate('/add-employee')}
-            className="bg-[#1e40af] hover:bg-[#3b82f6] text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            Add Employee
-          </button>
-          <button
-            onClick={() => navigate('/view-employees')}
-            className="bg-[#1e40af] hover:bg-[#3b82f6] text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            View Schedule
-          </button>
-        </div>
+        
       </div>
 
       {/* Stats Cards */}
@@ -159,9 +148,9 @@ const EmployeeDashboard = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis 
                 dataKey="name" 
-                fontSize={10} 
-                angle={-45} 
-                textAnchor="end" 
+                fontSize={12} 
+                angle={0} 
+                textAnchor="middle" 
                 height={60} 
                 stroke="#1e40af"
                 tick={{ fill: '#1e40af' }}
@@ -170,6 +159,8 @@ const EmployeeDashboard = () => {
                 fontSize={10} 
                 stroke="#1e40af"
                 tick={{ fill: '#1e40af' }}
+                ticks={[0, 1]}
+                domain={[0, 1]}
               />
               <Tooltip
                 contentStyle={{

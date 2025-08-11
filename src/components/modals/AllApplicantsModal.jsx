@@ -42,6 +42,17 @@ const AllApplicantsModal = ({ show, onClose, applicantsData, selectedSolution })
     return nameMatch && jobMatch && statusMatch && solutionMatch;
   });
 
+  const getAIscore = (resumeData) => {
+    try{
+        const parsedData = JSON.parse(resumeData);
+        return parsedData.score.Overall_Score
+    }
+    catch(error){
+        console.log("error parsing json ",error);
+    }
+
+  }
+
   // Sort applicants by hiring urgency
   const sortedApplicants = filteredApplicants.sort((a, b) => {
     const priorityOrder = { 'high priority': 1, 'normal': 2, 'low priority': 3 };
@@ -96,11 +107,15 @@ const AllApplicantsModal = ({ show, onClose, applicantsData, selectedSolution })
   };
 
   // Function to handle applicant click
-  const handleApplicantClick = (applicantId) => {
+  const handleApplicantClick = (applicant) => {
     // Close the modal
     onClose();
-    // Navigate to the interview tracking page
-    navigate(`/interview-tracking/${applicantId}`);
+    // Navigate to the job listing page with the job ID and applicant name for filtering
+    navigate(`/joblisting/${applicant.JobId}`, {
+      state: {
+        filterApplicant: applicant.name
+      }
+    });
   };
 
   return (
@@ -205,8 +220,8 @@ const AllApplicantsModal = ({ show, onClose, applicantsData, selectedSolution })
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Job Applied For</div>
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Solution</div>
                 <div className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Interview Status</div>
-                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wider">AI Recommendation</div>
-                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Hiring Urgency</div>
+                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wider">AI Reccomendation</div>
+                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wider">AI Score</div>
               </div>
             </div>
 
@@ -217,7 +232,7 @@ const AllApplicantsModal = ({ show, onClose, applicantsData, selectedSolution })
                   key={applicant.id}
                   className={`grid grid-cols-6 gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors
                             ${index !== currentApplicants.length - 1 ? 'border-b border-gray-200' : ''}`}
-                  onClick={() => handleApplicantClick(applicant.id)}
+                  onClick={() => handleApplicantClick(applicant)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="text-sm font-medium text-gray-900">{applicant.name}</div>
@@ -239,7 +254,8 @@ const AllApplicantsModal = ({ show, onClose, applicantsData, selectedSolution })
                   </div>
                   <div>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-black-800">
-                      {applicant.Job?.hiringUrgency || 'N/A'}
+                      {console.log("applicant score is ", typeof applicant?.resume)}
+                      {getAIscore(applicant.resume)}
                     </span>
                   </div>
                 </div>

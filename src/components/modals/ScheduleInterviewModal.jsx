@@ -15,74 +15,24 @@ const ScheduleInterviewModal = ({
   const [hour, setHour] = useState('09');
   const [minute, setMinute] = useState('00');
   const [selectedInterviewer, setSelectedInterviewer] = useState('');
-  const [minDateTime, setMinDateTime] = useState({ date: '', hour: '00', minute: '00' });
 
-  // Set minimum date and time when modal opens
+  // Set default values when modal opens or selectedInterview changes
   useEffect(() => {
-    console.log('Stage id:', stageId);
     if (isOpen) {
-      const now = new Date();
-      
-      // Format current date as YYYY-MM-DD
-      const formattedDate = now.toISOString().split('T')[0];
-      
-      // Get current hour and minute
-      const currentHour = now.getHours().toString().padStart(2, '0');
-      const currentMinute = now.getMinutes().toString().padStart(2, '0');
-      
-      // Set minimum date as current date
-      setMinDateTime({
-        date: formattedDate,
-        hour: currentHour,
-        minute: currentMinute
-      });
-
-      // Set default values to next available slot
-      setDate(formattedDate);
-      // If current time is before 9 AM, start at 9 AM
-      if (parseInt(currentHour) < 9) {
-        setHour('09');
-        setMinute('00');
-      }
-      // If current time is after 6 PM, set to tomorrow 9 AM
-      else if (parseInt(currentHour) >= 18) {
-        const tomorrow = new Date(now);
-        tomorrow.setDate(now.getDate() + 1);
-        setDate(tomorrow.toISOString().split('T')[0]);
-        setHour('09');
-        setMinute('00');
-      }
-      // Otherwise, round up to next 15-minute interval
-      else {
-        const nextQuarterHour = Math.ceil(parseInt(currentMinute) / 15) * 15;
-        if (nextQuarterHour === 60) {
-          setHour((parseInt(currentHour) + 1).toString().padStart(2, '0'));
-          setMinute('00');
-        } else {
-          setHour(currentHour);
-          setMinute(nextQuarterHour.toString().padStart(2, '0'));
-        }
+      if (selectedInterview) {
+        // Use the pre-populated values from selectedInterview
+        setDate(selectedInterview.currentDate || '');
+        setHour(selectedInterview.currentHour || '09');
+        setMinute(selectedInterview.currentMinute || '00');
+        setSelectedInterviewer(selectedInterview.currentInterviewerId || '');
+      } else {
+        // Default to current date for new interviews
+        const now = new Date();
+        const formattedDate = now.toISOString().split('T')[0];
+        setDate(formattedDate);
       }
     }
-  }, [isOpen]);
-
-  // Validate selected time is not in past
-  const isValidDateTime = () => {
-    const selectedDateTime = new Date(`${date}T${hour}:${minute}`);
-    const now = new Date();
-    
-    // If selected date is today, check time
-    if (date === minDateTime.date) {
-      // Convert current time to minutes since midnight
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      // Convert selected time to minutes since midnight
-      const selectedMinutes = parseInt(hour) * 60 + parseInt(minute);
-      
-      return selectedMinutes > currentMinutes;
-    }
-    
-    return selectedDateTime > now;
-  };
+  }, [isOpen, selectedInterview]);
 
   // Filter interviewers based on stage and job function for technical round
   const filteredInterviewers = interviewers.filter(interviewer => {
@@ -137,25 +87,12 @@ const ScheduleInterviewModal = ({
       
       // For Cultural round, only check interview type
       if (stageNumber === 2) { // Cultural round
-        console.log('Cultural round matching:', {
-          interviewType,
-          interviewerFunction: interviewer.function,
-          jobFunction: jobDetails?.functionType,
-          matches: interviewTypeNumber === stageNumber,
-          functionMatches: interviewer.function === jobDetails?.functionType
-        });
         return interviewTypeNumber === stageNumber && 
                interviewer.function === jobDetails?.functionType;
       }
       
       // For Technical round, check both interview type and function
       if (stageNumber === 3) { // Technical round
-        console.log('Technical round matching:', {
-          interviewType,
-          interviewerFunction,
-          jobFunction,
-          matches: interviewTypeNumber === stageNumber && interviewerFunction === jobFunction
-        });
         return interviewTypeNumber === stageNumber && interviewerFunction === jobFunction;
       }
     }
@@ -166,14 +103,9 @@ const ScheduleInterviewModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isValidDateTime()) {
-      alert('Please select a future date and time');
-      return;
-    }
     const time = `${hour}:${minute}`;
     
     if (selectedInterview) {
-      // Use the new update function
       const success = await onUpdateInterview(
         selectedInterview.id,
         stageId,
@@ -196,44 +128,8 @@ const ScheduleInterviewModal = ({
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
 
-  // Generate available time options based on selected date
-  const getAvailableTimeOptions = () => {
-    const isToday = date === minDateTime.date;
-    const currentHour = new Date().getHours();
-
-    return hours.map(h => {
-      const hourInt = parseInt(h);
-      
-      // If it's today and the hour has passed, don't show it
-      if (isToday && hourInt <= currentHour) return null;
-      
-      const period = hourInt >= 12 ? 'PM' : 'AM';
-      const display12Hour = hourInt === 0 ? 12 : hourInt > 12 ? hourInt - 12 : hourInt;
-      return (
-        <option key={h} value={h}>
-          {display12Hour} {period}
-        </option>
-      );
-    }).filter(Boolean); // Remove null values
-  };
-
-  // Get available minutes based on selected hour
-  const getAvailableMinutes = () => {
-    const isToday = date === minDateTime.date;
-    const currentHour = new Date().getHours();
-    const currentMinute = new Date().getMinutes();
-    
-    return minutes.map(m => {
-      // If it's today and current hour, only show future minutes
-      if (isToday && parseInt(hour) === currentHour) {
-        return parseInt(m) > currentMinute ? m : null;
-      }
-      return m;
-    }).filter(Boolean); // Remove null values
-  };
-
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose} title="Schedule Interview">
+    <BaseModal isOpen={isOpen} onClose={onClose} title={selectedInterview ? "Update Interview" : "Schedule Interview"}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -243,7 +139,6 @@ const ScheduleInterviewModal = ({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            min={minDateTime.date}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
           />
@@ -257,13 +152,20 @@ const ScheduleInterviewModal = ({
             <div className="relative">
               <select
                 value={hour}
-                onChange={(e) => {
-                  setHour(e.target.value);
-                }}
+                onChange={(e) => setHour(e.target.value)}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 required
               >
-                {getAvailableTimeOptions()}
+                {hours.map(h => {
+                  const hourInt = parseInt(h);
+                  const period = hourInt >= 12 ? 'PM' : 'AM';
+                  const display12Hour = hourInt === 0 ? 12 : hourInt > 12 ? hourInt - 12 : hourInt;
+                  return (
+                    <option key={h} value={h}>
+                      {display12Hour} {period}
+                    </option>
+                  );
+                })}
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                 <svg className="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,7 +236,7 @@ const ScheduleInterviewModal = ({
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             disabled={filteredInterviewers.length === 0}
           >
-            Schedule Interview
+            {selectedInterview ? "Update Interview" : "Schedule Interview"}
           </button>
         </div>
       </form>

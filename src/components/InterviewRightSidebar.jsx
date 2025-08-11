@@ -7,7 +7,6 @@ import OfferLetterModal from './modals/OfferLetterModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from './modals/ConfirmationModal';
 import OnboardSuccessModal from './modals/OnboardSuccessModal';
-import JoiningDateModal from './modals/JoiningDateModal';
 
 const InterviewRightSidebar = ({ 
   selectedApplicant,
@@ -23,7 +22,8 @@ const InterviewRightSidebar = ({
   setShowResultModal,
   setSelectedInterview,
   setShowNotes,
-  interviewQuestions
+  interviewQuestions,
+  onOpenResultModal
 }) => {
   const navigate = useNavigate();
   const [showStageDropdown, setShowStageDropdown] = useState(false);
@@ -37,8 +37,7 @@ const InterviewRightSidebar = ({
   const [offerStatus, setOfferStatus] = useState(null);
   const [showQuestions, setShowQuestions] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showJoiningDateModal, setShowJoiningDateModal] = useState(false);
-  const [joiningDate, setJoiningDate] = useState('');
+  const [hrResultData, setHrResultData] = useState(null);
 
   // Debug log for job details and interview questions
   useEffect(() => {
@@ -120,7 +119,7 @@ const InterviewRightSidebar = ({
     const fetchOfferStatus = async () => {
       if (selectedApplicant?.id) {
         try {
-          const response = await axios.get(`http://localhost:5000/api/applicant/${selectedApplicant.id}/offer-status`);
+          const response = await axios.get(`/api/applicant/${selectedApplicant.id}/offer-status`);
           setOfferStatus(response.data.offer_status);
         } catch (error) {
           console.error('Error fetching offer status:', error);
@@ -132,23 +131,24 @@ const InterviewRightSidebar = ({
   }, [selectedApplicant?.id]);
 
   // Handle onboard button click
-  const handleOnboard = async (date) => {
+  const handleOnboard = async () => {
     console.log('Onboard function called');
     try {
-      const response = await axios.post('http://localhost:5000/api/employees/', {
+      const response = await axios.post('/api/employees/', {
         name: selectedApplicant.name,
         email: selectedApplicant.email,
         phone: selectedApplicant.phone,
         department: jobDetails.functionType,
         jobTitle: jobDetails.title,
-        grade: jobDetails.grade,
-        joiningDate: date
+        grade: jobDetails.grade
       });
 
       console.log('Employee creation response:', response);
 
       if (response.status === 201) {
         setOnboardingSuccess(true);
+        
+        console.log('Setting show success modal to true');
         setShowSuccessModal(true); // Show success modal
       }
     } catch (error) {
@@ -284,6 +284,25 @@ const InterviewRightSidebar = ({
     }
   }, [selectedApplicant?.id]); // Only update when applicant changes
 
+  // Add this function to fetch HR result data
+  const fetchHRResult = async (stageId, applicantId) => {
+    try {
+      const response = await axios.get(
+        `/api/interview/stages/1/applicant/${applicantId}/hr-result`
+      );
+      setHrResultData(response.data);
+    } catch (error) {
+      console.error('Error fetching HR result:', error);
+    }
+  };
+
+  // Update the useEffect for HR modal
+  useEffect(() => {
+    if (showHRModal && selectedHRInterview) {
+      fetchHRResult(selectedHRInterview.id, selectedApplicant.id);
+    }
+  }, [showHRModal, selectedHRInterview]);
+
   if (!selectedApplicant) {
     return (
       <div className="flex-1 p-8 flex items-center justify-center text-gray-500">
@@ -373,7 +392,7 @@ const InterviewRightSidebar = ({
                 relative
                 ${result === 'pass'
                   ? 'bg-green-500 text-white' 
-                  : result === 'fail'
+                  : result === 'fail' || result === 'Withdrawn'
                   ? 'bg-red-500 text-white'
                   : isCurrentStage && canProceed
                   ? 'bg-blue-500 text-white'
@@ -396,12 +415,29 @@ const InterviewRightSidebar = ({
         {isFinalRoundPassed() && isOfferAccepted() && (
           <div 
             className="flex flex-col items-center relative cursor-pointer"
-            onClick={() => setShowJoiningDateModal(true)}
+            onClick={handleOnboardingClick}
           >
             <div className="p-3 rounded-full bg-green-100 hover:bg-green-200">
               <Briefcase className="w-6 h-6 mb-1" />
             </div>
             <span className="text-sm mt-2">Onboarding</span>
+            {showOnboardButton && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  console.log('Onboard button clicked');
+                  handleOnboard();
+                }}
+                className="absolute top-full mt-2 px-4 py-1 text-sm bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+              >
+                Onboard
+              </button>
+            )}
+            {onboardingSuccess && (
+              <div className="mt-4 p-4 bg-green-100 text-green-700 rounded-md">
+                Applicant has been successfully onboarded!
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -544,8 +580,7 @@ const InterviewRightSidebar = ({
                           setSelectedHRInterview(interview);
                           setShowHRModal(true);
                         } else {
-                          setSelectedInterview(interview);
-                          setShowResultModal(true);
+                          onOpenResultModal(interview);
                         }
                       }}
                       className={`font-medium px-4 py-2 rounded-lg transition-colors ${
@@ -559,17 +594,70 @@ const InterviewRightSidebar = ({
                       Update Result
                     </button>
 
-                    {/* Only show Update Interview Details when status is pending */}
+                    {/* Update Interview Details button - Available for all statuses */}
+                    <button
+                      onClick={() => {
+                        // Get the current interview date and time
+                        const interviewDate = new Date(interview.date_time);
+                        const formattedDate = interviewDate.toISOString().split('T')[0];
+                        const formattedHour = interviewDate.getHours().toString().padStart(2, '0');
+                        const formattedMinute = interviewDate.getMinutes().toString().padStart(2, '0');
+                        
+                        // Set the selected interview with current details
+                        setSelectedInterview({
+                          ...interview,
+                          currentDate: formattedDate,
+                          currentHour: formattedHour,
+                          currentMinute: formattedMinute,
+                          currentInterviewerId: interview.interviewer_id
+                        });
+                        setSelectedStage(interview.stages[0].stage_id);
+                        setShowScheduler(true);
+                      }}
+                      className="font-medium px-4 py-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                    >
+                      Update Interview Details
+                    </button>
+
+                    {/* Skip Round Button - Only show when status is pending */}
                     {(stageResults[interview.id]?.result === 'pending') && (
                       <button
-                        onClick={() => {
-                          setSelectedInterview(interview);
-                          setSelectedStage(interview.stages[0].stage_id);
-                          setShowScheduler(true);
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            // Update the interview result to pass with skip feedback
+                            const response = await axios.post(
+                              `/api/interview/stages/${interview.id}/${interview.stages[0].stage_id}/feedback`,
+                              {
+                                result: 'pass',
+                                feedback: 'Round skipped',
+                                notes: 'This round was not conducted as per requirement.'
+                              }
+                            );
+
+                            // Update the stage results
+                            setStageResults(prev => ({
+                              ...prev,
+                              [interview.id]: response.data
+                            }));
+
+                            // If this is not the final stage, automatically schedule the next round
+                            const currentStageIndex = stageOrder.indexOf(activeStage);
+                            if (currentStageIndex < stageOrder.length - 1) {
+                              const nextStage = stageOrder[currentStageIndex + 1];
+                              setActiveStage(nextStage);
+                            }
+
+                            // Refresh the page to show updated data
+                            window.location.reload();
+                          } catch (error) {
+                            console.error('Error skipping round:', error);
+                            alert('Failed to skip round. Please try again.');
+                          }
                         }}
-                        className="font-medium px-4 py-2 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                        className="font-medium px-4 py-2 rounded-lg bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors"
                       >
-                        Update Interview Details
+                        Skip Round
                       </button>
                     )}
 
@@ -597,7 +685,7 @@ const InterviewRightSidebar = ({
                         onClick={(e) => {
                           e.preventDefault();
                           console.log('Onboard button clicked');
-                          handleOnboard(joiningDate);
+                          handleOnboard();
                         }}
                         className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                       >
@@ -730,11 +818,12 @@ const InterviewRightSidebar = ({
       <HRResultModal
         isOpen={showHRModal}
         interview={selectedHRInterview}
-        stageId={1} // HR stage ID is always 1
+        stageId={selectedHRInterview?.id}
         applicantId={selectedApplicant?.id}
+        initialData={hrResultData}
         onClose={() => {
           setShowHRModal(false);
-          window.location.reload(); // Refresh to show updated data
+          setHrResultData(null);
         }}
       />
 
@@ -751,7 +840,7 @@ const InterviewRightSidebar = ({
 
             if (offerInterview) {
               const response = await axios.post(
-                `http://localhost:5000/api/interview/stages/${offerInterview.id}/${offerInterview.stage_id}/feedback`,
+                `/api/interview/stages/${offerInterview.id}/${offerInterview.stage_id}/feedback`,
                 {
                   result: resultData.result,
                   feedback: `Offer ${resultData.offerStatus}`,
@@ -782,16 +871,6 @@ const InterviewRightSidebar = ({
         onClose={() => setShowSuccessModal(false)}
         jobId={jobDetails?.id}
         employeeName={selectedApplicant?.name}
-      />
-
-      {/* Joining Date Modal */}
-      <JoiningDateModal
-        isOpen={showJoiningDateModal}
-        onClose={() => setShowJoiningDateModal(false)}
-        onConfirm={(date) => {
-          setJoiningDate(date);
-          handleOnboard(date);
-        }}
       />
     </div>
   );

@@ -12,6 +12,7 @@ const InterviewLeftSidebar = ({
 }) => {
   const [stageFeedback, setStageFeedback] = useState({});
   const [hrData, setHrData] = useState(null);
+  const [location, setLocation] = useState(null);
   const [offerStatus, setOfferStatus] = useState(null);
   const applicantsToShow = selectedApplicant ? [selectedApplicant] : applicants;
 
@@ -31,7 +32,7 @@ const InterviewLeftSidebar = ({
             // For HR stage, fetch HR-specific data
             if (interview.stages[0].stage_id === 1) {
               const response = await axios.get(
-                `http://localhost:5000/api/interview/stages/${interview.stages[0].stage_id}/applicant/${selectedApplicant.id}/hr-result`
+                `/api/interview/stages/${interview.stages[0].stage_id}/applicant/${selectedApplicant.id}/hr-result`
               );
               if (isMounted) {
                 setHrData(response.data);
@@ -39,7 +40,7 @@ const InterviewLeftSidebar = ({
             }
             
             const response = await axios.get(
-              `http://localhost:5000/api/interview/stages/${interview.id}/${interview.stages[0].stage_id}/result`
+              `/api/interview/stages/${interview.id}/${interview.stages[0].stage_id}/result`
             );
             if (isMounted) {
               feedbackData[key] = response.data;
@@ -57,7 +58,7 @@ const InterviewLeftSidebar = ({
         if (selectedApplicant?.id) {
           try {
             const response = await axios.get(
-              `http://localhost:5000/api/applicant/${selectedApplicant.id}/offer-status`
+              `/api/applicant/${selectedApplicant.id}/offer-status`
             );
             if (isMounted) {
               setOfferStatus(response.data.offer_status);
@@ -65,6 +66,19 @@ const InterviewLeftSidebar = ({
           } catch (error) {
             console.error('Error fetching offer status:', error);
           }
+        }
+      }
+
+      if (selectedApplicant?.id) {
+        try {
+          const response = await axios.get(
+            `/api/applicant/${selectedApplicant.id}/`
+          );
+          if (isMounted) {
+            setLocation(response.data.location);
+          }
+        } catch (error) {
+          console.error('Error fetching offer status:', error);
         }
       }
     };
@@ -101,9 +115,16 @@ const InterviewLeftSidebar = ({
   };
 
   const formatSalary = (salary) => {
-    return salary ? `${Number(salary).toLocaleString()} PKR` : 'Not specified';
+    if (!salary) return 'Not specified';
+  
+    // Remove decimals (e.g., ".50") and keep rest of the string
+    const cleaned = salary.replace(/(\d+)\.\d+/g, '$1');
+  
+    return cleaned.replace(/\d+/g, (num) => {
+      return parseInt(num).toLocaleString();
+    }) + ' PKR';
   };
-
+  
   return (
     <div className="w-1/3 bg-white p-4 lg:p-3 xl:p-6 2xl:p-8 overflow-y-auto border-r border-gray-200 shadow-sm">
       <div className="flex items-center justify-between mb-6 lg:mb-4 xl:mb-8 2xl:mb-10">
@@ -225,6 +246,10 @@ const InterviewLeftSidebar = ({
                                   text-xs lg:text-[10px] xl:text-base 2xl:text-lg text-gray-600 
                                   border-t border-gray-200 pt-3 lg:pt-2 xl:pt-3">
                       <div className="flex items-center justify-between">
+                        <span>Based In:</span>
+                        <span className="font-medium">{location}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
                         <span>Current Salary:</span>
                         <span className="font-medium">{formatSalary(hrData.current_salary)}</span>
                       </div>
@@ -247,17 +272,14 @@ const InterviewLeftSidebar = ({
                     </div>
                   )}
 
-                  {isOfferStage && offerStatus && (
-                    <div className="mt-3 lg:mt-2 xl:mt-3 space-y-2 lg:space-y-1.5 xl:space-y-2 
-                                  text-xs lg:text-[10px] xl:text-base 2xl:text-lg 
-                                  border-t border-gray-200 pt-3 lg:pt-2 xl:pt-3">
-                      <div className={`px-3 lg:px-2 xl:px-3 py-2 lg:py-1.5 xl:py-2 rounded-lg ${getOfferStatusColor(offerStatus)}`}>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">Offer Status:</span>
-                          <span className="font-medium">
-                            {offerStatus.charAt(0).toUpperCase() + offerStatus.slice(1)}
-                          </span>
-                        </div>
+                  {/* Offer Status - Only show in offer stage when accepted or rejected */}
+                  {isOfferStage && offerStatus && (offerStatus === 'accepted' || offerStatus === 'rejected') && (
+                    <div className={`mt-3 lg:mt-2 xl:mt-3 px-3 lg:px-2 xl:px-3 py-2 lg:py-1.5 xl:py-2 rounded-lg ${getOfferStatusColor(offerStatus)}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Offer Status:</span>
+                        <span className="font-medium">
+                          {offerStatus.charAt(0).toUpperCase() + offerStatus.slice(1)}
+                        </span>
                       </div>
                     </div>
                   )}
