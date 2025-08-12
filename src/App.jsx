@@ -14,6 +14,12 @@ import ProtectedRoute from './components/protectedroutes';   // Import your Prot
 import AdminCenter from './components/AdminCenter';
 import Settings from './components/Settings';
 import JobListing from './components/joblisting';
+import EmployeeDetails from './components/EmployeeDetails';
+import ResourceTracker from './components/ResourceTracker';
+import ConsolidatedTracker from './components/ConsolidatedTracker';
+import UtilizationReport from './components/UtilizationReport';
+import EmployeeList from './components/EmployeeList';
+import AvailableTeamMembers from './components/AvailableTeamMembers';
 
 function App() {
   return (
@@ -40,6 +46,12 @@ function App() {
             <Route path="/admin-center" element={<AdminCenter />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
+            <Route path="/employee-dashboard" element={<EmployeeDetails />} />
+            <Route path="/tracker/:id" element={<ResourceTracker />} />
+            <Route path="/consolidated" element={<ConsolidatedTracker />} />
+            <Route path="/report" element={<UtilizationReport />} />
+            <Route path="/employees" element={<EmployeeList />} />
+            <Route path="/available" element={<AvailableTeamMembers />} />
         </Route>
 
         {/* Fallback: redirect any unknown route to login */}

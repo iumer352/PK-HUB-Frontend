@@ -82,6 +82,7 @@ const Navbar = () => {
                 className="flex items-center justify-center px-1.5 py-1 rounded-md group text-[10px] lg:text-xs xl:text-sm 2xl:text-base bg-gray-700/50 hover:bg-red-900/50 transition-colors"
               >
                 <LogOut className="w-3 h-3 lg:w-4 lg:h-4 xl:w-5 xl:h-5 mr-1 lg:mr-1.5 xl:mr-2 text-gray-400 group-hover:text-red-400" />
+                <span className="text-gray-300 group-hover:text-red-400" />
                 <span className="text-gray-300 group-hover:text-red-300">Sign Out</span>
               </button>
             </div>
@@ -112,6 +113,25 @@ const Navbar = () => {
               </span>
             </Link>
           ))}
+          
+          {/* Resource Tracker for Admin Users */}
+          {user?.role === 'admin' && (
+            <Link
+              to="/employee-dashboard"
+              className={`flex items-center space-x-1.5 lg:space-x-3 xl:space-x-4 2xl:space-x-5 px-2 lg:px-3 xl:px-4 2xl:px-5 py-1 lg:py-2 xl:py-3 2xl:py-4 rounded-md xl:rounded-lg 2xl:rounded-xl transition-all duration-200 ${
+                isActive('/employee-dashboard')
+                  ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/10 text-white shadow-lg border border-blue-500/20'
+                  : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
+              }`}
+            >
+              <span className={isActive('/employee-dashboard') ? 'text-blue-400' : 'text-gray-400'}>
+                <Users className="w-3.5 h-3.5 lg:w-4 lg:h-4 xl:w-5 xl:h-5 2xl:w-6 2xl:h-6" />
+              </span>
+              <span className="font-medium text-[10px] lg:text-xs xl:text-base 2xl:text-lg truncate">
+                Resource Tracker
+              </span>
+            </Link>
+          )}
         </div>
       </nav>
 

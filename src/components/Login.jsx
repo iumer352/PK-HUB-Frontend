@@ -25,14 +25,23 @@ const Login = () => {
       
       if (response.data.status === 'success') {
         const { user } = response.data.data;
+        console.log(user.role);
         
         // Check user role
-        if (user.role === 'admin' || user.role === 'hr' || user.role === 'interviewer') {
+        if (user.role === 'admin' || user.role === 'hr' || user.role === 'interviewer' ) {
           // Store the token in localStorage
           localStorage.setItem('token', response.data.token);
           // Store user info
           localStorage.setItem('user', JSON.stringify(user));
           navigate('/dashboard');
+        }
+
+        else if (user.role === 'user') {
+          localStorage.setItem('token', response.data.token);
+          // Store user info
+          localStorage.setItem('user', JSON.stringify(user));
+          navigate('/employee-dashboard');
+        }
         } else {
           setError('You do not have permissions to access this application');
           // Remove any existing tokens/data
@@ -40,7 +49,7 @@ const Login = () => {
           localStorage.removeItem('user');
         }
       }
-    } catch (err) {
+     catch (err) {
       setError(
         err.response?.data?.message || 
         'Incorrect Username or Password'
