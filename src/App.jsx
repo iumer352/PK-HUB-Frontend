@@ -14,12 +14,12 @@ import ProtectedRoute from './components/protectedroutes';   // Import your Prot
 import AdminCenter from './components/AdminCenter';
 import Settings from './components/Settings';
 import JobListing from './components/joblisting';
-import EmployeeDetails from './components/EmployeeDetails';
-import ResourceTracker from './components/ResourceTracker';
-import ConsolidatedTracker from './components/ConsolidatedTracker';
-import UtilizationReport from './components/UtilizationReport';
-import EmployeeList from './components/EmployeeList';
-import AvailableTeamMembers from './components/AvailableTeamMembers';
+import EmployeeDetails from './components/resourcetracker/EmployeeDetails';
+import ResourceTracker from './components/resourcetracker/ResourceTracker.jsx';
+import ConsolidatedTracker from './components/resourcetracker/ConsolidatedTracker';
+import UtilizationReport from './components/resourcetracker/UtilizationReport';
+import EmployeeList from './components/resourcetracker/EmployeeList';
+import AvailableTeamMembers from './components/resourcetracker/AvailableTeamMembers';
 
 function App() {
   return (
