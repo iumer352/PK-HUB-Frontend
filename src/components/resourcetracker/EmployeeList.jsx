@@ -34,7 +34,7 @@ const EmployeeList = () => {
 
   const handleEmployeeClick = (employee) => {
     // Navigate to employee details page with employee data
-    navigate('/dashboard', { 
+    navigate('/employee-dashboard', { 
       state: { employee } 
     });
   };

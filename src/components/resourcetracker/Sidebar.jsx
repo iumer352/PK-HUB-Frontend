@@ -54,7 +54,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
     },
     {
       name: 'Team Utilizations',
-      path: '/employees',
+      path: '/Team',
       icon: '👥',
       description: 'View All Employees'
     }
