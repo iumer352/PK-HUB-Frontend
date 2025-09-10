@@ -50,7 +50,7 @@ function App() {
             <Route path="/tracker/:id" element={<ResourceTracker />} />
             <Route path="/consolidated" element={<ConsolidatedTracker />} />
             <Route path="/report" element={<UtilizationReport />} />
-            <Route path="/employees" element={<EmployeeList />} />
+            <Route path="/Team" element={<EmployeeList />} />
             <Route path="/available" element={<AvailableTeamMembers />} />
         </Route>
 
