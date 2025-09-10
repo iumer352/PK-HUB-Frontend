@@ -17,10 +17,49 @@ const UtilizationReport = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [reportDate, setReportDate] = useState(new Date().toLocaleDateString());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Financial data states
+  const [teamFinancialData, setTeamFinancialData] = useState(null);
+  const [employeeFinancialData, setEmployeeFinancialData] = useState({});
+  const [selectedDateRange, setSelectedDateRange] = useState({
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  });
 
   // Toggle sidebar
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  // Fetch financial data functions
+  const fetchTeamFinancialData = async () => {
+    try {
+      const response = await axios.get('http://localhost:5001/api/cost/team/revenue');
+      setTeamFinancialData(response.data);
+    } catch (error) {
+      console.error('Error fetching team financial data:', error);
+    }
+  };
+
+  const fetchEmployeeFinancialData = async (employeeId) => {
+    try {
+      const { startDate, endDate } = selectedDateRange;
+      const response = await axios.get(
+        `http://localhost:5001/api/cost/employee/${employeeId}/revenue?startDate=${startDate}&endDate=${endDate}`
+      );
+      
+      // Validate the response data structure
+      const data = response.data;
+      if (data && data.employee && data.summary && data.period && data.costRates) {
+        return data;
+      } else {
+        console.warn(`Incomplete financial data for employee ${employeeId}:`, data);
+        return null;
+      }
+    } catch (error) {
+      console.error(`Error fetching financial data for employee ${employeeId}:`, error);
+      return null;
+    }
   };
 
   // Fetch all data on component mount
@@ -50,6 +89,25 @@ const UtilizationReport = () => {
         }
         
         setUtilizations(utilizationMap);
+
+        // Fetch team financial data
+        await fetchTeamFinancialData();
+
+        // Fetch individual employee financial data
+        const employeeFinancialMap = {};
+        for (const employee of employeesData) {
+          try {
+            const financialData = await fetchEmployeeFinancialData(employee.id);
+            if (financialData) {
+              employeeFinancialMap[employee.id] = financialData;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch financial data for employee ${employee.id}:`, error);
+            // Continue with other employees even if one fails
+          }
+        }
+        setEmployeeFinancialData(employeeFinancialMap);
+        
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Failed to load report data. Please try again.');
@@ -59,7 +117,7 @@ const UtilizationReport = () => {
     };
 
     fetchAllData();
-  }, []);
+  }, [selectedDateRange]);
 
   // Calculate comprehensive statistics
   const calculateOverallStats = () => {
@@ -453,6 +511,79 @@ const UtilizationReport = () => {
           </div>
         </div>
 
+        {/* Financial Performance Indicators */}
+        {teamFinancialData && teamFinancialData.teamSummary && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Total Revenue</h3>
+                  <div className="text-3xl font-bold text-green-600">
+                    ${parseFloat(teamFinancialData.teamSummary.totalRevenue).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    From {teamFinancialData.teamSummary.totalEmployees} employees
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <span className="text-xl">💵</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Total Cost</h3>
+                  <div className="text-3xl font-bold text-red-600">
+                    ${parseFloat(teamFinancialData.teamSummary.totalCost).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Resource costs
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                  <span className="text-xl">💸</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Total Profit</h3>
+                  <div className="text-3xl font-bold text-emerald-600">
+                    ${parseFloat(teamFinancialData.teamSummary.totalProfit).toLocaleString()}
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Net profit generated
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <span className="text-xl">📊</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Profit Margin</h3>
+                  <div className="text-3xl font-bold text-indigo-600">
+                    {teamFinancialData.teamSummary.profitMargin}
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Overall profitability
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                  <span className="text-xl">📈</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Monthly Utilization Trend */}
@@ -599,6 +730,77 @@ const UtilizationReport = () => {
           </div>
         </div>
 
+        {/* Financial Analytics Charts */}
+        {teamFinancialData && teamFinancialData.teamSummary && teamFinancialData.employeeBreakdown && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Revenue vs Cost Comparison */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm">
+              <h3 className="text-xl font-semibold text-gray-800 mb-6">Revenue vs Cost Analysis</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    {
+                      name: 'Team Financial Overview',
+                      revenue: parseFloat(teamFinancialData.teamSummary.totalRevenue),
+                      cost: parseFloat(teamFinancialData.teamSummary.totalCost),
+                      profit: parseFloat(teamFinancialData.teamSummary.totalProfit)
+                    }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      formatter={(value) => [`$${value.toLocaleString()}`, '']}
+                    />
+                    <Legend />
+                    <Bar dataKey="revenue" fill="#10B981" name="Revenue" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cost" fill="#EF4444" name="Cost" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="profit" fill="#3B82F6" name="Profit" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Employee Profit Margin Comparison */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm">
+              <h3 className="text-xl font-semibold text-gray-800 mb-6">Employee Profitability</h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={teamFinancialData.employeeBreakdown.map(emp => ({
+                    name: emp.employee.name.split(' ')[0], // First name only for space
+                    profit: parseFloat(emp.totalProfit),
+                    margin: parseFloat(emp.profitMargin.replace('%', ''))
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      formatter={(value, name) => [
+                        name === 'profit' ? `$${value.toLocaleString()}` : `${value}%`, 
+                        name === 'profit' ? 'Profit' : 'Margin'
+                      ]}
+                    />
+                    <Legend />
+                    <Bar dataKey="profit" fill="#8B5CF6" name="Profit ($)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Summary Statistics Table */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm">
           <h3 className="text-xl font-semibold text-gray-800 mb-6">Executive Summary</h3>
@@ -666,6 +868,189 @@ const UtilizationReport = () => {
             </div>
           </div>
         </div>
+
+        {/* Financial Employee Breakdown Table */}
+        {teamFinancialData && teamFinancialData.teamSummary && teamFinancialData.employeeBreakdown && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-800">Financial Performance by Employee</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-600">Date Range:</label>
+                  <input
+                    type="date"
+                    value={selectedDateRange.startDate}
+                    onChange={(e) => setSelectedDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <span className="text-gray-500">to</span>
+                  <input
+                    type="date"
+                    value={selectedDateRange.endDate}
+                    onChange={(e) => setSelectedDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Employee</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Position</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Department</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Working Days</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Cost</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Revenue</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Profit</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Profit Margin</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamFinancialData.employeeBreakdown.map((employee, index) => (
+                    <tr key={employee.employee.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                            <span className="text-white font-medium text-sm">
+                              {employee.employee.name.split(' ').map(n => n[0]).join('')}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">{employee.employee.name}</div>
+                            <div className="text-sm text-gray-500">ID: {employee.employee.id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-gray-700">{employee.employee.position}</td>
+                      <td className="py-4 px-4 text-gray-700">{employee.employee.department}</td>
+                      <td className="py-4 px-4 text-right font-medium">{employee.workingDays}</td>
+                      <td className="py-4 px-4 text-right font-medium text-red-600">
+                        ${parseFloat(employee.totalCost).toLocaleString()}
+                      </td>
+                      <td className="py-4 px-4 text-right font-medium text-green-600">
+                        ${parseFloat(employee.totalRevenue).toLocaleString()}
+                      </td>
+                      <td className="py-4 px-4 text-right font-medium text-blue-600">
+                        ${parseFloat(employee.totalProfit).toLocaleString()}
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          parseFloat(employee.profitMargin.replace('%', '')) >= 50 
+                            ? 'bg-green-100 text-green-800' 
+                            : parseFloat(employee.profitMargin.replace('%', '')) >= 30 
+                            ? 'bg-yellow-100 text-yellow-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {employee.profitMargin}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          employee.isChargeable 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {employee.isChargeable ? 'Chargeable' : 'Non-Chargeable'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50">
+                    <td colSpan="3" className="py-4 px-4 font-semibold text-gray-800">Team Total</td>
+                    <td className="py-4 px-4 text-right font-bold">
+                      {teamFinancialData.employeeBreakdown.reduce((sum, emp) => sum + emp.workingDays, 0)}
+                    </td>
+                    <td className="py-4 px-4 text-right font-bold text-red-600">
+                      ${parseFloat(teamFinancialData.teamSummary.totalCost).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-4 text-right font-bold text-green-600">
+                      ${parseFloat(teamFinancialData.teamSummary.totalRevenue).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-4 text-right font-bold text-blue-600">
+                      ${parseFloat(teamFinancialData.teamSummary.totalProfit).toLocaleString()}
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                        {teamFinancialData.teamSummary.profitMargin}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Individual Employee Details */}
+            <div className="mt-8 space-y-6">
+              <h4 className="text-lg font-semibold text-gray-800">Individual Employee Financial Details</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.entries(employeeFinancialData)
+                  .filter(([employeeId, data]) => data && data.employee && data.summary && data.period && data.costRates)
+                  .map(([employeeId, data]) => (
+                  <div key={employeeId} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-medium">
+                          {data.employee.name ? data.employee.name.split(' ').map(n => n[0]).join('') : 'N/A'}
+                        </span>
+                      </div>
+                      <div>
+                        <h5 className="font-semibold text-gray-800">{data.employee.name || 'Unknown'}</h5>
+                        <p className="text-sm text-gray-600">{data.employee.position || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Period:</span>
+                        <span className="text-sm font-medium text-gray-800">
+                          {data.period.startDate ? new Date(data.period.startDate).toLocaleDateString() : 'N/A'} - {data.period.endDate ? new Date(data.period.endDate).toLocaleDateString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Working Days:</span>
+                        <span className="text-sm font-medium text-gray-800">{data.summary.totalWorkingDays || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Daily Rate:</span>
+                        <span className="text-sm font-medium text-green-600">${data.costRates.dailyClientRate || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Daily Cost:</span>
+                        <span className="text-sm font-medium text-red-600">${data.costRates.dailyResourceCost || 0}</span>
+                      </div>
+                      <div className="pt-2 border-t border-gray-300">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-gray-700">Net Profit:</span>
+                          <span className="text-lg font-bold text-blue-600">
+                            ${data.summary.totalProfit ? parseFloat(data.summary.totalProfit).toLocaleString() : '0'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {Object.keys(employeeFinancialData).length === 0 && (
+                  <div className="col-span-full text-center py-8">
+                    <div className="text-gray-500">
+                      <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="text-lg font-medium">No detailed financial data available</p>
+                      <p className="text-sm text-gray-400 mt-1">Individual employee financial details will appear here when data is loaded</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
