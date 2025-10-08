@@ -197,6 +197,10 @@ const ConsolidatedTracker = () => {
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Add state for chargeable projects modal
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [projectModalData, setProjectModalData] = useState(null);
+
   // Function to show toast notifications
   const showToast = (message, type = 'info') => {
     setToast({ message, type });
@@ -1049,6 +1053,43 @@ const ConsolidatedTracker = () => {
       setShowDetailedEdit(true);
   };
 
+  // Open chargeable projects modal
+  const openProjectModal = (employee) => {
+      const projectText = employeeChanges[employee.id]?.chargeableProjects ?? getLatestProjectName(employee.id);
+      setProjectModalData({
+          employeeId: employee.id,
+          employeeName: employee.name,
+          projectText: projectText || '',
+          isEditing: false
+      });
+      setShowProjectModal(true);
+  };
+
+  // Handle project modal text change
+  const handleProjectModalChange = (newText) => {
+      setProjectModalData(prev => ({
+          ...prev,
+          projectText: newText
+      }));
+  };
+
+  // Save project modal changes
+  const saveProjectModal = () => {
+      if (projectModalData) {
+          handleEmployeeFieldChange(projectModalData.employeeId, 'chargeableProjects', projectModalData.projectText);
+          setShowProjectModal(false);
+          showToast('Project text updated', 'success');
+      }
+  };
+
+  // Toggle edit mode in project modal
+  const toggleProjectModalEdit = () => {
+      setProjectModalData(prev => ({
+          ...prev,
+          isEditing: !prev.isEditing
+      }));
+  };
+
   // Handle detailed edit changes
   const handleDetailedEditChange = (field, value) => {
       setDetailedEditData(prev => ({
@@ -1437,7 +1478,7 @@ const ConsolidatedTracker = () => {
                       <div className="text-indigo-700">{week.label}</div>
                     </th>
                   ))}
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[200px]">Chargeable Projects / Comments</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[200px]">Projects</th>
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Leaves Expected</th>
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[80px]">Able to work in KSA</th>
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[80px]">Duration</th>
@@ -1534,16 +1575,18 @@ const ConsolidatedTracker = () => {
                       </td>
                     );
                   })}
-                  <td className="border border-gray-200 p-3 text-sm">
-                    <input
-                      type="text"
-                      value={employeeChanges[employee.id]?.chargeableProjects ?? getLatestProjectName(employee.id)}
-                      onChange={(e) => handleEmployeeFieldChange(employee.id, 'chargeableProjects', e.target.value)}
-                      className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 ${
+                  <td className="border border-gray-200 p-2 text-sm">
+                    <div 
+                      className={`w-full cursor-pointer hover:bg-blue-50 rounded px-1 py-1 transition-colors text-xs ${
                         employeeChanges[employee.id]?.chargeableProjects !== undefined ? 'bg-yellow-50 text-orange-600' : ''
                       }`}
-                      placeholder="Enter project/comments"
-                    />
+                      onClick={() => openProjectModal(employee)}
+                      title="Click to expand and edit project details"
+                    >
+                      <div className="truncate max-w-[180px]">
+                        {(employeeChanges[employee.id]?.chargeableProjects ?? getLatestProjectName(employee.id)) || 'Click to add'}
+                      </div>
+                    </div>
                   </td>
                   <td className="border border-gray-200 p-3 text-sm text-center">
                     <input
@@ -1635,6 +1678,68 @@ const ConsolidatedTracker = () => {
           <div>• Use "Discard All Changes" to revert unsaved modifications</div>
         </div>
       </div>
+
+      {/* Project Modal */}
+      {showProjectModal && projectModalData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chargeable Projects - {projectModalData.employeeName}
+                </h3>
+                <button
+                  onClick={() => setShowProjectModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {projectModalData.isEditing ? (
+                  <textarea
+                    value={projectModalData.projectText}
+                    onChange={(e) => handleProjectModalChange(e.target.value)}
+                    className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    placeholder="Enter project details, comments, or any relevant information..."
+                  />
+                ) : (
+                  <div className="min-h-[8rem] p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="whitespace-pre-wrap text-sm text-gray-700">
+                      {projectModalData.projectText || 'No project information available. Click Edit to add details.'}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowProjectModal(false)}
+                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  {projectModalData.isEditing ? (
+                    <button
+                      onClick={saveProjectModal}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Save Changes
+                    </button>
+                  ) : (
+                    <button
+                      onClick={toggleProjectModalEdit}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {toast && (
