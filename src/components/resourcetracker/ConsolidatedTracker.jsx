@@ -200,6 +200,9 @@ const ConsolidatedTracker = () => {
   // Add state for chargeable projects modal
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [projectModalData, setProjectModalData] = useState(null);
+  
+  // Add state for Excel upload
+  const [isUploading, setIsUploading] = useState(false);
 
   // Function to show toast notifications
   const showToast = (message, type = 'info') => {
@@ -210,6 +213,52 @@ const ConsolidatedTracker = () => {
   // Toggle sidebar
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  // Handle Excel file upload
+  const handleExcelUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      showToast('Please select a valid Excel file (.xls or .xlsx)', 'error');
+      return;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await axios.post('http://localhost:8001/process-excel', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data) {
+        showToast('Excel file uploaded and processed successfully!', 'success');
+        // Optionally refresh data after successful upload
+        // You might want to refetch employees or utilizations here
+      }
+    } catch (error) {
+      console.error('Error uploading Excel file:', error);
+      showToast(
+        error.response?.data?.message || 'Failed to upload Excel file. Please try again.',
+        'error'
+      );
+    } finally {
+      setIsUploading(false);
+      // Clear the file input
+      event.target.value = '';
+    }
   };
 
   // Fetch employees on mount
@@ -1308,6 +1357,34 @@ const ConsolidatedTracker = () => {
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Upload Excel Button */}
+            <div className="relative">
+              <input
+                type="file"
+                id="excel-upload"
+                accept=".xlsx,.xls"
+                onChange={handleExcelUpload}
+                className="hidden"
+              />
+              <label
+                htmlFor="excel-upload"
+                className={`px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg cursor-pointer flex items-center gap-2 ${
+                  isUploading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    📊 Upload Excel
+                  </>
+                )}
+              </label>
+            </div>
+            
             <div className="flex gap-2 items-center">
               <select
                 className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
