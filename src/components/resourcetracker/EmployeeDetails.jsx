@@ -369,7 +369,7 @@ const EmployeeDetails = () => {
         } else {
           // Fetch employee details using the user's email (original behavior)
           const response = await axios.post(
-            'http://localhost:5001/api/employees/find-by-email',
+            '/api1/employees/find-by-email',
             { email: parsedUser.email }
           );
           targetEmployee = response.data;
@@ -380,7 +380,7 @@ const EmployeeDetails = () => {
         if (targetEmployee?.id) {
           try {
             const utilizationResponse = await axios.get(
-              `http://localhost:5001/api/utilization/employee/${targetEmployee.id}`
+              `/api1/utilization/employee/${targetEmployee.id}`
             );
             setUtilizations(utilizationResponse.data || []);
             

@@ -73,7 +73,7 @@ const generateWeeksAroundMonth = (month, year) => {
 // Helper: Fetch utilizations for an employee with better date handling
 async function fetchUtilizationsForEmployee(employeeId) {
   try {
-    const response = await axios.get(`http://localhost:5001/api/utilization/employee/${employeeId}`);
+    const response = await axios.get(`/api1/utilization/employee/${employeeId}`);
     // Sort utilizations by date in descending order (newest first)
     return response.data.sort((a, b) => {
       const dateA = new Date(a.Timesheet?.date || a.createdAt);
@@ -92,18 +92,18 @@ async function postUtilization(utilizationData, isUpdate = false) {
         console.log('Attempting to post/put utilization data:', {
             isUpdate,
             data: utilizationData,
-            url: isUpdate ? `http://localhost:5001/api/utilization/${utilizationData.id}` : 'http://localhost:5001/api/utilization'
+            url: isUpdate ? `/api1/utilization/${utilizationData.id}` : '/api1/utilization'
         });
         
         let url;
         if (isUpdate) {
             // For updates, use the regular utilization endpoint with the utilization ID
-            url = `http://localhost:5001/api/utilization/${utilizationData.id}`;
+            url = `/api1/utilization/${utilizationData.id}`;
             // Remove id from request body as it's in the URL
             delete utilizationData.id;
         } else {
             // For new records, use the regular utilization endpoint
-            url = 'http://localhost:5001/api/utilization';
+            url = '/api1/utilization';
         }
         
         const method = isUpdate ? 'put' : 'post';
@@ -134,7 +134,7 @@ async function postUtilization(utilizationData, isUpdate = false) {
             status: error.response?.status,
             data: utilizationData,
             isUpdate,
-            url: isUpdate ? `http://localhost:5001/api/utilization/${utilizationData.id}` : 'http://localhost:5001/api/utilization'
+            url: isUpdate ? `/api1/utilization/${utilizationData.id}` : '/api1/utilization'
         });
         
         // Throw the error to be handled by the caller
@@ -212,7 +212,7 @@ const ConsolidatedTracker = () => {
   useEffect(() => {
     async function fetchEmployees() {
       try {
-        const response = await axios.get('http://localhost:5001/api/employees');
+        const response = await axios.get('/api1/employees');
         setEmployees(response.data);
       } catch (error) {
         console.error('Failed to fetch employees', error.response?.status, error.message);
@@ -706,7 +706,7 @@ const ConsolidatedTracker = () => {
                };
 
                // Update employee data using the correct endpoint
-               const response = await axios.put(`http://localhost:5001/api/employees/${employeeId}`, backendChanges);
+               const response = await axios.put(`/api1/employees/${employeeId}`, backendChanges);
                
                if (response.data) {
                    // Update local employee state with the response data
@@ -746,7 +746,7 @@ const ConsolidatedTracker = () => {
 
                                try {
                                    const utilResponse = await axios.put(
-                                       `http://localhost:5001/api/utilization/${latestUtil.id}`,
+                                       `/api1/utilization/${latestUtil.id}`,
                                        updateData
                                    );
 

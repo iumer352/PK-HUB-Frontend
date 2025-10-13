@@ -21,7 +21,7 @@ const AvailableTeamMembers = () => {
     const fetchEmployeesAndUtilizations = async () => {
       try {
         // Fetch all employees
-        const response = await axios.get('http://localhost:5001/api/employees');
+        const response = await axios.get('/api1/employees');
         const employeesData = response.data;
         setEmployees(employeesData);
 
@@ -30,7 +30,7 @@ const AvailableTeamMembers = () => {
         for (const employee of employeesData) {
           try {
             const utilizationResponse = await axios.get(
-              `http://localhost:5001/api/utilization/employee/${employee.id}`
+              `/api1/utilization/employee/${employee.id}`
             );
             utilizationsData[employee.id] = utilizationResponse.data || [];
           } catch (utilError) {

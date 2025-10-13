@@ -114,7 +114,7 @@ const ResourceTracker = () => {
   useEffect(() => {
     async function fetchEmployee() {
       try {
-        const response = await axios.get(`http://localhost:5001/api/employees/${id}`);
+        const response = await axios.get(`/api1/employees/${id}`);
         setEmployee(response.data);
       } catch (error) {
         console.error('Failed to fetch employee:', error);
@@ -136,7 +136,7 @@ const ResourceTracker = () => {
       if (!employee?.id) return;
 
       try {
-        const response = await axios.get(`http://localhost:5001/api/utilization/employee/${employee.id}`);
+        const response = await axios.get(`/api1/utilization/employee/${employee.id}`);
         const sortedUtils = response.data.sort((a, b) => {
           const dateA = new Date(a.Timesheet?.date || a.createdAt);
           const dateB = new Date(b.Timesheet?.date || b.createdAt);
@@ -310,7 +310,7 @@ const ResourceTracker = () => {
         ksa_status: employeeChanges.ableToWorkInKSA ? 'Yes' : 'No' || employee.ksa_status || 'No'
       };
 
-      const response = await axios.put(`http://localhost:5001/api/employees/${employee.id}`, backendChanges);
+      const response = await axios.put(`/api1/employees/${employee.id}`, backendChanges);
 
       if (response.data) {
         Object.assign(employee, response.data);
@@ -331,7 +331,7 @@ const ResourceTracker = () => {
 
             try {
               const utilResponse = await axios.put(
-                `http://localhost:5001/api/utilization/${latestUtil.id}`,
+                `/api1/utilization/${latestUtil.id}`,
                 updateData
               );
 
@@ -395,7 +395,7 @@ const ResourceTracker = () => {
         };
 
         const response = await axios[isUpdate ? 'put' : 'post'](
-          `http://localhost:5001/api/utilization${isUpdate ? `/${existingUtil.id}` : ''}`,
+          `/api1/utilization${isUpdate ? `/${existingUtil.id}` : ''}`,
           updateData
         );
 
