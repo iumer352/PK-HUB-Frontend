@@ -409,66 +409,37 @@ const ConsolidatedTracker = () => {
 
   }, [selectedMonth1, selectedMonth2, selectedYear]);
 
-  // Helper function to check if employee is currently on leave (7-day period from leave date)
+  // Helper function to check if employee is currently on annual leave in the current week
   const isEmployeeCurrentlyOnLeave = (employee) => {
-    // Get the employee's leave date
-    const leaveDates = employeeChanges[employee.id]?.expectedLeave ?? employee.leaves_expected;
-    if (!leaveDates || leaveDates === '0' || leaveDates.trim() === '') return false;
-
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
+    // Get today's date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    try {
-      // Handle different date formats like "8 June", "June 8", "8 Jun", etc.
-      const dateStr = leaveDates.toLowerCase().trim();
+    // Find the current week (week that contains today)
+    const currentWeek = weeks.find(week => {
+      const weekStart = new Date(week.weekStartDate);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      return today >= weekStart && today < weekEnd;
+    });
+
+    if (!currentWeek) return false;
+
+    // Get utilization data for this employee
+    const employeeUtil = utilizations[employee.id] || [];
+    
+    // Check if employee has annual leave in the current week
+    const currentWeekStartDate = formatDateToYYYYMMDD(currentWeek.weekStartDate);
+    const hasAnnualLeaveInCurrentWeek = employeeUtil.some(util => {
+      const utilDate = util.Timesheet?.date;
+      const utilWorkType = util.Worktype?.worktype;
       
-      // Extract month names (both full and abbreviated)
-      const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
-                         'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-      const fullMonthNames = ['january', 'february', 'march', 'april', 'may', 'june',
-                             'july', 'august', 'september', 'october', 'november', 'december'];
-      
-      let month = -1;
-      let leaveDay = null;
-      
-      // Find the month in the string (check both full and abbreviated names)
-      for (let i = 0; i < monthNames.length; i++) {
-        if (dateStr.includes(monthNames[i]) || dateStr.includes(fullMonthNames[i])) {
-          month = i;
-          break;
-        }
-      }
-      
-      if (month === -1) return false; // No valid month found
-      
-      // Extract day number using regex
-      const dayMatches = dateStr.match(/\d+/g);
-      if (dayMatches && dayMatches.length >= 1) {
-        leaveDay = parseInt(dayMatches[0]);
-      } else {
-        return false; // No valid day found
-      }
-      
-      // Create leave start date
-      const leaveStartDate = new Date(currentYear, month, leaveDay);
-      
-      // Add 7 days to get leave end date
-      const leaveEndDate = new Date(leaveStartDate);
-      leaveEndDate.setDate(leaveStartDate.getDate() + 7);
-      
-      // If leave period has passed this year, check next year
-      if (leaveEndDate < currentDate) {
-        leaveStartDate.setFullYear(currentYear + 1);
-        leaveEndDate.setFullYear(currentYear + 1);
-      }
-      
-      // Check if current date falls within the 7-day leave period
-      return currentDate >= leaveStartDate && currentDate <= leaveEndDate;
-      
-    } catch (error) {
-      console.log('Error parsing leave date:', leaveDates, error);
-      return false;
-    }
+      // Check if this utilization is for the current week AND is annual leave
+      return utilDate === currentWeekStartDate && utilWorkType === 'annual leave';
+    });
+
+    return hasAnnualLeaveInCurrentWeek;
   };
 
   // Calculate total utilization for each week
@@ -522,7 +493,7 @@ const ConsolidatedTracker = () => {
     let employeeChargeabilitySum = 0;
     let employeesWithData = 0;
 
-    // Count employees currently on leave based on their leave dates (7-day period)
+    // Count employees currently on annual leave in the current week
     employees.forEach(employee => {
       if (isEmployeeCurrentlyOnLeave(employee)) {
         stats.onLeave++;
@@ -649,6 +620,13 @@ const ConsolidatedTracker = () => {
    // Handler for percentage input change - tracks both percentage and worktype
    const handlePercentageChange = (employeeId, week, value) => {
        const cellId = `${employeeId}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
+       
+       // Validate value - don't allow values above 100 or below 0
+       const numValue = Number(value);
+       if (value !== '' && (numValue < 0 || numValue > 100)) {
+           showToast('Percentage must be between 0 and 100', 'error');
+           return;
+       }
        
        // Update local editing state immediately
        setEditingCellId(cellId);
@@ -953,7 +931,18 @@ const ConsolidatedTracker = () => {
     
     const cellId = `${employeeId}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
     const util = findUtilization(employeeId, week) || {};
-    const hasData = util.percentage > 0 || util.Worktype?.worktype;
+    const hasUnsavedChanges = unsavedChanges[cellId];
+    
+    // Get display data - prefer unsaved changes if available
+    const displayData = hasUnsavedChanges ? {
+      percentage: hasUnsavedChanges.percentage,
+      worktype: hasUnsavedChanges.worktype
+    } : {
+      percentage: util.percentage,
+      worktype: util.Worktype?.worktype
+    };
+    
+    const hasData = displayData.percentage > 0 || displayData.worktype;
     
     setSelectedCellId(cellId);
     setSelectedCell({ employeeId, weekLabel: week.label, weekData: week });
@@ -962,7 +951,7 @@ const ConsolidatedTracker = () => {
     if (hasData) {
       setTimeout(() => {
         setEditingCellId(cellId);
-        setEditingPercentage(String(util.percentage || ''));
+        setEditingPercentage(String(displayData.percentage || ''));
         const inputElement = document.querySelector(`td[data-cell-id="${cellId}"] input`);
         if (inputElement) {
           inputElement.focus();
@@ -1345,6 +1334,22 @@ const ConsolidatedTracker = () => {
 
   return (
     <div className="min-h-screen bg-white p-6">
+      {/* CSS to hide number input arrows */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          /* Hide number input arrows in Chrome, Safari, Edge */
+          input[type="number"]::-webkit-outer-spin-button,
+          input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          
+          /* Hide number input arrows in Firefox */
+          input[type="number"] {
+            -moz-appearance: textfield;
+          }
+        `
+      }} />
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
       
@@ -1387,7 +1392,11 @@ const ConsolidatedTracker = () => {
             
             <div className="flex gap-2 items-center">
               <select
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
+                className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 appearance-none bg-no-repeat bg-right bg-[length:16px_16px] min-w-[120px]"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 8px center'
+                }}
                 value={selectedMonth1}
                 onChange={(e) => setSelectedMonth1(e.target.value)}
               >
@@ -1395,19 +1404,27 @@ const ConsolidatedTracker = () => {
                   <option key={month} value={month}>{month}</option>
                 ))}
               </select>
-              <span className="text-blue-600 font-semibold px-2">to</span>
-                              <select
-                  className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
-                  value={selectedMonth2}
-                  onChange={(e) => setSelectedMonth2(e.target.value)}
-                >
+              <span className="text-blue-600 font-semibold px-2 whitespace-nowrap">to</span>
+              <select
+                className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 appearance-none bg-no-repeat bg-right bg-[length:16px_16px] min-w-[120px]"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 8px center'
+                }}
+                value={selectedMonth2}
+                onChange={(e) => setSelectedMonth2(e.target.value)}
+              >
                 {months.map(month => (
                   <option key={month} value={month}>{month}</option>
                 ))}
               </select>
             </div>
             <select
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
+              className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 appearance-none bg-no-repeat bg-right bg-[length:16px_16px] min-w-[100px]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                backgroundPosition: 'right 8px center'
+              }}
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -1459,7 +1476,11 @@ const ConsolidatedTracker = () => {
       <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-6 mb-6">
                   <div className="flex gap-4">
             <select
-              className="px-4 py-2 border-2 border-indigo-200 rounded-lg text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all duration-200"
+              className="px-3 py-2 pr-8 border-2 border-indigo-200 rounded-lg text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all duration-200 appearance-none bg-no-repeat bg-right bg-[length:16px_16px] min-w-[180px]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                backgroundPosition: 'right 8px center'
+              }}
               value={filters.expertise}
               onChange={(e) => setFilters(prev => ({ ...prev, expertise: e.target.value }))}
             >
@@ -1483,8 +1504,26 @@ const ConsolidatedTracker = () => {
                           <div className="flex gap-3">
                 <button
                   onClick={() => {
+                    // Clear all unsaved changes
                     setUnsavedChanges({});
                     setEmployeeChanges({});
+                    
+                    // Clear editing states
+                    setEditingCellId(null);
+                    setEditingPercentage('');
+                    setSelectedCellId(null);
+                    setSelectedCell(null);
+                    
+                    // Clear any copied cell data
+                    setCopiedCellData(null);
+                    setCopiedCellId(null);
+                    
+                    // Clear detailed edit data
+                    setDetailedEditData(null);
+                    setShowDetailedEdit(false);
+                    
+                    // Show confirmation toast
+                    showToast('All changes discarded successfully', 'info');
                   }}
                   className="px-6 py-2 text-gray-700 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg hover:from-gray-200 hover:to-gray-300 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
                 >
@@ -1510,6 +1549,42 @@ const ConsolidatedTracker = () => {
           </div>
         </div>
       )}
+
+      {/* Work Type Selection */}
+      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="flex flex-col gap-4">
+          <div className="text-sm text-gray-600 font-medium">
+            {selectedCell ? 
+              `Select work type for ${employees.find(emp => emp.id === selectedCell.employeeId)?.name} - week ${selectedCell.weekLabel}` : 
+              'Click on any cell above to select work type'
+            }
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            {Object.entries(workTypes).map(([key, { label, color }]) => (
+              <button
+                key={key}
+                className={`px-4 py-2 border border-gray-200 ${color} rounded-md shadow-sm transition-all duration-200 text-sm font-medium ${
+                  selectedCell ? 'hover:shadow-md cursor-pointer transform hover:scale-105' : 'opacity-50 cursor-not-allowed'
+                }`}
+                onClick={() => handleWorkTypeChange(key)}
+                disabled={!selectedCell}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {selectedCell && (
+            <div className="mt-2 pt-2 border-t border-gray-200">
+              <button
+                onClick={() => openDetailedEdit(selectedCell.employeeId, selectedCell.weekData)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
+              >
+                📝 Edit Details (Project, Dates, etc.)
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Main Table */}
       <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/30 overflow-hidden">
@@ -1548,17 +1623,17 @@ const ConsolidatedTracker = () => {
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-left sticky left-0 bg-gradient-to-r from-slate-100 to-blue-100 z-20 min-w-[120px]">Name</th>
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-left sticky left-[120px] bg-gradient-to-r from-blue-100 to-indigo-100 z-20 min-w-[100px]">Position</th>
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[80px]">Location</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[120px]">KSA Solution</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[120px]">Area of Expertise</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[140px]">KSA Solution</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[140px]">Area of Expertise</th>
                                   {weeks.map(week => (
                     <th key={week.label} className="border border-indigo-200 p-2 text-xs text-gray-700 font-bold text-center min-w-[80px] bg-gradient-to-br from-blue-50 to-indigo-100">
                       <div className="text-indigo-700">{week.label}</div>
                     </th>
                   ))}
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[200px]">Projects</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Leaves Expected</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[80px]">Able to work in KSA</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[80px]">Duration</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[120px]">Leaves Expected</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Able to work in KSA</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Duration</th>
               </tr>
             </thead>
             <tbody>
@@ -1609,14 +1684,20 @@ const ConsolidatedTracker = () => {
                         onClick={(e) => handleCellClick(employee.id, week, e)}
                         tabIndex={0}
                       >
-                        {/* Input field - only show when editing or when cell is selected but has no data */}
-                        {(isEditing || (isSelected && !hasData)) ? (
+                        {/* Input field - show when editing, selected with no data, or when cell is selected and has unsaved changes */}
+                        {(isEditing || (isSelected && (!hasData || hasUnsavedChanges))) ? (
                           <input
                             type="number"
                             min="0"
                             max="100"
                             value={editingCellId === cellId ? editingPercentage : (displayData.percentage || '')}
-                            onChange={(e) => handlePercentageChange(employee.id, week, e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Prevent values above 100
+                              if (value === '' || (Number(value) >= 0 && Number(value) <= 100)) {
+                                handlePercentageChange(employee.id, week, value);
+                              }
+                            }}
                             onFocus={(e) => {
                                setEditingCellId(cellId);
                                setEditingPercentage(String(displayData.percentage || ''));
@@ -1626,6 +1707,10 @@ const ConsolidatedTracker = () => {
                             className={`w-full bg-transparent text-center focus:outline-none text-sm font-bold cursor-text ${
                               hasUnsavedChanges ? 'text-orange-600' : ''
                             }`}
+                            style={{
+                              /* Hide number input arrows */
+                              MozAppearance: 'textfield'
+                            }}
                             placeholder="0"
                             onClick={(e) => e.stopPropagation()}
                           />
@@ -1680,9 +1765,15 @@ const ConsolidatedTracker = () => {
                     <select
                       value={getEmployeeFieldValue(employee, 'ableToWorkInKSA') ? 'Yes' : 'No'}
                       onChange={(e) => handleEmployeeFieldChange(employee.id, 'ableToWorkInKSA', e.target.value === 'Yes')}
-                      className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${
+                      className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-2 text-center appearance-none text-sm ${
                         employeeChanges[employee.id]?.ableToWorkInKSA !== undefined ? 'bg-yellow-50 text-orange-600' : ''
                       }`}
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                        backgroundPosition: 'right 4px center',
+                        backgroundSize: '12px 12px',
+                        backgroundRepeat: 'no-repeat'
+                      }}
                     >
                       <option value="Yes">Yes</option>
                       <option value="No">No</option>
@@ -1706,47 +1797,12 @@ const ConsolidatedTracker = () => {
         </div>
       </div>
 
-      {/* Work Type Selection */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
-        <div className="flex flex-col gap-4">
-          <div className="text-sm text-gray-600 font-medium">
-            {selectedCell ? 
-              `Select work type for ${employees.find(emp => emp.id === selectedCell.employeeId)?.name} - week ${selectedCell.weekLabel}` : 
-              'Click on any cell above to select work type'
-            }
-          </div>
-          <div className="flex gap-3 flex-wrap">
-            {Object.entries(workTypes).map(([key, { label, color }]) => (
-              <button
-                key={key}
-                className={`px-4 py-2 border border-gray-200 ${color} rounded-md shadow-sm transition-all duration-200 text-sm font-medium ${
-                  selectedCell ? 'hover:shadow-md cursor-pointer transform hover:scale-105' : 'opacity-50 cursor-not-allowed'
-                }`}
-                onClick={() => handleWorkTypeChange(key)}
-                disabled={!selectedCell}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {selectedCell && (
-            <div className="mt-2 pt-2 border-t border-gray-200">
-              <button
-                onClick={() => openDetailedEdit(selectedCell.employeeId, selectedCell.weekData)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
-              >
-                📝 Edit Details (Project, Dates, etc.)
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
         <div className="text-sm font-medium text-blue-800 mb-2">Instructions:</div>
         <div className="text-xs text-blue-700 space-y-1">
-          <div>• <strong>Utilization:</strong> Click any cell to select it, then choose a work type from the buttons below</div>
+          <div>• <strong>Work Type Selection:</strong> Click any cell to select it, then use the work type buttons above the table</div>
           <div>• After selecting work type, click the cell again to enter percentage</div>
           <div>• <strong>Employee Fields:</strong> Click directly on any employee field (Projects, Leaves, KSA, Duration) to edit</div>
           <div>• <kbd className="px-1 py-0.5 bg-white border rounded text-xs">Ctrl+C</kbd> to copy selected cell</div>

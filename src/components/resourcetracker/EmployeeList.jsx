@@ -40,7 +40,7 @@ const EmployeeList = () => {
   };
 
   const handleBackToDashboard = () => {
-    navigate('/dashboard');
+    navigate('/employee-dashboard');
   };
 
   if (loading) {

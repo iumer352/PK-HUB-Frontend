@@ -24,7 +24,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
   const navigationItems = [
     {
       name: 'Dashboard',
-      path: '/dashboard',
+      path: '/employee-dashboard',
       icon: '🏠',
       description: 'Employee Details & Overview'
     },
@@ -80,17 +80,17 @@ const Sidebar = ({ isOpen, onToggle }) => {
           if (response.data?.id) {
             navigate(`/tracker/${response.data.id}`);
           } else {
-            // If no employee found, navigate to dashboard
-            navigate('/dashboard');
+            // If no employee found, navigate to employee dashboard
+            navigate('/employee-dashboard');
           }
         } catch (error) {
           console.error('Error finding employee:', error);
-          // If error occurs, navigate to dashboard
-          navigate('/dashboard');
+          // If error occurs, navigate to employee dashboard
+          navigate('/employee-dashboard');
         }
       } else {
-        // If no user email available, navigate to dashboard
-        navigate('/dashboard');
+        // If no user email available, navigate to employee dashboard
+        navigate('/employee-dashboard');
       }
     } else {
       navigate(item.path);
