@@ -40,7 +40,7 @@ const EmployeeList = () => {
   };
 
   const handleBackToDashboard = () => {
-    navigate('/dashboard');
+    navigate('/employee-dashboard');
   };
 
   if (loading) {
@@ -138,7 +138,7 @@ const EmployeeList = () => {
                 </div>
               </div>
               <div className="text-sm text-gray-700 font-medium">{employee.position}</div>
-              <div className="text-sm text-gray-600">{employee.department}</div>
+              <div className="text-sm text-gray-600">{employee.solution}</div>
               <div className="text-sm text-gray-600">{employee.expertise}</div>
               <div className="text-sm text-gray-600 truncate">{employee.email}</div>
               <div className="text-sm">
@@ -148,7 +148,7 @@ const EmployeeList = () => {
                   </span>
                 ) : (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    ✅ Active
+                    Not Expected
                   </span>
                 )}
               </div>
