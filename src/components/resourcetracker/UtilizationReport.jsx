@@ -34,7 +34,7 @@ const UtilizationReport = () => {
   // Fetch financial data functions
   const fetchTeamFinancialData = async () => {
     try {
-      const response = await axios.get('/api1/cost/team/revenue');
+      const response = await axios.get('/rt/cost/team/revenue');
       setTeamFinancialData(response.data);
     } catch (error) {
       console.error('Error fetching team financial data:', error);
@@ -45,7 +45,7 @@ const UtilizationReport = () => {
     try {
       const { startDate, endDate } = selectedDateRange;
       const response = await axios.get(
-        `/api1/cost/employee/${employeeId}/revenue?startDate=${startDate}&endDate=${endDate}`
+        `/rt/cost/employee/${employeeId}/revenue?startDate=${startDate}&endDate=${endDate}`
       );
       
       // Validate the response data structure
@@ -69,7 +69,7 @@ const UtilizationReport = () => {
         setLoading(true);
         
         // Fetch all employees
-        const employeesResponse = await axios.get('/api1/employees');
+        const employeesResponse = await axios.get('/rt/employees');
         const employeesData = employeesResponse.data;
         setEmployees(employeesData);
 
@@ -79,7 +79,7 @@ const UtilizationReport = () => {
         for (const employee of employeesData) {
           try {
             const utilizationResponse = await axios.get(
-              `/api1/utilization/employee/${employee.id}`
+              `/rt/utilization/employee/${employee.id}`
             );
             utilizationMap[employee.id] = utilizationResponse.data || [];
           } catch (utilError) {

@@ -19,7 +19,7 @@ const EmployeeList = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await axios.get('/api1/employees');
+        const response = await axios.get('/rt/employees');
         setEmployees(response.data);
       } catch (err) {
         console.error('Error fetching employees:', err);

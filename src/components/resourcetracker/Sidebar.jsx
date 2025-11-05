@@ -73,7 +73,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
       if (user?.email) {
         try {
           const response = await axios.post(
-            '/api1/employees/find-by-email',
+            '/rt/employees/find-by-email',
             { email: user.email }
           );
           

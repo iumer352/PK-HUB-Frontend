@@ -73,7 +73,7 @@ const generateWeeksAroundMonth = (month, year) => {
 // Helper: Fetch utilizations for an employee with better date handling
 async function fetchUtilizationsForEmployee(employeeId) {
   try {
-    const response = await axios.get(`/api1/utilization/employee/${employeeId}`);
+    const response = await axios.get(`/rt/utilization/employee/${employeeId}`);
     // Sort utilizations by date in descending order (newest first)
     return response.data.sort((a, b) => {
       const dateA = new Date(a.Timesheet?.date || a.createdAt);
@@ -92,18 +92,18 @@ async function postUtilization(utilizationData, isUpdate = false) {
         console.log('Attempting to post/put utilization data:', {
             isUpdate,
             data: utilizationData,
-            url: isUpdate ? `/api1/utilization/${utilizationData.id}` : '/api1/utilization'
+            url: isUpdate ? `/rt/utilization/${utilizationData.id}` : '/rt/utilization'
         });
         
         let url;
         if (isUpdate) {
             // For updates, use the regular utilization endpoint with the utilization ID
-            url = `/api1/utilization/${utilizationData.id}`;
+            url = `/rt/utilization/${utilizationData.id}`;
             // Remove id from request body as it's in the URL
             delete utilizationData.id;
         } else {
             // For new records, use the regular utilization endpoint
-            url = '/api1/utilization';
+            url = '/rt/utilization';
         }
         
         const method = isUpdate ? 'put' : 'post';
@@ -134,7 +134,7 @@ async function postUtilization(utilizationData, isUpdate = false) {
             status: error.response?.status,
             data: utilizationData,
             isUpdate,
-            url: isUpdate ? `/api1/utilization/${utilizationData.id}` : '/api1/utilization'
+            url: isUpdate ? `/rt/utilization/${utilizationData.id}` : '/rt/utilization'
         });
         
         // Throw the error to be handled by the caller
@@ -237,7 +237,7 @@ const ConsolidatedTracker = () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await axios.post('http://localhost:8001/process-excel', formData, {
+      const response = await axios.post('/parse/process-excel', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -265,7 +265,7 @@ const ConsolidatedTracker = () => {
   useEffect(() => {
     async function fetchEmployees() {
       try {
-        const response = await axios.get('/api1/employees');
+        const response = await axios.get('/rt/employees');
         setEmployees(response.data);
       } catch (error) {
         console.error('Failed to fetch employees', error.response?.status, error.message);
@@ -759,7 +759,7 @@ const ConsolidatedTracker = () => {
                };
 
                // Update employee data using the correct endpoint
-               const response = await axios.put(`/api1/employees/${employeeId}`, backendChanges);
+               const response = await axios.put(`/rt/employees/${employeeId}`, backendChanges);
                
                if (response.data) {
                    // Update local employee state with the response data
@@ -799,7 +799,7 @@ const ConsolidatedTracker = () => {
 
                                try {
                                    const utilResponse = await axios.put(
-                                       `/api1/utilization/${latestUtil.id}`,
+                                       `/rt/utilization/${latestUtil.id}`,
                                        updateData
                                    );
 
