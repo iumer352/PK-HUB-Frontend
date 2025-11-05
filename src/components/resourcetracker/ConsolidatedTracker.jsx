@@ -204,6 +204,10 @@ const ConsolidatedTracker = () => {
   // Add state for Excel upload
   const [isUploading, setIsUploading] = useState(false);
 
+  // Add state for dual percentage modal (chargeable + non-chargeable)
+  const [showDualPercentageModal, setShowDualPercentageModal] = useState(false);
+  const [dualPercentageData, setDualPercentageData] = useState(null);
+
   // Function to show toast notifications
   const showToast = (message, type = 'info') => {
     setToast({ message, type });
@@ -451,14 +455,16 @@ const ConsolidatedTracker = () => {
       let employeeCount = 0;
       
       filteredEmployees.forEach(employee => {
-        const util = findUtilization(employee.id, week) || {};
         const cellId = `${employee.id}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
-        const hasUnsavedChanges = unsavedChanges[cellId];
+        const allUtils = getAllUtilizationsForCell(employee.id, week, cellId);
         
-        // Use unsaved changes if available, otherwise use saved data
-        const percentage = hasUnsavedChanges ? 
-          hasUnsavedChanges.percentage : 
-          (util.percentage || 0);
+        let percentage = 0;
+        if (allUtils.isDual) {
+          // Sum both chargeable and non-chargeable for dual utilizations
+          percentage = (allUtils.chargeable?.percentage || 0) + (allUtils.nonChargeable?.percentage || 0);
+        } else if (allUtils.single) {
+          percentage = allUtils.single.percentage || 0;
+        }
         
         if (percentage > 0) {
           totalPercentage += percentage;
@@ -617,6 +623,65 @@ const ConsolidatedTracker = () => {
       return null;
    };
 
+   // Helper to get all utilizations (including dual) for a cell
+   const getAllUtilizationsForCell = (employeeId, week, cellId) => {
+       const employeeUtil = utilizations[employeeId] || [];
+       const weekStartDate = formatDateToYYYYMMDD(week.weekStartDate);
+       
+       // Check for unsaved changes first (dual utilizations)
+       const chargeableUnsaved = unsavedChanges[`${cellId}-chargeable`];
+       const nonChargeableUnsaved = unsavedChanges[`${cellId}-nonchargeable`];
+       const singleUnsaved = unsavedChanges[cellId];
+       
+       // If we have dual unsaved changes, return them
+       if (chargeableUnsaved || nonChargeableUnsaved) {
+           return {
+               chargeable: chargeableUnsaved ? { percentage: chargeableUnsaved.percentage, worktype: 'chargeable' } : null,
+               nonChargeable: nonChargeableUnsaved ? { percentage: nonChargeableUnsaved.percentage, worktype: 'non-chargeable' } : null,
+               isDual: true
+           };
+       }
+       
+       // If we have a single unsaved change, return it
+       if (singleUnsaved) {
+           return {
+               single: { percentage: singleUnsaved.percentage, worktype: singleUnsaved.worktype },
+               isDual: false
+           };
+       }
+       
+       // Otherwise, check saved data - look for both chargeable and non-chargeable
+       const chargeableUtil = employeeUtil.find(util => {
+           const utilDate = util.Timesheet?.date;
+           return utilDate === weekStartDate && util.Worktype?.worktype === 'chargeable';
+       });
+       
+       const nonChargeableUtil = employeeUtil.find(util => {
+           const utilDate = util.Timesheet?.date;
+           return utilDate === weekStartDate && util.Worktype?.worktype === 'non-chargeable';
+       });
+       
+       // If both exist, it's a dual utilization
+       if (chargeableUtil && nonChargeableUtil) {
+           return {
+               chargeable: { percentage: chargeableUtil.percentage, worktype: 'chargeable' },
+               nonChargeable: { percentage: nonChargeableUtil.percentage, worktype: 'non-chargeable' },
+               isDual: true
+           };
+       }
+       
+       // Otherwise, return the single utilization
+       const singleUtil = findUtilization(employeeId, week);
+       if (singleUtil) {
+           return {
+               single: { percentage: singleUtil.percentage, worktype: singleUtil.Worktype?.worktype },
+               isDual: false
+           };
+       }
+       
+       return { isDual: false, single: null };
+   };
+
    // Handler for percentage input change - tracks both percentage and worktype
    const handlePercentageChange = (employeeId, week, value) => {
        const cellId = `${employeeId}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
@@ -661,6 +726,27 @@ const ConsolidatedTracker = () => {
        const cellId = `${employeeId}-${weekData.year}-${weekData.month}-${getWeekOfMonth(weekData.weekStartDate)}`;
        const currentUtil = findUtilization(employeeId, weekData);
 
+       // Special handling for training (chargeable + non-chargeable)
+       if (worktypeKey === 'training') {
+           // Find existing chargeable and non-chargeable utilizations
+           const chargeableUtil = findUtilizationByType(employeeId, weekData, 'chargeable');
+           const nonChargeableUtil = findUtilizationByType(employeeId, weekData, 'non-chargeable');
+           
+           setDualPercentageData({
+               cellId,
+               employeeId,
+               week: weekData,
+               chargeablePercentage: chargeableUtil?.percentage ?? 0,
+               nonChargeablePercentage: nonChargeableUtil?.percentage ?? 0,
+               projectname: currentUtil?.projectname || 'Resource Tracker',
+               expected_finish_date: currentUtil?.expected_finish_date || new Date().toISOString().split('T')[0],
+               leaves_expected: currentUtil?.leaves_expected || 0,
+               ksa_status: currentUtil?.ksa_status || 'No'
+           });
+           setShowDualPercentageModal(true);
+           return;
+       }
+
        // Map the worktype key to the correct ID
        const worktypeId = worktypeIdMap[worktypeKey === 'nonChargeable' ? 'non-chargeable' : 
                           worktypeKey === 'leave' ? 'annual leave' : worktypeKey];
@@ -700,6 +786,103 @@ const ConsolidatedTracker = () => {
                inputElement.select();
            }
        }, 100);
+   };
+
+   // Helper function to find utilization by specific work type
+   const findUtilizationByType = (employeeId, week, worktype) => {
+       const employeeUtil = utilizations[employeeId] || [];
+       const weekStartDate = formatDateToYYYYMMDD(week.weekStartDate);
+       
+       const matchingUtils = employeeUtil.filter(util => {
+           const utilDate = util.Timesheet?.date;
+           if (!utilDate) return false;
+           return utilDate === weekStartDate && util.Worktype?.worktype === worktype;
+       });
+       
+       if (matchingUtils.length > 0) {
+           const latestUtil = matchingUtils.reduce((latest, current) => {
+               const latestDate = new Date(latest.updatedAt || latest.createdAt);
+               const currentDate = new Date(current.updatedAt || current.createdAt);
+               return currentDate > latestDate ? current : latest;
+           });
+           return latestUtil;
+       }
+       
+       return null;
+   };
+
+   // Handler for saving dual percentages (chargeable + non-chargeable)
+   const handleSaveDualPercentages = () => {
+       if (!dualPercentageData) return;
+
+       const { cellId, employeeId, week, chargeablePercentage, nonChargeablePercentage, projectname, expected_finish_date, leaves_expected, ksa_status } = dualPercentageData;
+
+       // Validate percentages
+       if (chargeablePercentage < 0 || chargeablePercentage > 100 || nonChargeablePercentage < 0 || nonChargeablePercentage > 100) {
+           showToast('Percentages must be between 0 and 100', 'error');
+           return;
+       }
+
+       // If both are 0, clear the changes
+       if (chargeablePercentage === 0 && nonChargeablePercentage === 0) {
+           setUnsavedChanges(prev => {
+               const newChanges = { ...prev };
+               delete newChanges[`${cellId}-chargeable`];
+               delete newChanges[`${cellId}-nonchargeable`];
+               delete newChanges[cellId]; // Remove any single entry
+               return newChanges;
+           });
+           setShowDualPercentageModal(false);
+           showToast('Percentages cleared', 'info');
+           return;
+       }
+
+       // Store both utilizations separately
+       setUnsavedChanges(prev => {
+           const newChanges = { ...prev };
+           
+           // Remove any single entry for this cell
+           delete newChanges[cellId];
+           
+           // Add chargeable utilization if percentage > 0
+           if (chargeablePercentage > 0) {
+               newChanges[`${cellId}-chargeable`] = {
+                   employeeId,
+                   week,
+                   percentage: chargeablePercentage,
+                   worktypeId: 1,
+                   worktype: 'chargeable',
+                   projectname,
+                   expected_finish_date,
+                   leaves_expected,
+                   ksa_status
+               };
+           } else {
+               delete newChanges[`${cellId}-chargeable`];
+           }
+           
+           // Add non-chargeable utilization if percentage > 0
+           if (nonChargeablePercentage > 0) {
+               newChanges[`${cellId}-nonchargeable`] = {
+                   employeeId,
+                   week,
+                   percentage: nonChargeablePercentage,
+                   worktypeId: 2,
+                   worktype: 'non-chargeable',
+                   projectname,
+                   expected_finish_date,
+                   leaves_expected,
+                   ksa_status
+               };
+           } else {
+               delete newChanges[`${cellId}-nonchargeable`];
+           }
+           
+           return newChanges;
+       });
+
+       setShowDualPercentageModal(false);
+       showToast('Dual percentages saved. Click "Save All Changes" to persist.', 'info');
    };
 
    // Save employee changes
@@ -930,6 +1113,35 @@ const ConsolidatedTracker = () => {
     if (e.target.tagName === 'INPUT') return;
     
     const cellId = `${employeeId}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
+    
+    // Check if this cell has dual utilizations
+    const allUtils = getAllUtilizationsForCell(employeeId, week, cellId);
+    
+    setSelectedCellId(cellId);
+    setSelectedCell({ employeeId, weekLabel: week.label, weekData: week });
+    
+    // If cell has dual utilizations, open the modal
+    if (allUtils.isDual) {
+      const chargeableUtil = findUtilizationByType(employeeId, week, 'chargeable');
+      const nonChargeableUtil = findUtilizationByType(employeeId, week, 'non-chargeable');
+      const currentUtil = chargeableUtil || nonChargeableUtil || findUtilization(employeeId, week);
+      
+      setDualPercentageData({
+        cellId,
+        employeeId,
+        week,
+        chargeablePercentage: allUtils.chargeable?.percentage ?? 0,
+        nonChargeablePercentage: allUtils.nonChargeable?.percentage ?? 0,
+        projectname: currentUtil?.projectname || 'Resource Tracker',
+        expected_finish_date: currentUtil?.expected_finish_date || new Date().toISOString().split('T')[0],
+        leaves_expected: currentUtil?.leaves_expected || 0,
+        ksa_status: currentUtil?.ksa_status || 'No'
+      });
+      setShowDualPercentageModal(true);
+      return;
+    }
+    
+    // Otherwise, handle single utilization
     const util = findUtilization(employeeId, week) || {};
     const hasUnsavedChanges = unsavedChanges[cellId];
     
@@ -943,9 +1155,6 @@ const ConsolidatedTracker = () => {
     };
     
     const hasData = displayData.percentage > 0 || displayData.worktype;
-    
-    setSelectedCellId(cellId);
-    setSelectedCell({ employeeId, weekLabel: week.label, weekData: week });
     
     // If cell has data and user clicks it, automatically start editing
     if (hasData) {
@@ -1234,87 +1443,51 @@ const ConsolidatedTracker = () => {
       let savedCount = 0;
       let errorCount = 0;
 
+      // Group changes by base cellId to handle dual utilizations together
+      const processedCells = new Set();
+
       for (const [cellId, change] of changeEntries) {
-          try {
-              // Validate percentage
-              if (change.percentage < 0 || change.percentage > 100) {
-                  showToast(`Invalid percentage ${change.percentage}% for cell ${cellId}`, 'error');
-                  errorCount++;
-                  continue;
-              }
-
-              // Find existing utilization to determine if this is an update
-              const existingUtil = findUtilization(change.employeeId, change.week);
-              const isUpdate = !!existingUtil;
-
-              // Get the employee's chargeable projects and duration from employeeChanges
-              const employeeChange = employeeChanges[change.employeeId] || {};
-              const chargeableProjects = employeeChange.chargeableProjects || '';
-              const duration = employeeChange.duration || '';
-
-              // Prepare the data for API call - only include utilization-specific fields
-              const updatedUtilData = {
-                  employeeId: change.employeeId,
-                  date: formatDateToYYYYMMDD(change.week.weekStartDate),
-                  worktypeId: change.worktypeId,
-                  percentage: change.percentage,
-                  projectname: chargeableProjects || 'Resource Tracker', // Use chargeableProjects as projectname
-                  expected_finish_date: duration || ' ', // Store duration directly as string, use space as default
-                  ...(isUpdate && { id: existingUtil.id }) // Include ID for updates
-              };
-
-              // Make API call
-              const response = await postUtilization(updatedUtilData, isUpdate);
-
-              if (response) {
-                  // Update state with backend response
-                  const formattedResponse = {
-                      ...response,
-                      Timesheet: {
-                          date: updatedUtilData.date,
-                          year: change.week.year,
-                          month: change.week.month,
-                          day: new Date(updatedUtilData.date).getDate()
-                      },
-                      Worktype: {
-                          worktype: response.worktypeId === 1 ? 'chargeable' : 
-                                  response.worktypeId === 2 ? 'non-chargeable' : 
-                                  response.worktypeId === 3 ? 'annual leave' : 'training'
-                      }
-                  };
-
-                  setUtilizations(prev => {
-                      const newUtilMap = { ...prev };
-                      const employeeUtils = [...(newUtilMap[change.employeeId] || [])];
-                      const existingIndex = employeeUtils.findIndex(util =>
-                          util.Timesheet?.date === updatedUtilData.date
-                      );
-
-                      if (existingIndex > -1) {
-                          employeeUtils[existingIndex] = formattedResponse;
-                      } else {
-                          employeeUtils.push(formattedResponse);
-                      }
-                      newUtilMap[change.employeeId] = employeeUtils;
-                      return newUtilMap;
-                  });
-
-                  // Clear the employee changes for chargeableProjects and duration after successful save
-                  if (employeeChange.chargeableProjects || employeeChange.duration) {
-                      setEmployeeChanges(prev => ({
-                          ...prev,
-                          [change.employeeId]: {
-                              ...prev[change.employeeId],
-                              chargeableProjects: undefined,
-                              duration: undefined
-                          }
-                      }));
+          // Skip if this is a dual utilization part (we'll process base cellId separately)
+          if (cellId.includes('-chargeable') || cellId.includes('-nonchargeable')) {
+              const baseCellId = cellId.replace('-chargeable', '').replace('-nonchargeable', '');
+              if (processedCells.has(baseCellId)) continue;
+              processedCells.add(baseCellId);
+              
+              // Process both chargeable and non-chargeable for this cell
+              const chargeableChange = unsavedChanges[`${baseCellId}-chargeable`];
+              const nonChargeableChange = unsavedChanges[`${baseCellId}-nonchargeable`];
+              
+              // Process chargeable
+              if (chargeableChange) {
+                  try {
+                      await saveSingleUtilization(chargeableChange, `${baseCellId}-chargeable`, employeeChanges);
+                      savedCount++;
+                  } catch (error) {
+                      console.error(`Error saving chargeable for cell ${baseCellId}:`, error);
+                      errorCount++;
                   }
-
-                  savedCount++;
-              } else {
-                  throw new Error('Failed to save utilization');
               }
+              
+              // Process non-chargeable
+              if (nonChargeableChange) {
+                  try {
+                      await saveSingleUtilization(nonChargeableChange, `${baseCellId}-nonchargeable`, employeeChanges);
+                      savedCount++;
+                  } catch (error) {
+                      console.error(`Error saving non-chargeable for cell ${baseCellId}:`, error);
+                      errorCount++;
+                  }
+              }
+              
+              continue;
+          }
+
+          // Skip if already processed as part of dual utilization
+          if (processedCells.has(cellId)) continue;
+          
+          try {
+              await saveSingleUtilization(change, cellId, employeeChanges);
+              savedCount++;
           } catch (error) {
               console.error(`Error saving change for cell ${cellId}:`, error);
               errorCount++;
@@ -1330,6 +1503,96 @@ const ConsolidatedTracker = () => {
       if (errorCount > 0) {
           showToast(`${errorCount} updates failed`, 'error');
       }
+  };
+
+  // Helper function to save a single utilization
+  const saveSingleUtilization = async (change, cellId, employeeChanges) => {
+      // Validate percentage
+      if (change.percentage < 0 || change.percentage > 100) {
+          throw new Error(`Invalid percentage ${change.percentage}%`);
+      }
+
+      // Find existing utilization by type to determine if this is an update
+      const existingUtil = change.worktypeId === 1 || change.worktype === 'chargeable' 
+          ? findUtilizationByType(change.employeeId, change.week, 'chargeable')
+          : change.worktypeId === 2 || change.worktype === 'non-chargeable'
+          ? findUtilizationByType(change.employeeId, change.week, 'non-chargeable')
+          : findUtilization(change.employeeId, change.week);
+      
+      const isUpdate = !!existingUtil;
+
+      // Get the employee's chargeable projects and duration from employeeChanges
+      const employeeChange = employeeChanges[change.employeeId] || {};
+      const chargeableProjects = employeeChange.chargeableProjects || '';
+      const duration = employeeChange.duration || '';
+
+      // Prepare the data for API call - only include utilization-specific fields
+      const updatedUtilData = {
+          employeeId: change.employeeId,
+          date: formatDateToYYYYMMDD(change.week.weekStartDate),
+          worktypeId: change.worktypeId,
+          percentage: change.percentage,
+          projectname: chargeableProjects || change.projectname || 'Resource Tracker',
+          expected_finish_date: duration || change.expected_finish_date || ' ',
+          ...(isUpdate && { id: existingUtil.id }) // Include ID for updates
+      };
+
+      // Make API call
+      const response = await postUtilization(updatedUtilData, isUpdate);
+
+      if (!response) {
+          throw new Error('Failed to save utilization');
+      }
+
+      // Update state with backend response
+      const formattedResponse = {
+          ...response,
+          Timesheet: {
+              date: updatedUtilData.date,
+              year: change.week.year,
+              month: change.week.month,
+              day: new Date(updatedUtilData.date).getDate()
+          },
+          Worktype: {
+              worktype: response.worktypeId === 1 ? 'chargeable' : 
+                      response.worktypeId === 2 ? 'non-chargeable' : 
+                      response.worktypeId === 3 ? 'annual leave' : 'training'
+          }
+      };
+
+      setUtilizations(prev => {
+          const newUtilMap = { ...prev };
+          const employeeUtils = [...(newUtilMap[change.employeeId] || [])];
+          
+          // For dual utilizations, find by both date and worktype
+          const existingIndex = employeeUtils.findIndex(util => {
+              const dateMatch = util.Timesheet?.date === updatedUtilData.date;
+              const worktypeMatch = util.Worktype?.worktype === formattedResponse.Worktype.worktype;
+              return dateMatch && worktypeMatch;
+          });
+
+          if (existingIndex > -1) {
+              employeeUtils[existingIndex] = formattedResponse;
+          } else {
+              employeeUtils.push(formattedResponse);
+          }
+          newUtilMap[change.employeeId] = employeeUtils;
+          return newUtilMap;
+      });
+
+      // Clear the employee changes for chargeableProjects and duration after successful save
+      if (employeeChange.chargeableProjects || employeeChange.duration) {
+          setEmployeeChanges(prev => ({
+              ...prev,
+              [change.employeeId]: {
+                  ...prev[change.employeeId],
+                  chargeableProjects: undefined,
+                  duration: undefined
+              }
+          }));
+      }
+
+      return response;
   };
 
   return (
@@ -1522,6 +1785,10 @@ const ConsolidatedTracker = () => {
                     setDetailedEditData(null);
                     setShowDetailedEdit(false);
                     
+                    // Clear dual percentage modal
+                    setShowDualPercentageModal(false);
+                    setDualPercentageData(null);
+                    
                     // Show confirmation toast
                     showToast('All changes discarded successfully', 'info');
                   }}
@@ -1646,27 +1913,44 @@ const ConsolidatedTracker = () => {
                     {employee.position}
                   </td>
                   <td className="border border-gray-200 p-3 text-sm">{employee.location || 'Lahore'}</td>
-                  <td className="border border-gray-200 p-3 text-sm">{employee.ksaSolution || 'Data Transformation'}</td>
+                  <td className="border border-gray-200 p-3 text-sm">{employee.solution || 'Data Transformation'}</td>
                   <td className="border border-gray-200 p-3 text-sm">{employee.expertise || 'Analytics & AI'}</td>
                   {weeks.map(week => {
-                    const util = findUtilization(employee.id, week) || {};
                     const cellId = `${employee.id}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
                     const isSelected = selectedCellId === cellId;
                     const isCopied = copiedCellId === cellId;
                     const isEditing = editingCellId === cellId;
-                    const hasUnsavedChanges = unsavedChanges[cellId];
                     
-                    // Use unsaved changes if available, otherwise use saved data
-                    const displayData = hasUnsavedChanges ? {
-                      percentage: hasUnsavedChanges.percentage,
-                      worktype: hasUnsavedChanges.worktype
-                    } : {
-                      percentage: util.percentage,
-                      worktype: util.Worktype?.worktype
-                    };
+                    // Get all utilizations for this cell (handles dual utilizations)
+                    const allUtils = getAllUtilizationsForCell(employee.id, week, cellId);
+                    const hasUnsavedChanges = unsavedChanges[cellId] || unsavedChanges[`${cellId}-chargeable`] || unsavedChanges[`${cellId}-nonchargeable`];
                     
-                    const workType = getWorkTypeKey(displayData.worktype);
-                    const hasData = displayData.percentage > 0 || displayData.worktype;
+                    // Determine display data
+                    let displayData = null;
+                    let workType = null;
+                    let hasData = false;
+                    
+                    if (allUtils.isDual) {
+                        // Dual utilization (chargeable + non-chargeable)
+                        displayData = {
+                            chargeable: allUtils.chargeable?.percentage || 0,
+                            nonChargeable: allUtils.nonChargeable?.percentage || 0
+                        };
+                        workType = 'training';
+                        hasData = (displayData.chargeable > 0) || (displayData.nonChargeable > 0);
+                    } else if (allUtils.single) {
+                        // Single utilization
+                        displayData = {
+                            percentage: allUtils.single.percentage,
+                            worktype: allUtils.single.worktype
+                        };
+                        workType = getWorkTypeKey(displayData.worktype);
+                        hasData = displayData.percentage > 0 || displayData.worktype;
+                    } else {
+                        // No data
+                        hasData = false;
+                    }
+                    
                     const cellBgColor = hasData ? workTypes[workType]?.bgColor || 'bg-white' : 'bg-white';
 
                     return (
@@ -1685,12 +1969,12 @@ const ConsolidatedTracker = () => {
                         tabIndex={0}
                       >
                         {/* Input field - show when editing, selected with no data, or when cell is selected and has unsaved changes */}
-                        {(isEditing || (isSelected && (!hasData || hasUnsavedChanges))) ? (
+                        {(isEditing || (isSelected && (!hasData || hasUnsavedChanges))) && !allUtils.isDual ? (
                           <input
                             type="number"
                             min="0"
                             max="100"
-                            value={editingCellId === cellId ? editingPercentage : (displayData.percentage || '')}
+                            value={editingCellId === cellId ? editingPercentage : (displayData?.percentage || '')}
                             onChange={(e) => {
                               const value = e.target.value;
                               // Prevent values above 100
@@ -1700,7 +1984,7 @@ const ConsolidatedTracker = () => {
                             }}
                             onFocus={(e) => {
                                setEditingCellId(cellId);
-                               setEditingPercentage(String(displayData.percentage || ''));
+                               setEditingPercentage(String(displayData?.percentage || ''));
                                setSelectedCellId(cellId);
                                e.target.select();
                             }}
@@ -1714,6 +1998,23 @@ const ConsolidatedTracker = () => {
                             placeholder="0"
                             onClick={(e) => e.stopPropagation()}
                           />
+                        ) : hasData && allUtils.isDual ? (
+                          // Show dual percentages for chargeable + non-chargeable
+                          <div className="w-full text-center py-1">
+                            <div className={`text-xs font-bold ${hasUnsavedChanges ? 'text-orange-600' : 'text-gray-800'}`}>
+                              {displayData.chargeable > 0 && (
+                                <div className="text-green-700">{displayData.chargeable}% (C)</div>
+                              )}
+                              {displayData.nonChargeable > 0 && (
+                                <div className="text-orange-600">{displayData.nonChargeable}% (NC)</div>
+                              )}
+                              {displayData.chargeable > 0 && displayData.nonChargeable > 0 && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {displayData.chargeable + displayData.nonChargeable}% total
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         ) : hasData ? (
                           // Show percentage display for cells with data when not editing
                           <div className="w-full text-center py-2">
@@ -1804,6 +2105,7 @@ const ConsolidatedTracker = () => {
         <div className="text-xs text-blue-700 space-y-1">
           <div>• <strong>Work Type Selection:</strong> Click any cell to select it, then use the work type buttons above the table</div>
           <div>• After selecting work type, click the cell again to enter percentage</div>
+          <div>• <strong>Dual Utilization:</strong> Select "Chargeable+non chargeable" to add both chargeable and non-chargeable percentages in the same week</div>
           <div>• <strong>Employee Fields:</strong> Click directly on any employee field (Projects, Leaves, KSA, Duration) to edit</div>
           <div>• <kbd className="px-1 py-0.5 bg-white border rounded text-xs">Ctrl+C</kbd> to copy selected cell</div>
           <div>• <kbd className="px-1 py-0.5 bg-white border rounded text-xs">Ctrl+V</kbd> to paste to selected cell</div>
@@ -1811,6 +2113,135 @@ const ConsolidatedTracker = () => {
           <div>• Use "Discard All Changes" to revert unsaved modifications</div>
         </div>
       </div>
+
+      {/* Dual Percentage Modal (Chargeable + Non-chargeable) */}
+      {showDualPercentageModal && dualPercentageData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chargeable + Non-chargeable Utilization
+                </h3>
+                <button
+                  onClick={() => setShowDualPercentageModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Chargeable Percentage (C)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={dualPercentageData.chargeablePercentage === 0 ? '' : dualPercentageData.chargeablePercentage}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      // Allow empty string for clearing - will be treated as 0
+                      if (inputValue === '') {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          chargeablePercentage: 0
+                        }));
+                        return;
+                      }
+                      const value = Number(inputValue);
+                      if (!isNaN(value) && value >= 0 && value <= 100) {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          chargeablePercentage: value
+                        }));
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Ensure 0 is stored when field is empty on blur
+                      if (e.target.value === '' || e.target.value === '0') {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          chargeablePercentage: 0
+                        }));
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Enter %"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter percentage for chargeable work</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Non-chargeable Percentage (NC)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={dualPercentageData.nonChargeablePercentage === 0 ? '' : dualPercentageData.nonChargeablePercentage}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      // Allow empty string for clearing - will be treated as 0
+                      if (inputValue === '') {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          nonChargeablePercentage: 0
+                        }));
+                        return;
+                      }
+                      const value = Number(inputValue);
+                      if (!isNaN(value) && value >= 0 && value <= 100) {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          nonChargeablePercentage: value
+                        }));
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Ensure 0 is stored when field is empty on blur
+                      if (e.target.value === '' || e.target.value === '0') {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          nonChargeablePercentage: 0
+                        }));
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Enter %"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter percentage for non-chargeable work</p>
+                </div>
+                
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Total Utilization:</div>
+                  <div className="text-xl font-bold text-blue-600">
+                    {dualPercentageData.chargeablePercentage + dualPercentageData.nonChargeablePercentage}%
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setShowDualPercentageModal(false)}
+                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveDualPercentages}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Save Percentages
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Project Modal */}
       {showProjectModal && projectModalData && (
