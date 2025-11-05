@@ -204,6 +204,10 @@ const ConsolidatedTracker = () => {
   // Add state for Excel upload
   const [isUploading, setIsUploading] = useState(false);
 
+  // Add state for dual percentage modal (chargeable + non-chargeable)
+  const [showDualPercentageModal, setShowDualPercentageModal] = useState(false);
+  const [dualPercentageData, setDualPercentageData] = useState(null);
+
   // Function to show toast notifications
   const showToast = (message, type = 'info') => {
     setToast({ message, type });
@@ -409,66 +413,37 @@ const ConsolidatedTracker = () => {
 
   }, [selectedMonth1, selectedMonth2, selectedYear]);
 
-  // Helper function to check if employee is currently on leave (7-day period from leave date)
+  // Helper function to check if employee is currently on annual leave in the current week
   const isEmployeeCurrentlyOnLeave = (employee) => {
-    // Get the employee's leave date
-    const leaveDates = employeeChanges[employee.id]?.expectedLeave ?? employee.leaves_expected;
-    if (!leaveDates || leaveDates === '0' || leaveDates.trim() === '') return false;
-
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
+    // Get today's date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    try {
-      // Handle different date formats like "8 June", "June 8", "8 Jun", etc.
-      const dateStr = leaveDates.toLowerCase().trim();
+    // Find the current week (week that contains today)
+    const currentWeek = weeks.find(week => {
+      const weekStart = new Date(week.weekStartDate);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      return today >= weekStart && today < weekEnd;
+    });
+
+    if (!currentWeek) return false;
+
+    // Get utilization data for this employee
+    const employeeUtil = utilizations[employee.id] || [];
+    
+    // Check if employee has annual leave in the current week
+    const currentWeekStartDate = formatDateToYYYYMMDD(currentWeek.weekStartDate);
+    const hasAnnualLeaveInCurrentWeek = employeeUtil.some(util => {
+      const utilDate = util.Timesheet?.date;
+      const utilWorkType = util.Worktype?.worktype;
       
-      // Extract month names (both full and abbreviated)
-      const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
-                         'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-      const fullMonthNames = ['january', 'february', 'march', 'april', 'may', 'june',
-                             'july', 'august', 'september', 'october', 'november', 'december'];
-      
-      let month = -1;
-      let leaveDay = null;
-      
-      // Find the month in the string (check both full and abbreviated names)
-      for (let i = 0; i < monthNames.length; i++) {
-        if (dateStr.includes(monthNames[i]) || dateStr.includes(fullMonthNames[i])) {
-          month = i;
-          break;
-        }
-      }
-      
-      if (month === -1) return false; // No valid month found
-      
-      // Extract day number using regex
-      const dayMatches = dateStr.match(/\d+/g);
-      if (dayMatches && dayMatches.length >= 1) {
-        leaveDay = parseInt(dayMatches[0]);
-      } else {
-        return false; // No valid day found
-      }
-      
-      // Create leave start date
-      const leaveStartDate = new Date(currentYear, month, leaveDay);
-      
-      // Add 7 days to get leave end date
-      const leaveEndDate = new Date(leaveStartDate);
-      leaveEndDate.setDate(leaveStartDate.getDate() + 7);
-      
-      // If leave period has passed this year, check next year
-      if (leaveEndDate < currentDate) {
-        leaveStartDate.setFullYear(currentYear + 1);
-        leaveEndDate.setFullYear(currentYear + 1);
-      }
-      
-      // Check if current date falls within the 7-day leave period
-      return currentDate >= leaveStartDate && currentDate <= leaveEndDate;
-      
-    } catch (error) {
-      console.log('Error parsing leave date:', leaveDates, error);
-      return false;
-    }
+      // Check if this utilization is for the current week AND is annual leave
+      return utilDate === currentWeekStartDate && utilWorkType === 'annual leave';
+    });
+
+    return hasAnnualLeaveInCurrentWeek;
   };
 
   // Calculate total utilization for each week
@@ -480,14 +455,16 @@ const ConsolidatedTracker = () => {
       let employeeCount = 0;
       
       filteredEmployees.forEach(employee => {
-        const util = findUtilization(employee.id, week) || {};
         const cellId = `${employee.id}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
-        const hasUnsavedChanges = unsavedChanges[cellId];
+        const allUtils = getAllUtilizationsForCell(employee.id, week, cellId);
         
-        // Use unsaved changes if available, otherwise use saved data
-        const percentage = hasUnsavedChanges ? 
-          hasUnsavedChanges.percentage : 
-          (util.percentage || 0);
+        let percentage = 0;
+        if (allUtils.isDual) {
+          // Sum both chargeable and non-chargeable for dual utilizations
+          percentage = (allUtils.chargeable?.percentage || 0) + (allUtils.nonChargeable?.percentage || 0);
+        } else if (allUtils.single) {
+          percentage = allUtils.single.percentage || 0;
+        }
         
         if (percentage > 0) {
           totalPercentage += percentage;
@@ -522,7 +499,7 @@ const ConsolidatedTracker = () => {
     let employeeChargeabilitySum = 0;
     let employeesWithData = 0;
 
-    // Count employees currently on leave based on their leave dates (7-day period)
+    // Count employees currently on annual leave in the current week
     employees.forEach(employee => {
       if (isEmployeeCurrentlyOnLeave(employee)) {
         stats.onLeave++;
@@ -646,9 +623,75 @@ const ConsolidatedTracker = () => {
       return null;
    };
 
+   // Helper to get all utilizations (including dual) for a cell
+   const getAllUtilizationsForCell = (employeeId, week, cellId) => {
+       const employeeUtil = utilizations[employeeId] || [];
+       const weekStartDate = formatDateToYYYYMMDD(week.weekStartDate);
+       
+       // Check for unsaved changes first (dual utilizations)
+       const chargeableUnsaved = unsavedChanges[`${cellId}-chargeable`];
+       const nonChargeableUnsaved = unsavedChanges[`${cellId}-nonchargeable`];
+       const singleUnsaved = unsavedChanges[cellId];
+       
+       // If we have dual unsaved changes, return them
+       if (chargeableUnsaved || nonChargeableUnsaved) {
+           return {
+               chargeable: chargeableUnsaved ? { percentage: chargeableUnsaved.percentage, worktype: 'chargeable' } : null,
+               nonChargeable: nonChargeableUnsaved ? { percentage: nonChargeableUnsaved.percentage, worktype: 'non-chargeable' } : null,
+               isDual: true
+           };
+       }
+       
+       // If we have a single unsaved change, return it
+       if (singleUnsaved) {
+           return {
+               single: { percentage: singleUnsaved.percentage, worktype: singleUnsaved.worktype },
+               isDual: false
+           };
+       }
+       
+       // Otherwise, check saved data - look for both chargeable and non-chargeable
+       const chargeableUtil = employeeUtil.find(util => {
+           const utilDate = util.Timesheet?.date;
+           return utilDate === weekStartDate && util.Worktype?.worktype === 'chargeable';
+       });
+       
+       const nonChargeableUtil = employeeUtil.find(util => {
+           const utilDate = util.Timesheet?.date;
+           return utilDate === weekStartDate && util.Worktype?.worktype === 'non-chargeable';
+       });
+       
+       // If both exist, it's a dual utilization
+       if (chargeableUtil && nonChargeableUtil) {
+           return {
+               chargeable: { percentage: chargeableUtil.percentage, worktype: 'chargeable' },
+               nonChargeable: { percentage: nonChargeableUtil.percentage, worktype: 'non-chargeable' },
+               isDual: true
+           };
+       }
+       
+       // Otherwise, return the single utilization
+       const singleUtil = findUtilization(employeeId, week);
+       if (singleUtil) {
+           return {
+               single: { percentage: singleUtil.percentage, worktype: singleUtil.Worktype?.worktype },
+               isDual: false
+           };
+       }
+       
+       return { isDual: false, single: null };
+   };
+
    // Handler for percentage input change - tracks both percentage and worktype
    const handlePercentageChange = (employeeId, week, value) => {
        const cellId = `${employeeId}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
+       
+       // Validate value - don't allow values above 100 or below 0
+       const numValue = Number(value);
+       if (value !== '' && (numValue < 0 || numValue > 100)) {
+           showToast('Percentage must be between 0 and 100', 'error');
+           return;
+       }
        
        // Update local editing state immediately
        setEditingCellId(cellId);
@@ -682,6 +725,27 @@ const ConsolidatedTracker = () => {
        const { employeeId, weekData } = selectedCell;
        const cellId = `${employeeId}-${weekData.year}-${weekData.month}-${getWeekOfMonth(weekData.weekStartDate)}`;
        const currentUtil = findUtilization(employeeId, weekData);
+
+       // Special handling for training (chargeable + non-chargeable)
+       if (worktypeKey === 'training') {
+           // Find existing chargeable and non-chargeable utilizations
+           const chargeableUtil = findUtilizationByType(employeeId, weekData, 'chargeable');
+           const nonChargeableUtil = findUtilizationByType(employeeId, weekData, 'non-chargeable');
+           
+           setDualPercentageData({
+               cellId,
+               employeeId,
+               week: weekData,
+               chargeablePercentage: chargeableUtil?.percentage ?? 0,
+               nonChargeablePercentage: nonChargeableUtil?.percentage ?? 0,
+               projectname: currentUtil?.projectname || 'Resource Tracker',
+               expected_finish_date: currentUtil?.expected_finish_date || new Date().toISOString().split('T')[0],
+               leaves_expected: currentUtil?.leaves_expected || 0,
+               ksa_status: currentUtil?.ksa_status || 'No'
+           });
+           setShowDualPercentageModal(true);
+           return;
+       }
 
        // Map the worktype key to the correct ID
        const worktypeId = worktypeIdMap[worktypeKey === 'nonChargeable' ? 'non-chargeable' : 
@@ -722,6 +786,103 @@ const ConsolidatedTracker = () => {
                inputElement.select();
            }
        }, 100);
+   };
+
+   // Helper function to find utilization by specific work type
+   const findUtilizationByType = (employeeId, week, worktype) => {
+       const employeeUtil = utilizations[employeeId] || [];
+       const weekStartDate = formatDateToYYYYMMDD(week.weekStartDate);
+       
+       const matchingUtils = employeeUtil.filter(util => {
+           const utilDate = util.Timesheet?.date;
+           if (!utilDate) return false;
+           return utilDate === weekStartDate && util.Worktype?.worktype === worktype;
+       });
+       
+       if (matchingUtils.length > 0) {
+           const latestUtil = matchingUtils.reduce((latest, current) => {
+               const latestDate = new Date(latest.updatedAt || latest.createdAt);
+               const currentDate = new Date(current.updatedAt || current.createdAt);
+               return currentDate > latestDate ? current : latest;
+           });
+           return latestUtil;
+       }
+       
+       return null;
+   };
+
+   // Handler for saving dual percentages (chargeable + non-chargeable)
+   const handleSaveDualPercentages = () => {
+       if (!dualPercentageData) return;
+
+       const { cellId, employeeId, week, chargeablePercentage, nonChargeablePercentage, projectname, expected_finish_date, leaves_expected, ksa_status } = dualPercentageData;
+
+       // Validate percentages
+       if (chargeablePercentage < 0 || chargeablePercentage > 100 || nonChargeablePercentage < 0 || nonChargeablePercentage > 100) {
+           showToast('Percentages must be between 0 and 100', 'error');
+           return;
+       }
+
+       // If both are 0, clear the changes
+       if (chargeablePercentage === 0 && nonChargeablePercentage === 0) {
+           setUnsavedChanges(prev => {
+               const newChanges = { ...prev };
+               delete newChanges[`${cellId}-chargeable`];
+               delete newChanges[`${cellId}-nonchargeable`];
+               delete newChanges[cellId]; // Remove any single entry
+               return newChanges;
+           });
+           setShowDualPercentageModal(false);
+           showToast('Percentages cleared', 'info');
+           return;
+       }
+
+       // Store both utilizations separately
+       setUnsavedChanges(prev => {
+           const newChanges = { ...prev };
+           
+           // Remove any single entry for this cell
+           delete newChanges[cellId];
+           
+           // Add chargeable utilization if percentage > 0
+           if (chargeablePercentage > 0) {
+               newChanges[`${cellId}-chargeable`] = {
+                   employeeId,
+                   week,
+                   percentage: chargeablePercentage,
+                   worktypeId: 1,
+                   worktype: 'chargeable',
+                   projectname,
+                   expected_finish_date,
+                   leaves_expected,
+                   ksa_status
+               };
+           } else {
+               delete newChanges[`${cellId}-chargeable`];
+           }
+           
+           // Add non-chargeable utilization if percentage > 0
+           if (nonChargeablePercentage > 0) {
+               newChanges[`${cellId}-nonchargeable`] = {
+                   employeeId,
+                   week,
+                   percentage: nonChargeablePercentage,
+                   worktypeId: 2,
+                   worktype: 'non-chargeable',
+                   projectname,
+                   expected_finish_date,
+                   leaves_expected,
+                   ksa_status
+               };
+           } else {
+               delete newChanges[`${cellId}-nonchargeable`];
+           }
+           
+           return newChanges;
+       });
+
+       setShowDualPercentageModal(false);
+       showToast('Dual percentages saved. Click "Save All Changes" to persist.', 'info');
    };
 
    // Save employee changes
@@ -952,17 +1113,54 @@ const ConsolidatedTracker = () => {
     if (e.target.tagName === 'INPUT') return;
     
     const cellId = `${employeeId}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
-    const util = findUtilization(employeeId, week) || {};
-    const hasData = util.percentage > 0 || util.Worktype?.worktype;
+    
+    // Check if this cell has dual utilizations
+    const allUtils = getAllUtilizationsForCell(employeeId, week, cellId);
     
     setSelectedCellId(cellId);
     setSelectedCell({ employeeId, weekLabel: week.label, weekData: week });
+    
+    // If cell has dual utilizations, open the modal
+    if (allUtils.isDual) {
+      const chargeableUtil = findUtilizationByType(employeeId, week, 'chargeable');
+      const nonChargeableUtil = findUtilizationByType(employeeId, week, 'non-chargeable');
+      const currentUtil = chargeableUtil || nonChargeableUtil || findUtilization(employeeId, week);
+      
+      setDualPercentageData({
+        cellId,
+        employeeId,
+        week,
+        chargeablePercentage: allUtils.chargeable?.percentage ?? 0,
+        nonChargeablePercentage: allUtils.nonChargeable?.percentage ?? 0,
+        projectname: currentUtil?.projectname || 'Resource Tracker',
+        expected_finish_date: currentUtil?.expected_finish_date || new Date().toISOString().split('T')[0],
+        leaves_expected: currentUtil?.leaves_expected || 0,
+        ksa_status: currentUtil?.ksa_status || 'No'
+      });
+      setShowDualPercentageModal(true);
+      return;
+    }
+    
+    // Otherwise, handle single utilization
+    const util = findUtilization(employeeId, week) || {};
+    const hasUnsavedChanges = unsavedChanges[cellId];
+    
+    // Get display data - prefer unsaved changes if available
+    const displayData = hasUnsavedChanges ? {
+      percentage: hasUnsavedChanges.percentage,
+      worktype: hasUnsavedChanges.worktype
+    } : {
+      percentage: util.percentage,
+      worktype: util.Worktype?.worktype
+    };
+    
+    const hasData = displayData.percentage > 0 || displayData.worktype;
     
     // If cell has data and user clicks it, automatically start editing
     if (hasData) {
       setTimeout(() => {
         setEditingCellId(cellId);
-        setEditingPercentage(String(util.percentage || ''));
+        setEditingPercentage(String(displayData.percentage || ''));
         const inputElement = document.querySelector(`td[data-cell-id="${cellId}"] input`);
         if (inputElement) {
           inputElement.focus();
@@ -1245,87 +1443,51 @@ const ConsolidatedTracker = () => {
       let savedCount = 0;
       let errorCount = 0;
 
+      // Group changes by base cellId to handle dual utilizations together
+      const processedCells = new Set();
+
       for (const [cellId, change] of changeEntries) {
-          try {
-              // Validate percentage
-              if (change.percentage < 0 || change.percentage > 100) {
-                  showToast(`Invalid percentage ${change.percentage}% for cell ${cellId}`, 'error');
-                  errorCount++;
-                  continue;
-              }
-
-              // Find existing utilization to determine if this is an update
-              const existingUtil = findUtilization(change.employeeId, change.week);
-              const isUpdate = !!existingUtil;
-
-              // Get the employee's chargeable projects and duration from employeeChanges
-              const employeeChange = employeeChanges[change.employeeId] || {};
-              const chargeableProjects = employeeChange.chargeableProjects || '';
-              const duration = employeeChange.duration || '';
-
-              // Prepare the data for API call - only include utilization-specific fields
-              const updatedUtilData = {
-                  employeeId: change.employeeId,
-                  date: formatDateToYYYYMMDD(change.week.weekStartDate),
-                  worktypeId: change.worktypeId,
-                  percentage: change.percentage,
-                  projectname: chargeableProjects || 'Resource Tracker', // Use chargeableProjects as projectname
-                  expected_finish_date: duration || ' ', // Store duration directly as string, use space as default
-                  ...(isUpdate && { id: existingUtil.id }) // Include ID for updates
-              };
-
-              // Make API call
-              const response = await postUtilization(updatedUtilData, isUpdate);
-
-              if (response) {
-                  // Update state with backend response
-                  const formattedResponse = {
-                      ...response,
-                      Timesheet: {
-                          date: updatedUtilData.date,
-                          year: change.week.year,
-                          month: change.week.month,
-                          day: new Date(updatedUtilData.date).getDate()
-                      },
-                      Worktype: {
-                          worktype: response.worktypeId === 1 ? 'chargeable' : 
-                                  response.worktypeId === 2 ? 'non-chargeable' : 
-                                  response.worktypeId === 3 ? 'annual leave' : 'training'
-                      }
-                  };
-
-                  setUtilizations(prev => {
-                      const newUtilMap = { ...prev };
-                      const employeeUtils = [...(newUtilMap[change.employeeId] || [])];
-                      const existingIndex = employeeUtils.findIndex(util =>
-                          util.Timesheet?.date === updatedUtilData.date
-                      );
-
-                      if (existingIndex > -1) {
-                          employeeUtils[existingIndex] = formattedResponse;
-                      } else {
-                          employeeUtils.push(formattedResponse);
-                      }
-                      newUtilMap[change.employeeId] = employeeUtils;
-                      return newUtilMap;
-                  });
-
-                  // Clear the employee changes for chargeableProjects and duration after successful save
-                  if (employeeChange.chargeableProjects || employeeChange.duration) {
-                      setEmployeeChanges(prev => ({
-                          ...prev,
-                          [change.employeeId]: {
-                              ...prev[change.employeeId],
-                              chargeableProjects: undefined,
-                              duration: undefined
-                          }
-                      }));
+          // Skip if this is a dual utilization part (we'll process base cellId separately)
+          if (cellId.includes('-chargeable') || cellId.includes('-nonchargeable')) {
+              const baseCellId = cellId.replace('-chargeable', '').replace('-nonchargeable', '');
+              if (processedCells.has(baseCellId)) continue;
+              processedCells.add(baseCellId);
+              
+              // Process both chargeable and non-chargeable for this cell
+              const chargeableChange = unsavedChanges[`${baseCellId}-chargeable`];
+              const nonChargeableChange = unsavedChanges[`${baseCellId}-nonchargeable`];
+              
+              // Process chargeable
+              if (chargeableChange) {
+                  try {
+                      await saveSingleUtilization(chargeableChange, `${baseCellId}-chargeable`, employeeChanges);
+                      savedCount++;
+                  } catch (error) {
+                      console.error(`Error saving chargeable for cell ${baseCellId}:`, error);
+                      errorCount++;
                   }
-
-                  savedCount++;
-              } else {
-                  throw new Error('Failed to save utilization');
               }
+              
+              // Process non-chargeable
+              if (nonChargeableChange) {
+                  try {
+                      await saveSingleUtilization(nonChargeableChange, `${baseCellId}-nonchargeable`, employeeChanges);
+                      savedCount++;
+                  } catch (error) {
+                      console.error(`Error saving non-chargeable for cell ${baseCellId}:`, error);
+                      errorCount++;
+                  }
+              }
+              
+              continue;
+          }
+
+          // Skip if already processed as part of dual utilization
+          if (processedCells.has(cellId)) continue;
+          
+          try {
+              await saveSingleUtilization(change, cellId, employeeChanges);
+              savedCount++;
           } catch (error) {
               console.error(`Error saving change for cell ${cellId}:`, error);
               errorCount++;
@@ -1343,8 +1505,114 @@ const ConsolidatedTracker = () => {
       }
   };
 
+  // Helper function to save a single utilization
+  const saveSingleUtilization = async (change, cellId, employeeChanges) => {
+      // Validate percentage
+      if (change.percentage < 0 || change.percentage > 100) {
+          throw new Error(`Invalid percentage ${change.percentage}%`);
+      }
+
+      // Find existing utilization by type to determine if this is an update
+      const existingUtil = change.worktypeId === 1 || change.worktype === 'chargeable' 
+          ? findUtilizationByType(change.employeeId, change.week, 'chargeable')
+          : change.worktypeId === 2 || change.worktype === 'non-chargeable'
+          ? findUtilizationByType(change.employeeId, change.week, 'non-chargeable')
+          : findUtilization(change.employeeId, change.week);
+      
+      const isUpdate = !!existingUtil;
+
+      // Get the employee's chargeable projects and duration from employeeChanges
+      const employeeChange = employeeChanges[change.employeeId] || {};
+      const chargeableProjects = employeeChange.chargeableProjects || '';
+      const duration = employeeChange.duration || '';
+
+      // Prepare the data for API call - only include utilization-specific fields
+      const updatedUtilData = {
+          employeeId: change.employeeId,
+          date: formatDateToYYYYMMDD(change.week.weekStartDate),
+          worktypeId: change.worktypeId,
+          percentage: change.percentage,
+          projectname: chargeableProjects || change.projectname || 'Resource Tracker',
+          expected_finish_date: duration || change.expected_finish_date || ' ',
+          ...(isUpdate && { id: existingUtil.id }) // Include ID for updates
+      };
+
+      // Make API call
+      const response = await postUtilization(updatedUtilData, isUpdate);
+
+      if (!response) {
+          throw new Error('Failed to save utilization');
+      }
+
+      // Update state with backend response
+      const formattedResponse = {
+          ...response,
+          Timesheet: {
+              date: updatedUtilData.date,
+              year: change.week.year,
+              month: change.week.month,
+              day: new Date(updatedUtilData.date).getDate()
+          },
+          Worktype: {
+              worktype: response.worktypeId === 1 ? 'chargeable' : 
+                      response.worktypeId === 2 ? 'non-chargeable' : 
+                      response.worktypeId === 3 ? 'annual leave' : 'training'
+          }
+      };
+
+      setUtilizations(prev => {
+          const newUtilMap = { ...prev };
+          const employeeUtils = [...(newUtilMap[change.employeeId] || [])];
+          
+          // For dual utilizations, find by both date and worktype
+          const existingIndex = employeeUtils.findIndex(util => {
+              const dateMatch = util.Timesheet?.date === updatedUtilData.date;
+              const worktypeMatch = util.Worktype?.worktype === formattedResponse.Worktype.worktype;
+              return dateMatch && worktypeMatch;
+          });
+
+          if (existingIndex > -1) {
+              employeeUtils[existingIndex] = formattedResponse;
+          } else {
+              employeeUtils.push(formattedResponse);
+          }
+          newUtilMap[change.employeeId] = employeeUtils;
+          return newUtilMap;
+      });
+
+      // Clear the employee changes for chargeableProjects and duration after successful save
+      if (employeeChange.chargeableProjects || employeeChange.duration) {
+          setEmployeeChanges(prev => ({
+              ...prev,
+              [change.employeeId]: {
+                  ...prev[change.employeeId],
+                  chargeableProjects: undefined,
+                  duration: undefined
+              }
+          }));
+      }
+
+      return response;
+  };
+
   return (
     <div className="min-h-screen bg-white p-6">
+      {/* CSS to hide number input arrows */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          /* Hide number input arrows in Chrome, Safari, Edge */
+          input[type="number"]::-webkit-outer-spin-button,
+          input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          
+          /* Hide number input arrows in Firefox */
+          input[type="number"] {
+            -moz-appearance: textfield;
+          }
+        `
+      }} />
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
       
@@ -1387,7 +1655,11 @@ const ConsolidatedTracker = () => {
             
             <div className="flex gap-2 items-center">
               <select
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
+                className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 appearance-none bg-no-repeat bg-right bg-[length:16px_16px] min-w-[120px]"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 8px center'
+                }}
                 value={selectedMonth1}
                 onChange={(e) => setSelectedMonth1(e.target.value)}
               >
@@ -1395,19 +1667,27 @@ const ConsolidatedTracker = () => {
                   <option key={month} value={month}>{month}</option>
                 ))}
               </select>
-              <span className="text-blue-600 font-semibold px-2">to</span>
-                              <select
-                  className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
-                  value={selectedMonth2}
-                  onChange={(e) => setSelectedMonth2(e.target.value)}
-                >
+              <span className="text-blue-600 font-semibold px-2 whitespace-nowrap">to</span>
+              <select
+                className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 appearance-none bg-no-repeat bg-right bg-[length:16px_16px] min-w-[120px]"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                  backgroundPosition: 'right 8px center'
+                }}
+                value={selectedMonth2}
+                onChange={(e) => setSelectedMonth2(e.target.value)}
+              >
                 {months.map(month => (
                   <option key={month} value={month}>{month}</option>
                 ))}
               </select>
             </div>
             <select
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
+              className="px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 appearance-none bg-no-repeat bg-right bg-[length:16px_16px] min-w-[100px]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                backgroundPosition: 'right 8px center'
+              }}
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -1459,7 +1739,11 @@ const ConsolidatedTracker = () => {
       <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-6 mb-6">
                   <div className="flex gap-4">
             <select
-              className="px-4 py-2 border-2 border-indigo-200 rounded-lg text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all duration-200"
+              className="px-3 py-2 pr-8 border-2 border-indigo-200 rounded-lg text-sm bg-white/80 backdrop-blur-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm hover:shadow-md transition-all duration-200 appearance-none bg-no-repeat bg-right bg-[length:16px_16px] min-w-[180px]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                backgroundPosition: 'right 8px center'
+              }}
               value={filters.expertise}
               onChange={(e) => setFilters(prev => ({ ...prev, expertise: e.target.value }))}
             >
@@ -1483,8 +1767,30 @@ const ConsolidatedTracker = () => {
                           <div className="flex gap-3">
                 <button
                   onClick={() => {
+                    // Clear all unsaved changes
                     setUnsavedChanges({});
                     setEmployeeChanges({});
+                    
+                    // Clear editing states
+                    setEditingCellId(null);
+                    setEditingPercentage('');
+                    setSelectedCellId(null);
+                    setSelectedCell(null);
+                    
+                    // Clear any copied cell data
+                    setCopiedCellData(null);
+                    setCopiedCellId(null);
+                    
+                    // Clear detailed edit data
+                    setDetailedEditData(null);
+                    setShowDetailedEdit(false);
+                    
+                    // Clear dual percentage modal
+                    setShowDualPercentageModal(false);
+                    setDualPercentageData(null);
+                    
+                    // Show confirmation toast
+                    showToast('All changes discarded successfully', 'info');
                   }}
                   className="px-6 py-2 text-gray-700 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg hover:from-gray-200 hover:to-gray-300 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
                 >
@@ -1510,6 +1816,42 @@ const ConsolidatedTracker = () => {
           </div>
         </div>
       )}
+
+      {/* Work Type Selection */}
+      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="flex flex-col gap-4">
+          <div className="text-sm text-gray-600 font-medium">
+            {selectedCell ? 
+              `Select work type for ${employees.find(emp => emp.id === selectedCell.employeeId)?.name} - week ${selectedCell.weekLabel}` : 
+              'Click on any cell above to select work type'
+            }
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            {Object.entries(workTypes).map(([key, { label, color }]) => (
+              <button
+                key={key}
+                className={`px-4 py-2 border border-gray-200 ${color} rounded-md shadow-sm transition-all duration-200 text-sm font-medium ${
+                  selectedCell ? 'hover:shadow-md cursor-pointer transform hover:scale-105' : 'opacity-50 cursor-not-allowed'
+                }`}
+                onClick={() => handleWorkTypeChange(key)}
+                disabled={!selectedCell}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {selectedCell && (
+            <div className="mt-2 pt-2 border-t border-gray-200">
+              <button
+                onClick={() => openDetailedEdit(selectedCell.employeeId, selectedCell.weekData)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
+              >
+                📝 Edit Details (Project, Dates, etc.)
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Main Table */}
       <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/30 overflow-hidden">
@@ -1548,17 +1890,17 @@ const ConsolidatedTracker = () => {
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-left sticky left-0 bg-gradient-to-r from-slate-100 to-blue-100 z-20 min-w-[120px]">Name</th>
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-left sticky left-[120px] bg-gradient-to-r from-blue-100 to-indigo-100 z-20 min-w-[100px]">Position</th>
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[80px]">Location</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[120px]">KSA Solution</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[120px]">Area of Expertise</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[140px]">KSA Solution</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[140px]">Area of Expertise</th>
                                   {weeks.map(week => (
                     <th key={week.label} className="border border-indigo-200 p-2 text-xs text-gray-700 font-bold text-center min-w-[80px] bg-gradient-to-br from-blue-50 to-indigo-100">
                       <div className="text-indigo-700">{week.label}</div>
                     </th>
                   ))}
                 <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[200px]">Projects</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Leaves Expected</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[80px]">Able to work in KSA</th>
-                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[80px]">Duration</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[120px]">Leaves Expected</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Able to work in KSA</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Duration</th>
               </tr>
             </thead>
             <tbody>
@@ -1571,27 +1913,44 @@ const ConsolidatedTracker = () => {
                     {employee.position}
                   </td>
                   <td className="border border-gray-200 p-3 text-sm">{employee.location || 'Lahore'}</td>
-                  <td className="border border-gray-200 p-3 text-sm">{employee.ksaSolution || 'Data Transformation'}</td>
+                  <td className="border border-gray-200 p-3 text-sm">{employee.solution || 'Data Transformation'}</td>
                   <td className="border border-gray-200 p-3 text-sm">{employee.expertise || 'Analytics & AI'}</td>
                   {weeks.map(week => {
-                    const util = findUtilization(employee.id, week) || {};
                     const cellId = `${employee.id}-${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
                     const isSelected = selectedCellId === cellId;
                     const isCopied = copiedCellId === cellId;
                     const isEditing = editingCellId === cellId;
-                    const hasUnsavedChanges = unsavedChanges[cellId];
                     
-                    // Use unsaved changes if available, otherwise use saved data
-                    const displayData = hasUnsavedChanges ? {
-                      percentage: hasUnsavedChanges.percentage,
-                      worktype: hasUnsavedChanges.worktype
-                    } : {
-                      percentage: util.percentage,
-                      worktype: util.Worktype?.worktype
-                    };
+                    // Get all utilizations for this cell (handles dual utilizations)
+                    const allUtils = getAllUtilizationsForCell(employee.id, week, cellId);
+                    const hasUnsavedChanges = unsavedChanges[cellId] || unsavedChanges[`${cellId}-chargeable`] || unsavedChanges[`${cellId}-nonchargeable`];
                     
-                    const workType = getWorkTypeKey(displayData.worktype);
-                    const hasData = displayData.percentage > 0 || displayData.worktype;
+                    // Determine display data
+                    let displayData = null;
+                    let workType = null;
+                    let hasData = false;
+                    
+                    if (allUtils.isDual) {
+                        // Dual utilization (chargeable + non-chargeable)
+                        displayData = {
+                            chargeable: allUtils.chargeable?.percentage || 0,
+                            nonChargeable: allUtils.nonChargeable?.percentage || 0
+                        };
+                        workType = 'training';
+                        hasData = (displayData.chargeable > 0) || (displayData.nonChargeable > 0);
+                    } else if (allUtils.single) {
+                        // Single utilization
+                        displayData = {
+                            percentage: allUtils.single.percentage,
+                            worktype: allUtils.single.worktype
+                        };
+                        workType = getWorkTypeKey(displayData.worktype);
+                        hasData = displayData.percentage > 0 || displayData.worktype;
+                    } else {
+                        // No data
+                        hasData = false;
+                    }
+                    
                     const cellBgColor = hasData ? workTypes[workType]?.bgColor || 'bg-white' : 'bg-white';
 
                     return (
@@ -1609,26 +1968,53 @@ const ConsolidatedTracker = () => {
                         onClick={(e) => handleCellClick(employee.id, week, e)}
                         tabIndex={0}
                       >
-                        {/* Input field - only show when editing or when cell is selected but has no data */}
-                        {(isEditing || (isSelected && !hasData)) ? (
+                        {/* Input field - show when editing, selected with no data, or when cell is selected and has unsaved changes */}
+                        {(isEditing || (isSelected && (!hasData || hasUnsavedChanges))) && !allUtils.isDual ? (
                           <input
                             type="number"
                             min="0"
                             max="100"
-                            value={editingCellId === cellId ? editingPercentage : (displayData.percentage || '')}
-                            onChange={(e) => handlePercentageChange(employee.id, week, e.target.value)}
+                            value={editingCellId === cellId ? editingPercentage : (displayData?.percentage || '')}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Prevent values above 100
+                              if (value === '' || (Number(value) >= 0 && Number(value) <= 100)) {
+                                handlePercentageChange(employee.id, week, value);
+                              }
+                            }}
                             onFocus={(e) => {
                                setEditingCellId(cellId);
-                               setEditingPercentage(String(displayData.percentage || ''));
+                               setEditingPercentage(String(displayData?.percentage || ''));
                                setSelectedCellId(cellId);
                                e.target.select();
                             }}
                             className={`w-full bg-transparent text-center focus:outline-none text-sm font-bold cursor-text ${
                               hasUnsavedChanges ? 'text-orange-600' : ''
                             }`}
+                            style={{
+                              /* Hide number input arrows */
+                              MozAppearance: 'textfield'
+                            }}
                             placeholder="0"
                             onClick={(e) => e.stopPropagation()}
                           />
+                        ) : hasData && allUtils.isDual ? (
+                          // Show dual percentages for chargeable + non-chargeable
+                          <div className="w-full text-center py-1">
+                            <div className={`text-xs font-bold ${hasUnsavedChanges ? 'text-orange-600' : 'text-gray-800'}`}>
+                              {displayData.chargeable > 0 && (
+                                <div className="text-green-700">{displayData.chargeable}% (C)</div>
+                              )}
+                              {displayData.nonChargeable > 0 && (
+                                <div className="text-orange-600">{displayData.nonChargeable}% (NC)</div>
+                              )}
+                              {displayData.chargeable > 0 && displayData.nonChargeable > 0 && (
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {displayData.chargeable + displayData.nonChargeable}% total
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         ) : hasData ? (
                           // Show percentage display for cells with data when not editing
                           <div className="w-full text-center py-2">
@@ -1680,9 +2066,15 @@ const ConsolidatedTracker = () => {
                     <select
                       value={getEmployeeFieldValue(employee, 'ableToWorkInKSA') ? 'Yes' : 'No'}
                       onChange={(e) => handleEmployeeFieldChange(employee.id, 'ableToWorkInKSA', e.target.value === 'Yes')}
-                      className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${
+                      className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-2 text-center appearance-none text-sm ${
                         employeeChanges[employee.id]?.ableToWorkInKSA !== undefined ? 'bg-yellow-50 text-orange-600' : ''
                       }`}
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                        backgroundPosition: 'right 4px center',
+                        backgroundSize: '12px 12px',
+                        backgroundRepeat: 'no-repeat'
+                      }}
                     >
                       <option value="Yes">Yes</option>
                       <option value="No">No</option>
@@ -1706,48 +2098,14 @@ const ConsolidatedTracker = () => {
         </div>
       </div>
 
-      {/* Work Type Selection */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
-        <div className="flex flex-col gap-4">
-          <div className="text-sm text-gray-600 font-medium">
-            {selectedCell ? 
-              `Select work type for ${employees.find(emp => emp.id === selectedCell.employeeId)?.name} - week ${selectedCell.weekLabel}` : 
-              'Click on any cell above to select work type'
-            }
-          </div>
-          <div className="flex gap-3 flex-wrap">
-            {Object.entries(workTypes).map(([key, { label, color }]) => (
-              <button
-                key={key}
-                className={`px-4 py-2 border border-gray-200 ${color} rounded-md shadow-sm transition-all duration-200 text-sm font-medium ${
-                  selectedCell ? 'hover:shadow-md cursor-pointer transform hover:scale-105' : 'opacity-50 cursor-not-allowed'
-                }`}
-                onClick={() => handleWorkTypeChange(key)}
-                disabled={!selectedCell}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {selectedCell && (
-            <div className="mt-2 pt-2 border-t border-gray-200">
-              <button
-                onClick={() => openDetailedEdit(selectedCell.employeeId, selectedCell.weekData)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
-              >
-                📝 Edit Details (Project, Dates, etc.)
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
         <div className="text-sm font-medium text-blue-800 mb-2">Instructions:</div>
         <div className="text-xs text-blue-700 space-y-1">
-          <div>• <strong>Utilization:</strong> Click any cell to select it, then choose a work type from the buttons below</div>
+          <div>• <strong>Work Type Selection:</strong> Click any cell to select it, then use the work type buttons above the table</div>
           <div>• After selecting work type, click the cell again to enter percentage</div>
+          <div>• <strong>Dual Utilization:</strong> Select "Chargeable+non chargeable" to add both chargeable and non-chargeable percentages in the same week</div>
           <div>• <strong>Employee Fields:</strong> Click directly on any employee field (Projects, Leaves, KSA, Duration) to edit</div>
           <div>• <kbd className="px-1 py-0.5 bg-white border rounded text-xs">Ctrl+C</kbd> to copy selected cell</div>
           <div>• <kbd className="px-1 py-0.5 bg-white border rounded text-xs">Ctrl+V</kbd> to paste to selected cell</div>
@@ -1755,6 +2113,135 @@ const ConsolidatedTracker = () => {
           <div>• Use "Discard All Changes" to revert unsaved modifications</div>
         </div>
       </div>
+
+      {/* Dual Percentage Modal (Chargeable + Non-chargeable) */}
+      {showDualPercentageModal && dualPercentageData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Chargeable + Non-chargeable Utilization
+                </h3>
+                <button
+                  onClick={() => setShowDualPercentageModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Chargeable Percentage (C)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={dualPercentageData.chargeablePercentage === 0 ? '' : dualPercentageData.chargeablePercentage}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      // Allow empty string for clearing - will be treated as 0
+                      if (inputValue === '') {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          chargeablePercentage: 0
+                        }));
+                        return;
+                      }
+                      const value = Number(inputValue);
+                      if (!isNaN(value) && value >= 0 && value <= 100) {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          chargeablePercentage: value
+                        }));
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Ensure 0 is stored when field is empty on blur
+                      if (e.target.value === '' || e.target.value === '0') {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          chargeablePercentage: 0
+                        }));
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Enter %"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter percentage for chargeable work</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Non-chargeable Percentage (NC)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={dualPercentageData.nonChargeablePercentage === 0 ? '' : dualPercentageData.nonChargeablePercentage}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      // Allow empty string for clearing - will be treated as 0
+                      if (inputValue === '') {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          nonChargeablePercentage: 0
+                        }));
+                        return;
+                      }
+                      const value = Number(inputValue);
+                      if (!isNaN(value) && value >= 0 && value <= 100) {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          nonChargeablePercentage: value
+                        }));
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Ensure 0 is stored when field is empty on blur
+                      if (e.target.value === '' || e.target.value === '0') {
+                        setDualPercentageData(prev => ({
+                          ...prev,
+                          nonChargeablePercentage: 0
+                        }));
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="Enter %"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter percentage for non-chargeable work</p>
+                </div>
+                
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Total Utilization:</div>
+                  <div className="text-xl font-bold text-blue-600">
+                    {dualPercentageData.chargeablePercentage + dualPercentageData.nonChargeablePercentage}%
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setShowDualPercentageModal(false)}
+                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveDualPercentages}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Save Percentages
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Project Modal */}
       {showProjectModal && projectModalData && (

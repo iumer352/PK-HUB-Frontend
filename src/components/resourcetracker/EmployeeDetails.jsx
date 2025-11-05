@@ -5,14 +5,14 @@ import Sidebar from './Sidebar';
 import SidebarToggle from './SidebarToggle';
 
 const StatCard = ({ title, value, icon }) => (
-  <div className="group bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 hover:border-blue-200/50 hover:bg-white/90 transform hover:-translate-y-1">
+  <div className="group bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/50 p-3 sm:p-4 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 hover:border-blue-200/50 hover:bg-white/90 transform hover:-translate-y-0.5">
     <div className="flex items-center justify-between">
-      <div className="flex-1">
-        <p className="text-sm font-semibold text-gray-500 mb-3 tracking-wide uppercase">{title}</p>
-        <h3 className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{value}</h3>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-gray-500 mb-1 sm:mb-2 tracking-wide uppercase truncate">{title}</p>
+        <h3 className="text-lg sm:text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">{value}</h3>
       </div>
-      <div className="ml-4 w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-300 group-hover:scale-110">
-        <span className="text-xl">{icon}</span>
+      <div className="ml-2 sm:ml-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-300 group-hover:scale-105 flex-shrink-0">
+        <span className="text-sm sm:text-lg">{icon}</span>
       </div>
     </div>
   </div>
@@ -40,14 +40,21 @@ const UtilizationBarChart = ({ utilizationData }) => {
   const maxValue = Math.max(...monthlyData.map(d => d.average), 100);
   const yAxisSteps = [0, 20, 40, 60, 80, 100];
   
+  // Chart dimensions for proper scaling
+  const chartHeights = {
+    mobile: 96,    // h-24 = 96px
+    tablet: 128,   // h-32 = 128px  
+    desktop: 160   // h-40 = 160px
+  };
+  
     return (
-    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 w-full">
-      <h2 className="text-lg font-semibold mb-4 text-gray-800">Monthly Utilization Overview</h2>
+    <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 w-full">
+      <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Monthly Utilization Overview</h2>
       
       {/* Chart Container */}
       <div className="relative">
         {/* Y-Axis Labels and Grid Lines */}
-                 <div className="absolute left-0 top-0 h-48 flex flex-col justify-between text-right pr-2 text-xs text-gray-500 font-medium">
+                 <div className="absolute left-0 top-0 h-32 sm:h-40 lg:h-48 flex flex-col justify-between text-right pr-1 sm:pr-2 text-xs text-gray-500 font-medium">
            {yAxisSteps.reverse().map((step) => (
              <div key={step} className="relative">
                <span className="bg-white pr-1">{step}%</span>
@@ -61,33 +68,32 @@ const UtilizationBarChart = ({ utilizationData }) => {
         </div>
         
         {/* Chart Area */}
-                 <div className="ml-10 relative">
+                 <div className="ml-6 sm:ml-8 lg:ml-10 relative">
            {/* Y-Axis Line */}
-           <div className="absolute left-0 top-0 h-48 w-px bg-gray-300"></div>
+           <div className="absolute left-0 top-0 h-32 sm:h-40 lg:h-48 w-px bg-gray-300"></div>
            
            {/* Bar Chart */}
-           <div className="flex items-end justify-center space-x-3 h-48 px-2 relative w-full">
+           <div className="flex items-end justify-center space-x-1 sm:space-x-2 lg:space-x-3 h-32 sm:h-40 lg:h-48 px-1 sm:px-2 relative w-full">
             {monthlyData.map((data, index) => (
               <div key={index} className="flex flex-col items-center group">
                 {/* Bar Container */}
-                                 <div className="relative flex items-end h-40 mb-1">
+                                 <div className="relative flex items-end h-24 sm:h-32 lg:h-40 mb-1">
                    <div 
-                     className="bg-gradient-to-t from-blue-500 via-blue-400 to-blue-300 rounded-t-md shadow-sm transition-all duration-300 hover:shadow-md group-hover:from-blue-600 group-hover:via-blue-500 group-hover:to-blue-400 cursor-pointer relative transform hover:scale-105"
+                     className="bg-gradient-to-t from-blue-500 via-blue-400 to-blue-300 rounded-t-md shadow-sm transition-all duration-300 hover:shadow-md group-hover:from-blue-600 group-hover:via-blue-500 group-hover:to-blue-400 cursor-pointer relative transform hover:scale-105 w-3 sm:w-4"
                      style={{ 
-                       height: `${Math.max((data.average / 100) * 160, 3)}px`,
-                       width: '16px'
+                       height: `${Math.max((data.average / 100) * 100, 2)}%`
                      }}
                   >
                                          {/* Value Label on Top of Bar (only for larger values) */}
                      {data.average > 15 && (
-                       <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 bg-white/90 px-1 py-0.5 rounded text-center shadow-sm">
+                       <div className="absolute -top-5 sm:-top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 bg-white/90 px-1 py-0.5 rounded text-center shadow-sm hidden sm:block">
                          {data.average}%
                        </div>
                      )}
                     
                     {/* Enhanced Tooltip */}
-                                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 pointer-events-none">
-                       <div className="bg-gray-900 text-white text-xs rounded-md py-1.5 px-2 whitespace-nowrap shadow-lg">
+                                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 sm:mb-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 pointer-events-none">
+                       <div className="bg-gray-900 text-white text-xs rounded-md py-1 sm:py-1.5 px-1.5 sm:px-2 whitespace-nowrap shadow-lg">
                          <div className="font-medium">{data.month}</div>
                          <div className="text-gray-300">{data.average}% avg</div>
                          <div className="text-gray-300">{data.count} entries</div>
@@ -101,7 +107,7 @@ const UtilizationBarChart = ({ utilizationData }) => {
                                  <div className="text-center">
                    <div className="text-xs font-medium text-gray-600">{data.month}</div>
                    {data.count > 0 && (
-                     <div className="text-xs text-gray-400">{data.count}</div>
+                     <div className="text-xs text-gray-400 hidden sm:block">{data.count}</div>
                    )}
                  </div>
               </div>
@@ -113,27 +119,27 @@ const UtilizationBarChart = ({ utilizationData }) => {
          </div>
          
          {/* Axis Titles */}
-         <div className="flex justify-between items-end mt-2 ml-10">
-           <span className="text-xs text-gray-500">Months</span>
+         <div className="flex justify-between items-end mt-1 sm:mt-2 ml-6 sm:ml-8 lg:ml-10">
+           <span className="text-xs text-gray-500 hidden sm:block">Months</span>
          </div>
          
          {/* Y-Axis Title */}
-         <div className="absolute left-1 top-1/2 transform -translate-y-1/2 -rotate-90">
+         <div className="absolute left-0.5 sm:left-1 top-1/2 transform -translate-y-1/2 -rotate-90">
            <span className="text-xs text-gray-500">%</span>
          </div>
       </div>
       
              {/* Compact Legend and Stats */}
-       <div className="mt-4 pt-3 border-t border-gray-100">
-         <div className="flex flex-wrap justify-between items-center text-xs">
-           <div className="flex items-center space-x-4">
+       <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-100">
+         <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-2 sm:gap-0 text-xs">
+           <div className="flex items-center space-x-2 sm:space-x-4">
              <div className="flex items-center space-x-1">
-               <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-blue-300 rounded-sm"></div>
+               <div className="w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-blue-500 to-blue-300 rounded-sm"></div>
                <span className="text-gray-600">Monthly Averages</span>
              </div>
            </div>
            
-           <div className="flex items-center space-x-4">
+           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
              <span className="text-gray-500">
                Peak: <span className="font-medium text-gray-700">
                  {monthlyData.reduce((max, curr) => curr.average > max.average ? curr : max, { month: 'N/A', average: 0 }).month}
@@ -154,8 +160,8 @@ const UtilizationBarChart = ({ utilizationData }) => {
        {utilizationData.length === 0 && (
          <div className="absolute inset-0 flex items-center justify-center bg-gray-50/90 rounded-lg">
            <div className="text-center">
-             <div className="text-gray-400 text-2xl mb-1">📈</div>
-             <p className="text-gray-500 text-sm font-medium">No data available</p>
+             <div className="text-gray-400 text-xl sm:text-2xl mb-1">📈</div>
+             <p className="text-gray-500 text-xs sm:text-sm font-medium">No data available</p>
            </div>
          </div>
        )}
@@ -192,7 +198,7 @@ const UtilizationLineChart = ({ utilizationData }) => {
     const points = validData.map((data) => {
       const monthIndex = monthlyData.findIndex(m => m.month === data.month);
       const x = (monthIndex * 90 / (monthlyData.length - 1)) + 5; // 5% padding on each side
-      const y = 100 - (data.average / 100 * 80) - 10; // 10% padding top/bottom
+      const y = 90 - (data.average / 100 * 80); // Align with 0-100% scale, 10% padding top
       return `${x},${y}`;
     });
     
@@ -200,13 +206,13 @@ const UtilizationLineChart = ({ utilizationData }) => {
   };
   
   return (
-    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 w-full">
-      <h2 className="text-lg font-semibold mb-4 text-gray-800">Utilization Trend Analysis</h2>
+    <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 w-full">
+      <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Utilization Trend Analysis</h2>
       
       {/* Chart Container */}
       <div className="relative">
         {/* Y-Axis Labels */}
-        <div className="absolute left-0 top-0 h-48 flex flex-col justify-between text-right pr-2 text-xs text-gray-500 font-medium">
+        <div className="absolute left-0 top-0 h-32 sm:h-40 lg:h-48 flex flex-col justify-between text-right pr-1 sm:pr-2 text-xs text-gray-500 font-medium">
           {yAxisSteps.reverse().map((step) => (
             <div key={step} className="relative">
               <span className="bg-white pr-1">{step}%</span>
@@ -219,13 +225,13 @@ const UtilizationLineChart = ({ utilizationData }) => {
         </div>
         
         {/* Chart Area */}
-        <div className="ml-10 relative">
+        <div className="ml-6 sm:ml-8 lg:ml-10 relative">
           {/* Y-Axis Line */}
-          <div className="absolute left-0 top-0 h-48 w-px bg-gray-300"></div>
+          <div className="absolute left-0 top-0 h-32 sm:h-40 lg:h-48 w-px bg-gray-300"></div>
           
           {/* SVG Line Graph */}
           <svg 
-            className="w-full h-48"
+            className="w-full h-32 sm:h-40 lg:h-48"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
           >
@@ -263,7 +269,7 @@ const UtilizationLineChart = ({ utilizationData }) => {
             {monthlyData.map((data, index) => {
               if (data.average === 0) return null;
               const x = (index * 90 / (monthlyData.length - 1)) + 5;
-              const y = 100 - (data.average / 100 * 80) - 10;
+              const y = 90 - (data.average / 100 * 80); // Match line chart calculation
               return (
                 <circle
                   key={index}
@@ -278,7 +284,7 @@ const UtilizationLineChart = ({ utilizationData }) => {
           </svg>
           
           {/* X-Axis Labels */}
-          <div className="flex justify-between mt-2 px-2">
+          <div className="flex justify-between mt-1 sm:mt-2 px-1 sm:px-2">
             {monthlyData.map((data, index) => (
               <div key={index} className="text-center">
                 <div className="text-xs font-medium text-gray-600">{data.month}</div>
@@ -291,26 +297,26 @@ const UtilizationLineChart = ({ utilizationData }) => {
         </div>
         
         {/* Y-Axis Title */}
-        <div className="absolute left-1 top-1/2 transform -translate-y-1/2 -rotate-90">
+        <div className="absolute left-0.5 sm:left-1 top-1/2 transform -translate-y-1/2 -rotate-90">
           <span className="text-xs text-gray-500">%</span>
         </div>
       </div>
       
       {/* Legend and Stats */}
-      <div className="mt-4 pt-3 border-t border-gray-100">
-        <div className="flex flex-wrap justify-between items-center text-xs">
-          <div className="flex items-center space-x-4">
+      <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-2 sm:gap-0 text-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-1 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
+              <div className="w-2 h-1 sm:w-3 sm:h-1 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
               <span className="text-gray-600">Performance Trend</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-blue-500 rounded-full opacity-30"></div>
+              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-500 rounded-full opacity-30"></div>
               <span className="text-gray-600">Area Fill</span>
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <span className="text-gray-500">
               Trend: <span className="font-medium text-gray-700">
                 {monthlyData.length > 6 && monthlyData[monthlyData.length-1].average > monthlyData[5].average ? '↗ Improving' : 
@@ -325,8 +331,8 @@ const UtilizationLineChart = ({ utilizationData }) => {
       {utilizationData.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50/90 rounded-lg">
           <div className="text-center">
-            <div className="text-gray-400 text-2xl mb-1">📈</div>
-            <p className="text-gray-500 text-sm font-medium">No trend data available</p>
+            <div className="text-gray-400 text-xl sm:text-2xl mb-1">📈</div>
+            <p className="text-gray-500 text-xs sm:text-sm font-medium">No trend data available</p>
           </div>
         </div>
       )}
@@ -473,13 +479,22 @@ const EmployeeDetails = () => {
 
     const latestUtil = sortedUtils[0];
     
+    // Check if projectname is valid (not empty, not just spaces, and not 'Resource Tracker' as default)
+    const projectName = latestUtil.projectname?.trim();
+    const isDefaultProject = projectName === 'Resource Tracker' || projectName === 'resource tracker';
+    
+    // If it's the default project name and employee has no actual project, show "No Project Assigned"
+    const displayProjectName = (!projectName || projectName === '' || isDefaultProject) 
+      ? 'No Project Assigned' 
+      : projectName;
+    
     // Debug logging
     console.log('Latest utilization:', latestUtil);
-    console.log('Expected finish date raw:', latestUtil.expected_finish_date);
-    console.log('Project name:', latestUtil.projectname);
+    console.log('Project name raw:', latestUtil.projectname);
+    console.log('Display project name:', displayProjectName);
     
     return {
-      projectName: latestUtil.projectname || 'No Project Assigned',
+      projectName: displayProjectName,
       expectedFinishDate: latestUtil.expected_finish_date || 'N/A',
       workType: latestUtil.Worktype?.worktype || 'unknown',
       percentage: latestUtil.percentage || 0,
@@ -543,33 +558,30 @@ const EmployeeDetails = () => {
       
       {/* Enhanced Header Section */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
-        <div className="w-full px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
               <SidebarToggle onToggle={toggleSidebar} />
-              <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-white/50">
-                  <span className="text-2xl text-white font-semibold">
+              <div className="relative flex-shrink-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg ring-2 sm:ring-4 ring-white/50">
+                  <span className="text-lg sm:text-xl text-white font-semibold">
                     {employee.name?.charAt(0)?.toUpperCase() || '?'}
                   </span>
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-3 border-white shadow-sm"></div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-green-500 rounded-full border-2 sm:border-3 border-white shadow-sm"></div>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-baseline gap-4">
-                  <h1 className="text-3xl font-semibold text-gray-900 tracking-tight">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-gray-900 tracking-tight truncate">
                     {employee.name}
                   </h1>
-                  <p className="text-sm text-gray-500 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                    </svg>
-                    {employee.email || user.email}
+                  <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-2 truncate">
+                  
+                    
                   </p>
                 </div>
-                <p className="text-lg text-gray-600 font-medium">{employee.role || user.role}</p>
-                <div className="flex items-center gap-3">
-                  <span className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-xl text-sm font-semibold border border-green-200/50 shadow-sm">
+                <div className="flex items-center gap-2 mt-1 sm:mt-2">
+                  <span className="px-2 sm:px-3 py-1 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-lg text-xs sm:text-sm font-semibold border border-green-200/50 shadow-sm">
                     ✅ {employee.employmentStatus || 'Active'}
                   </span>
                 </div>
@@ -580,61 +592,48 @@ const EmployeeDetails = () => {
       </div>
 
       {/* Enhanced Stats Section */}
-      <div className="w-full px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Prominent Project Status Section */}
-        <div className="mb-8">
-          <div className="bg-gradient-to-r from-blue-500 via-purple-600 to-indigo-600 rounded-3xl p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                  <span className="text-3xl">🚀</span>
+        <div className="mb-6">
+          <div className="bg-gradient-to-r from-blue-500 via-purple-600 to-indigo-600 rounded-2xl p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6">
+              <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl sm:text-2xl">🚀</span>
                 </div>
-                <div className="text-white">
-                  <h2 className="text-2xl font-bold mb-2">Current Project Status</h2>
-                  <div className="flex items-center gap-8">
-                    <div>
-                      <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-1">Project Name</p>
-                      <p className="text-2xl font-bold">{currentProject.projectName}</p>
+                <div className="text-white flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold mb-2">Current Project Status</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="min-w-0">
+                      <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Project Name</p>
+                      <p className="text-sm sm:text-base font-bold truncate">{currentProject.projectName}</p>
                     </div>
-                    <div className="h-12 w-px bg-white/30"></div>
-                    <div>
-                      <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-1">Expected Completion</p>
-                      <p className="text-2xl font-bold">
-                        {(() => {
-                          if (!currentProject.expectedFinishDate || currentProject.expectedFinishDate === 'N/A' || currentProject.expectedFinishDate.trim() === '') {
-                            return 'N/A';
-                          }
-                          // Handle YYYY-MM-DD format
-                          const dateStr = currentProject.expectedFinishDate.trim();
-                          const date = new Date(dateStr);
-                          
-                          // Check if date is valid
-                          if (isNaN(date.getTime())) {
-                            console.log('Invalid date:', dateStr);
-                            return dateStr; // Return original string if invalid
-                          }
-                          
-                          return date.toLocaleDateString();
-                        })()}
-                      </p>
+                    <div className="min-w-0">
+                      <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Utilization</p>
+                      <p className="text-sm sm:text-base font-bold truncate">{currentProject.percentage || 0}%</p>
                     </div>
-                    <div className="h-12 w-px bg-white/30"></div>
-                    <div>
-                      <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-1">Project Type</p>
-                      <p className="text-2xl font-bold text-white">
+                    <div className="min-w-0">
+                      <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Project Type</p>
+                      <p className="text-sm sm:text-base font-bold text-white truncate">
                         {currentProject.workType === 'chargeable' ? 'Billable' :
                          currentProject.workType === 'non-chargeable' ? 'Non-Billable' :
                          currentProject.workType === 'annual leave' ? 'Leave' :
                          'Other'}
                       </p>
                     </div>
+                    <div className="min-w-0">
+                      <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Last Updated</p>
+                      <p className="text-sm sm:text-base font-bold truncate">
+                        {currentProject.date ? new Date(currentProject.date).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="text-right text-white">
-                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4">
-                  <p className="text-blue-100 text-sm font-medium uppercase tracking-wider mb-1">Work Type</p>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+              <div className="w-full lg:w-auto lg:text-right text-white">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                  <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Work Type</p>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
                     currentProject.workType === 'chargeable' ? 'bg-green-500/90 text-white' :
                     currentProject.workType === 'non-chargeable' ? 'bg-yellow-500/90 text-white' :
                     currentProject.workType === 'annual leave' ? 'bg-red-500/90 text-white' :
@@ -651,11 +650,11 @@ const EmployeeDetails = () => {
           </div>
         </div>
 
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Overview</h2>
-          <p className="text-gray-600">Quick insights about the employee</p>
+        <div className="mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Overview</h2>
+          <p className="text-sm sm:text-base text-gray-600">Quick insights about the employee</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <StatCard 
             title="Department"
             value={employee.department || 'Not Assigned'}
@@ -679,58 +678,54 @@ const EmployeeDetails = () => {
         </div>
 
         {/* Enhanced Main Content */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 px-8">Analytics Dashboard</h2>
-          <p className="text-gray-600 px-8">Detailed utilization metrics and performance insights</p>
+        <div className="mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Analytics Dashboard</h2>
+          <p className="text-sm sm:text-base text-gray-600">Detailed utilization metrics and performance insights</p>
         </div>
         
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-200/50 shadow-xl hover:shadow-2xl transition-all duration-500 p-8 mx-8 mb-8">
-          <div className="flex items-start gap-12">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-lg hover:shadow-xl transition-all duration-300 p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="flex flex-col xl:flex-row items-start gap-4 sm:gap-6">
             {/* Employee Information - Enhanced */}
-            <div className="flex-shrink-0 w-80">
-              <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/30 rounded-2xl p-6 border border-blue-100/50">
-                <h2 className="text-xl font-bold mb-6 text-gray-900 flex items-center gap-2">
+            <div className="w-full xl:w-80 xl:flex-shrink-0">
+              <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/30 rounded-xl p-4 sm:p-5 border border-blue-100/50">
+                <h2 className="text-lg font-bold mb-4 text-gray-900 flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                   Employee Details
                 </h2>
-                <div className="space-y-5">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="group">
-                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Full Name</p>
-                    <p className="text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">{employee.name}</p>
+                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Full Name</p>
+                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors truncate">{employee.name}</p>
                   </div>
                   <div className="group">
-                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Email Address</p>
-                    <p className="text-gray-900 font-semibold truncate group-hover:text-blue-600 transition-colors">{employee.email}</p>
+                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Email Address</p>
+                    <p className="text-sm text-gray-900 font-semibold truncate group-hover:text-blue-600 transition-colors">{employee.email}</p>
                   </div>
                   <div className="group">
-                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Department</p>
-                    <p className="text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">{employee.department || 'Not Assigned'}</p>
-                  </div>
-
-                  <div className="group">
-                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Current Project</p>
-                    <p className="text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">{currentProject.projectName}</p>
+                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Department</p>
+                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors truncate">{employee.department || 'Not Assigned'}</p>
                   </div>
                   <div className="group">
-                    <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Project Completion</p>
-                    <p className="text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">
-                      {(() => {
-                        if (!currentProject.expectedFinishDate || currentProject.expectedFinishDate === 'N/A' || currentProject.expectedFinishDate.trim() === '') {
-                          return 'N/A';
-                        }
-                        
-                        // Handle YYYY-MM-DD format
-                        const dateStr = currentProject.expectedFinishDate.trim();
-                        const date = new Date(dateStr);
-                        
-                        // Check if date is valid
-                        if (isNaN(date.getTime())) {
-                          console.log('Invalid date:', dateStr);
-                          return dateStr; // Return original string if invalid
-                        }
-                        
-                        return date.toLocaleDateString();
-                      })()}
+                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Current Project</p>
+                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors truncate">{currentProject.projectName}</p>
+                  </div>
+                  <div className="group">
+                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Project Utilization</p>
+                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">{currentProject.percentage || 0}%</p>
+                  </div>
+                  <div className="group">
+                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Project Status</p>
+                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">
+                      {currentProject.workType === 'chargeable' ? '💰 Billable' :
+                       currentProject.workType === 'non-chargeable' ? '⚡ Internal' :
+                       currentProject.workType === 'annual leave' ? '🏖️ Leave' :
+                       '📋 Other'}
+                    </p>
+                  </div>
+                  <div className="group">
+                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Last Updated</p>
+                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">
+                      {currentProject.date ? new Date(currentProject.date).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -738,37 +733,37 @@ const EmployeeDetails = () => {
             </div>
 
             {/* Charts Section - Enhanced */}
-            <div className="flex-1 px-6">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div className="flex-1 w-full xl:px-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <UtilizationBarChart utilizationData={utilizations} />
                 <UtilizationLineChart utilizationData={utilizations} />
               </div>
             </div>
 
             {/* Current Month Utilization - Enhanced */}
-            <div className="flex-shrink-0 w-80">
-              <div className="bg-gradient-to-br from-green-50/50 to-emerald-50/30 rounded-2xl p-6 border border-green-100/50">
-                <h2 className="text-xl font-bold mb-6 text-gray-900 flex items-center gap-2">
+            <div className="w-full xl:w-80 xl:flex-shrink-0">
+              <div className="bg-gradient-to-br from-green-50/50 to-emerald-50/30 rounded-xl p-4 sm:p-5 border border-green-100/50">
+                <h2 className="text-lg font-bold mb-4 text-gray-900 flex items-center gap-2">
                   <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                   Current Month
                 </h2>
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {[
                     { type: 'Chargeable', value: utilizationStats.chargeable, color: 'bg-gradient-to-r from-green-400 to-green-500', icon: '💰' },
                     { type: 'Non-Chargeable', value: utilizationStats.nonChargeable, color: 'bg-gradient-to-r from-yellow-400 to-yellow-500', icon: '⚡' },
                     { type: 'Leave', value: utilizationStats.leave, color: 'bg-gradient-to-r from-red-400 to-red-500', icon: '🏖️' }
                   ].map(({ type, value, color, icon }) => (
                     <div key={type} className="group">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{icon}</span>
-                          <span className="text-sm font-bold text-gray-700">{type}</span>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">{icon}</span>
+                          <span className="text-xs font-bold text-gray-700">{type}</span>
                         </div>
-                        <span className="text-sm font-bold text-gray-900">{value}%</span>
+                        <span className="text-xs font-bold text-gray-900">{value}%</span>
                       </div>
-                      <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
                         <div 
-                          className={`h-3 rounded-full ${color} transition-all duration-700 ease-out shadow-sm`}
+                          className={`h-2 rounded-full ${color} transition-all duration-700 ease-out shadow-sm`}
                           style={{width: `${Math.min(value, 100)}%`}}
                         />
                       </div>
@@ -776,8 +771,8 @@ const EmployeeDetails = () => {
                   ))}
                 </div>
                 {utilizations.length === 0 && (
-                  <div className="text-center mt-8 p-4 bg-gray-50 rounded-xl">
-                    <p className="text-gray-500 text-sm font-medium">No utilization data available</p>
+                  <div className="text-center mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500 text-xs font-medium">No utilization data available</p>
                   </div>
                 )}
               </div>

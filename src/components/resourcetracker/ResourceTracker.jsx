@@ -5,10 +5,10 @@ import Sidebar from './Sidebar';
 import SidebarToggle from './SidebarToggle';
 
 const workTypes = {
-  chargeable: { label: 'Project Work (Chargeable)', color: 'bg-green-500 text-black', bgColor: 'bg-green-100' },
-  nonChargeable: { label: 'Non-chargeable Work', color: 'bg-orange-500 text-black', bgColor: 'bg-orange-100' },
-  leave: { label: 'Annual Leave', color: 'bg-gray-500 text-black', bgColor: 'bg-gray-100' },
-  training: { label: 'Business Development', color: 'bg-purple-500 text-black', bgColor: 'bg-purple-100' }
+  chargeable: { label: 'Project Work (Chargeable)', color: 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-green-100 to-emerald-200 border-l-4 border-green-500' },
+  nonChargeable: { label: 'Non-chargeable Work', color: 'bg-gradient-to-r from-orange-600 to-amber-500 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-orange-100 to-amber-200 border-l-4 border-orange-500' },
+  leave: { label: 'Annual Leave', color: 'bg-gradient-to-r from-slate-500 to-gray-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-slate-100 to-gray-200 border-l-4 border-slate-400' },
+  training: { label: 'Chargeable+non chargeable', color: 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400' }
 };
 
 const months = [
@@ -119,7 +119,7 @@ const ResourceTracker = () => {
       } catch (error) {
         console.error('Failed to fetch employee:', error);
         showToast('Failed to fetch employee data', 'error');
-        navigate('/dashboard');
+        navigate('/employee-dashboard');
       } finally {
         setLoading(false);
       }
@@ -612,7 +612,7 @@ const ResourceTracker = () => {
             <h3 className="text-lg font-medium text-red-800 mb-2">Employee Not Found</h3>
             <p className="text-red-600 mb-4">The employee you're looking for doesn't exist.</p>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/employee-dashboard')}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm"
             >
               Back to Dashboard
@@ -624,17 +624,34 @@ const ResourceTracker = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
+      {/* CSS to hide number input arrows */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          /* Hide number input arrows in Chrome, Safari, Edge */
+          input[type="number"]::-webkit-outer-spin-button,
+          input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          
+          /* Hide number input arrows in Firefox */
+          input[type="number"] {
+            -moz-appearance: textfield;
+          }
+        `
+      }} />
+      
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
       
       {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <SidebarToggle onToggle={toggleSidebar} />
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">{employee.name} - Resource Tracker</h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-slate-700 bg-clip-text text-transparent">{employee.name} - Resource Tracker</h1>
               <p className="text-sm text-gray-600">{employee.position} • {employee.department}</p>
             </div>
           </div>
@@ -675,19 +692,19 @@ const ResourceTracker = () => {
         </div>
 
         {/* Statistics Row */}
-        <div className="bg-blue-600 text-white p-4 rounded-lg mb-4">
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-6 rounded-lg mb-4 shadow-xl">
           <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-sm opacity-90">Average Billable Utilization - Per Week</div>
-              <div className="text-2xl font-bold">{stats.averageBillableUtilization}%</div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <div className="text-sm opacity-90 font-medium">Average Billable Utilization - Per Week</div>
+              <div className="text-3xl font-bold mt-2">{stats.averageBillableUtilization}%</div>
             </div>
-            <div>
-              <div className="text-sm opacity-90">Average Utilization - Per Week</div>
-              <div className="text-2xl font-bold">{stats.averageUtilization}%</div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <div className="text-sm opacity-90 font-medium">Average Utilization - Per Week</div>
+              <div className="text-3xl font-bold mt-2">{stats.averageUtilization}%</div>
             </div>
-            <div>
-              <div className="text-sm opacity-90">Available Hours - Per Week</div>
-              <div className="text-2xl font-bold">40</div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+              <div className="text-sm opacity-90 font-medium">Available Hours - Per Week</div>
+              <div className="text-3xl font-bold mt-2">40</div>
             </div>
           </div>
         </div>
@@ -705,28 +722,28 @@ const ResourceTracker = () => {
 
       {/* Save Changes Section */}
       {(Object.keys(unsavedChanges).length > 0 || Object.keys(employeeChanges).length > 0) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-6 mb-6 shadow-lg">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
-              <span className="text-yellow-800 font-medium">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 bg-gradient-to-r from-amber-400 to-yellow-400 rounded-full animate-pulse shadow-lg"></div>
+              <span className="text-amber-800 font-semibold">
                 You have {Object.keys(unsavedChanges).length} utilization change(s) and {Object.keys(employeeChanges).length} employee change(s)
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 onClick={() => {
                   setUnsavedChanges({});
                   setEmployeeChanges({});
                 }}
-                className="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors text-sm"
+                className="px-6 py-2 text-gray-700 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg hover:from-gray-200 hover:to-gray-300 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
               >
                 Discard All Changes
               </button>
               {Object.keys(employeeChanges).length > 0 && (
                 <button
                   onClick={saveEmployeeChanges}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+                  className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
                 >
                   Save Employee Changes
                 </button>
@@ -734,7 +751,7 @@ const ResourceTracker = () => {
               {Object.keys(unsavedChanges).length > 0 && (
                 <button
                   onClick={saveAllChanges}
-                  className="px-4 py-2 bg-blue-600 text-black rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                  className="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
                 >
                   Save Utilization Changes
                 </button>
@@ -745,25 +762,25 @@ const ResourceTracker = () => {
       )}
 
       {/* Main Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/30 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100 border-b border-gray-200">
-                <th className="border border-gray-200 p-3 text-sm font-bold text-left sticky left-0 bg-gray-100 z-20 min-w-[120px]">Name</th>
-                <th className="border border-gray-200 p-3 text-sm font-bold text-left sticky left-[120px] bg-gray-100 z-20 min-w-[100px]">Position</th>
-                <th className="border border-gray-200 p-3 text-sm font-bold text-left min-w-[80px]">Location</th>
-                <th className="border border-gray-200 p-3 text-sm font-bold text-left min-w-[120px]">KSA Solution</th>
-                <th className="border border-gray-200 p-3 text-sm font-bold text-left min-w-[120px]">Area of Expertise</th>
+              <tr className="bg-gradient-to-r from-slate-100 via-blue-50 to-indigo-100 border-b border-indigo-200">
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left sticky left-0 bg-gradient-to-r from-slate-100 to-blue-100 z-20 min-w-[120px]">Name</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left sticky left-[120px] bg-gradient-to-r from-blue-100 to-indigo-100 z-20 min-w-[100px]">Position</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[80px]">Location</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[140px]">KSA Solution</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[140px]">Area of Expertise</th>
                 {weeks.map(week => (
-                  <th key={week.label} className="border border-gray-200 p-2 text-xs font-bold text-center min-w-[80px] bg-blue-50">
-                    <div>{week.label}</div>
+                  <th key={week.label} className="border border-indigo-200 p-2 text-xs text-gray-700 font-bold text-center min-w-[80px] bg-gradient-to-br from-blue-50 to-indigo-100">
+                    <div className="text-indigo-700">{week.label}</div>
                   </th>
                 ))}
-                <th className="border border-gray-200 p-3 text-sm font-bold text-left min-w-[200px]">Chargeable Projects / Comments</th>
-                <th className="border border-gray-200 p-3 text-sm font-bold text-center min-w-[100px]">Leaves Expected</th>
-                <th className="border border-gray-200 p-3 text-sm font-bold text-center min-w-[80px]">Able to work in KSA</th>
-                <th className="border border-gray-200 p-3 text-sm font-bold text-center min-w-[80px]">Duration</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-left min-w-[200px]">Projects</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[120px]">Leaves Expected</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Able to work in KSA</th>
+                <th className="border border-indigo-200 p-3 text-sm font-bold text-center min-w-[100px]">Duration</th>
               </tr>
             </thead>
             <tbody>
@@ -800,12 +817,12 @@ const ResourceTracker = () => {
                     <td
                       key={week.label}
                       data-cell-id={cellId}
-                      className={`border border-gray-200 p-1 relative group transition-all duration-200 cursor-pointer text-center
+                      className={`border border-gray-200 p-1 relative group transition-all duration-200 cursor-pointer text-center shadow-sm
                         ${cellBgColor} 
                         ${isSelected ? 'ring-2 ring-blue-500 bg-blue-100' : ''} 
                         ${isEditing ? 'ring-2 ring-orange-500' : ''}
                         ${hasUnsavedChanges ? 'ring-2 ring-yellow-400 bg-yellow-50' : ''}
-                        hover:bg-blue-50
+                        hover:shadow-md
                       `}
                       onClick={(e) => handleCellClick(week, e)}
                       tabIndex={0}

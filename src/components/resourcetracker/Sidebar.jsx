@@ -24,38 +24,38 @@ const Sidebar = ({ isOpen, onToggle }) => {
   const navigationItems = [
     {
       name: 'Dashboard',
-      path: '/dashboard',
-      icon: '🏠',
+      path: '/employee-dashboard',
+      icon: '',
       description: 'Employee Details & Overview'
     },
     {
       name: 'Resource Tracker',
       path: 'resource-tracker', // Special case - will be handled in onClick
-      icon: '📊',
+      icon: '',
       description: 'Individual Resource Tracking'
     },
     {
       name: 'Consolidated View',
       path: '/consolidated',
-      icon: '📈',
+      icon: '',
       description: 'Team Utilization Overview'
     },
     {
       name: 'Utilization Report',
       path: '/report',
-      icon: '📋',
+      icon: '',
       description: 'Analytics & Reports'
     },
     {
       name: 'Available Team',
       path: '/available',
-      icon: '🆓',
+      icon: '',
       description: 'Non-Billable Resources'
     },
     {
       name: 'Team Utilizations',
       path: '/Team',
-      icon: '👥',
+      icon: '',
       description: 'View All Employees'
     }
   ];
@@ -80,17 +80,17 @@ const Sidebar = ({ isOpen, onToggle }) => {
           if (response.data?.id) {
             navigate(`/tracker/${response.data.id}`);
           } else {
-            // If no employee found, navigate to dashboard
-            navigate('/dashboard');
+            // If no employee found, navigate to employee dashboard
+            navigate('/employee-dashboard');
           }
         } catch (error) {
           console.error('Error finding employee:', error);
-          // If error occurs, navigate to dashboard
-          navigate('/dashboard');
+          // If error occurs, navigate to employee dashboard
+          navigate('/employee-dashboard');
         }
       } else {
-        // If no user email available, navigate to dashboard
-        navigate('/dashboard');
+        // If no user email available, navigate to employee dashboard
+        navigate('/employee-dashboard');
       }
     } else {
       navigate(item.path);

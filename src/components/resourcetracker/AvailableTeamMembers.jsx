@@ -52,38 +52,74 @@ const AvailableTeamMembers = () => {
 
   const handleEmployeeClick = (employee) => {
     // Navigate to employee details page with employee data
-    navigate('/dashboard', { 
+    navigate('/employee-dashboard', { 
       state: { employee } 
     });
   };
 
   const handleBackToDashboard = () => {
-    navigate('/dashboard');
+    navigate('/employee-dashboard');
   };
 
-  // Helper function to get current project type from utilization data (same as EmployeeDetails)
-  const getCurrentProjectType = (employeeId) => {
+  // Helper function to check if employee has non-chargeable work from current date onwards
+  const hasNonChargeableFromCurrentDate = (employeeId) => {
     const utilizations = employeeUtilizations[employeeId] || [];
     if (utilizations.length === 0) {
-      return 'none'; // No project assigned
+      return false; // No utilization data
     }
 
-    // Sort utilizations by date (most recent first) and get the latest entry
-    const sortedUtils = [...utilizations].sort((a, b) => {
-      const dateA = new Date(a.Timesheet?.date || a.createdAt);
-      const dateB = new Date(b.Timesheet?.date || b.createdAt);
-      return dateB - dateA;
+    // Get current date (reset time to start of day for comparison)
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    // Filter utilizations from current date onwards
+    const futureUtils = utilizations.filter(util => {
+      const utilDate = new Date(util.Timesheet?.date || util.createdAt);
+      utilDate.setHours(0, 0, 0, 0);
+      return utilDate >= currentDate;
     });
 
-    const latestUtil = sortedUtils[0];
-    return latestUtil.Worktype?.worktype || 'unknown';
+    // Check if any utilization from current date onwards is non-chargeable
+    const hasNonChargeable = futureUtils.some(util => {
+      return util.Worktype?.worktype === 'non-chargeable';
+    });
+
+    return hasNonChargeable;
+  };
+
+  // Helper function to check if employee has any chargeable projects from current date onwards
+  const hasChargeableProjectsFromCurrentDate = (employeeId) => {
+    const utilizations = employeeUtilizations[employeeId] || [];
+    if (utilizations.length === 0) {
+      return false; // No utilization data
+    }
+
+    // Get current date (reset time to start of day for comparison)
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    // Filter utilizations from current date onwards
+    const futureUtils = utilizations.filter(util => {
+      const utilDate = new Date(util.Timesheet?.date || util.createdAt);
+      utilDate.setHours(0, 0, 0, 0);
+      return utilDate >= currentDate;
+    });
+
+    // Check if any utilization from current date onwards is chargeable
+    const hasChargeable = futureUtils.some(util => {
+      return util.Worktype?.worktype === 'chargeable';
+    });
+
+    return hasChargeable;
   };
 
   // Filter for non-billable employees only and group by department
   const nonBillableEmployees = employees.filter(employee => {
-    const currentProjectType = getCurrentProjectType(employee.id);
-    const isNonBillable = currentProjectType === 'non-chargeable' || currentProjectType === 'none';
-    return isNonBillable;
+    const hasNonChargeable = hasNonChargeableFromCurrentDate(employee.id);
+    const hasChargeable = hasChargeableProjectsFromCurrentDate(employee.id);
+    
+    // Employee should have non-chargeable work from current date onwards AND no chargeable projects
+    return hasNonChargeable && !hasChargeable;
   });
 
   // Group employees by department
