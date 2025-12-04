@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Sidebar = ({ isOpen, onToggle }) => {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
       name: 'Available Team',
       path: '/available',
       icon: '',
-      description: 'Non-Billable Resources'
+      description: 'Available Resources'
     },
     {
       name: 'Team Utilizations',
@@ -76,7 +76,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
             '/rt/employees/find-by-email',
             { email: user.email }
           );
-          
+
           if (response.data?.id) {
             navigate(`/tracker/${response.data.id}`);
           } else {
@@ -102,12 +102,12 @@ const Sidebar = ({ isOpen, onToggle }) => {
     <>
       {/* Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
           onClick={onToggle}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`
         fixed top-0 left-0 h-full bg-white/95 backdrop-blur-md border-r border-gray-200/50 shadow-xl z-50 
@@ -172,9 +172,8 @@ const Sidebar = ({ isOpen, onToggle }) => {
               <span className="text-2xl">{item.icon}</span>
               <div className="text-left">
                 <div className="font-semibold">{item.name}</div>
-                <div className={`text-xs ${
-                  isCurrentPath(item.path) ? 'text-blue-100' : 'text-gray-500'
-                }`}>
+                <div className={`text-xs ${isCurrentPath(item.path) ? 'text-blue-100' : 'text-gray-500'
+                  }`}>
                   {item.description}
                 </div>
               </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import SidebarToggle from './SidebarToggle';
 
@@ -34,8 +34,8 @@ const EmployeeList = () => {
 
   const handleEmployeeClick = (employee) => {
     // Navigate to employee details page with employee data
-    navigate('/employee-dashboard', { 
-      state: { employee } 
+    navigate('/employee-dashboard', {
+      state: { employee }
     });
   };
 
@@ -80,7 +80,7 @@ const EmployeeList = () => {
     <div className="w-screen h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 overflow-auto">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
-      
+
       {/* Header Section */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
         <div className="w-full px-8 py-6">
@@ -110,20 +110,20 @@ const EmployeeList = () => {
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-sm overflow-hidden">
-          <div className="grid grid-cols-8 gap-4 p-4 bg-gray-50/50 border-b border-gray-200/50 text-sm font-semibold text-gray-700">
+          <div className="grid grid-cols-7 gap-4 p-4 bg-gray-50/50 border-b border-gray-200/50 text-sm font-semibold text-gray-700">
             <div className="col-span-2">Employee</div>
             <div>Position</div>
             <div>Department</div>
             <div>Expertise</div>
             <div>Email</div>
             <div>Leave Status</div>
-            <div className="text-center">ID</div>
+
           </div>
           {employees.map((employee) => (
             <div
               key={employee.id}
               onClick={() => handleEmployeeClick(employee)}
-              className="group grid grid-cols-8 gap-4 p-4 hover:bg-blue-50/30 border-b border-gray-100/50 last:border-b-0 transition-all duration-200 cursor-pointer items-center"
+              className="group grid grid-cols-7 gap-4 p-4 hover:bg-blue-50/30 border-b border-gray-100/50 last:border-b-0 transition-all duration-200 cursor-pointer items-center"
             >
               <div className="col-span-2 flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200">
@@ -144,16 +144,13 @@ const EmployeeList = () => {
               <div className="text-sm">
                 {employee.leaves_expected && employee.leaves_expected !== "0" ? (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                    🏖️ {employee.leaves_expected}
+                    {employee.leaves_expected}
                   </span>
                 ) : (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
                     Not Expected
                   </span>
                 )}
-              </div>
-              <div className="text-center">
-                <span className="text-sm font-bold text-gray-700">#{employee.id}</span>
               </div>
             </div>
           ))}

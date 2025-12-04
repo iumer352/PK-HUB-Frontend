@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import SidebarToggle from './SidebarToggle';
 
 const workTypes = {
   chargeable: { label: 'Project Work (Chargeable)', color: 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-green-100 to-emerald-200 border-l-4 border-green-500' },
   nonChargeable: { label: 'Non-chargeable Work', color: 'bg-gradient-to-r from-orange-600 to-amber-500 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-orange-100 to-amber-200 border-l-4 border-orange-500' },
-  leave: { label: 'Annual Leave', color: 'bg-gradient-to-r from-slate-500 to-gray-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-slate-100 to-gray-200 border-l-4 border-slate-400' },
+  leave: { label: 'Annual Leave', color: 'bg-gradient-to-r from-slate-500 to-gray-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-slate-200 to-gray-300 border-l-4 border-slate-400' },
   training: { label: 'Chargeable+non chargeable', color: 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400' }
 };
 
@@ -25,10 +25,10 @@ const worktypeIdMap = {
 
 // Helper function to format date in YYYY-MM-DD without timezone issues
 const formatDateToYYYYMMDD = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Helper: Get week of month (weeks start on Sunday)
@@ -158,16 +158,39 @@ const ResourceTracker = () => {
     const startMonthIndex = months.indexOf(selectedMonth1);
     const endMonthIndex = months.indexOf(selectedMonth2);
 
-    const weeks1 = generateWeeksAroundMonth(selectedMonth1, selectedYear);
-    const weeks2 = generateWeeksAroundMonth(selectedMonth2, selectedYear);
-    const combinedWeeks = [...weeks1, ...weeks2];
+    // Determine if we're crossing year boundary (e.g., Dec to Jan)
+    const crossesYearBoundary = startMonthIndex > endMonthIndex;
+
+    // Generate weeks for ALL months in the range
+    const allWeeks = [];
+
+    if (crossesYearBoundary) {
+      // Handle year boundary crossing (e.g., Dec to Jan)
+      // First, add months from startMonth to December
+      for (let i = startMonthIndex; i < 12; i++) {
+        const monthWeeks = generateWeeksAroundMonth(months[i], selectedYear);
+        allWeeks.push(...monthWeeks);
+      }
+      // Then, add months from January to endMonth in next year
+      for (let i = 0; i <= endMonthIndex; i++) {
+        const monthWeeks = generateWeeksAroundMonth(months[i], selectedYear + 1);
+        allWeeks.push(...monthWeeks);
+      }
+    } else {
+      // Normal range - generate weeks for all months from start to end
+      for (let i = startMonthIndex; i <= endMonthIndex; i++) {
+        const monthWeeks = generateWeeksAroundMonth(months[i], selectedYear);
+        allWeeks.push(...monthWeeks);
+      }
+    }
+
+    // Remove duplicate weeks based on week start date
     const uniqueWeeksMap = new Map();
-    
-    combinedWeeks.forEach(week => {
+    allWeeks.forEach(week => {
       const weekKey = week.weekStartDate.toISOString().split('T')[0];
       uniqueWeeksMap.set(weekKey, week);
     });
-    
+
     const generatedWeeks = Array.from(uniqueWeeksMap.values());
 
     // Filter weeks to include only those that START within the selected month range
@@ -175,27 +198,27 @@ const ResourceTracker = () => {
       const weekStartDate = new Date(week.weekStartDate);
       const startMonth = weekStartDate.getMonth(); // 0-indexed
       const startYear = weekStartDate.getFullYear();
-      
+
       // Check if the week start date falls within the selected month range
       if (startYear === selectedYear) {
         if (startMonthIndex <= endMonthIndex) {
           // Normal range (e.g., May to June)
           return startMonth >= startMonthIndex && startMonth <= endMonthIndex;
         } else {
-          // Wraps around year (e.g., Dec to Jan)
-          return startMonth >= startMonthIndex || startMonth <= endMonthIndex;
+          // Wraps around year (e.g., Dec to Jan) - include Dec onwards
+          return startMonth >= startMonthIndex;
         }
-      } else if (startMonthIndex > endMonthIndex && startYear === selectedYear + 1) {
-        // Handle year wrap for the next year part
+      } else if (crossesYearBoundary && startYear === selectedYear + 1) {
+        // Handle year wrap for the next year part - include Jan up to end month
         return startMonth <= endMonthIndex;
       }
-      
+
       return false;
     });
 
     // Sort weeks chronologically
     relevantWeeks.sort((a, b) => a.weekStartDate.getTime() - b.weekStartDate.getTime());
-    
+
     setWeeks(relevantWeeks);
   }, [selectedMonth1, selectedMonth2, selectedYear]);
 
@@ -221,13 +244,13 @@ const ResourceTracker = () => {
   // Handle percentage input change
   const handlePercentageChange = (week, value) => {
     const cellId = `${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
-    
+
     setEditingCellId(cellId);
     setEditingPercentage(value);
-    
+
     const currentUtil = findUtilization(week);
     const newValue = Number(value) || 0;
-    
+
     setUnsavedChanges(prev => ({
       ...prev,
       [cellId]: {
@@ -249,8 +272,8 @@ const ResourceTracker = () => {
     const cellId = `${weekData.year}-${weekData.month}-${getWeekOfMonth(weekData.weekStartDate)}`;
     const currentUtil = findUtilization(weekData);
 
-    const worktypeId = worktypeIdMap[worktypeKey === 'nonChargeable' ? 'non-chargeable' : 
-                      worktypeKey === 'leave' ? 'annual leave' : worktypeKey];
+    const worktypeId = worktypeIdMap[worktypeKey === 'nonChargeable' ? 'non-chargeable' :
+      worktypeKey === 'leave' ? 'annual leave' : worktypeKey];
 
     if (!worktypeId) {
       console.error('Invalid worktype key:', worktypeKey);
@@ -264,8 +287,8 @@ const ResourceTracker = () => {
         week: weekData,
         percentage: prev[cellId]?.percentage || currentUtil?.percentage || 0,
         worktypeId: worktypeId,
-        worktype: worktypeKey === 'nonChargeable' ? 'non-chargeable' : 
-                 worktypeKey === 'leave' ? 'annual leave' : worktypeKey,
+        worktype: worktypeKey === 'nonChargeable' ? 'non-chargeable' :
+          worktypeKey === 'leave' ? 'annual leave' : worktypeKey,
         projectname: prev[cellId]?.projectname || currentUtil?.projectname || 'Resource Tracker',
         expected_finish_date: prev[cellId]?.expected_finish_date || currentUtil?.expected_finish_date || new Date().toISOString().split('T')[0]
       }
@@ -409,9 +432,9 @@ const ResourceTracker = () => {
               day: new Date(updateData.date).getDate()
             },
             Worktype: {
-              worktype: response.data.worktypeId === 1 ? 'chargeable' : 
-                      response.data.worktypeId === 2 ? 'non-chargeable' : 
-                      response.data.worktypeId === 3 ? 'annual leave' : 'training'
+              worktype: response.data.worktypeId === 1 ? 'chargeable' :
+                response.data.worktypeId === 2 ? 'non-chargeable' :
+                  response.data.worktypeId === 3 ? 'annual leave' : 'training'
             }
           };
 
@@ -438,7 +461,7 @@ const ResourceTracker = () => {
       setUnsavedChanges({});
       showToast(`${savedCount} utilization records updated successfully!`, 'success');
     }
-    
+
     if (errorCount > 0) {
       showToast(`${errorCount} updates failed`, 'error');
     }
@@ -447,13 +470,13 @@ const ResourceTracker = () => {
   // Handle cell click for selection
   const handleCellClick = (week, e) => {
     if (e.target.tagName === 'INPUT') return;
-    
+
     const cellId = `${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
     const util = findUtilization(week) || {};
     const hasData = util.percentage > 0 || util.Worktype?.worktype;
-    
+
     setSelectedCell({ weekLabel: week.label, weekData: week });
-    
+
     if (hasData) {
       setTimeout(() => {
         setEditingCellId(cellId);
@@ -475,20 +498,20 @@ const ResourceTracker = () => {
 
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
-    
+
     try {
       // Handle different date formats like "8 June", "June 8", "8 Jun", etc.
       const dateStr = leaveDates.toLowerCase().trim();
-      
+
       // Extract month names (both full and abbreviated)
-      const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 
-                         'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+        'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
       const fullMonthNames = ['january', 'february', 'march', 'april', 'may', 'june',
-                             'july', 'august', 'september', 'october', 'november', 'december'];
-      
+        'july', 'august', 'september', 'october', 'november', 'december'];
+
       let month = -1;
       let leaveDay = null;
-      
+
       // Find the month in the string (check both full and abbreviated names)
       for (let i = 0; i < monthNames.length; i++) {
         if (dateStr.includes(monthNames[i]) || dateStr.includes(fullMonthNames[i])) {
@@ -496,9 +519,9 @@ const ResourceTracker = () => {
           break;
         }
       }
-      
+
       if (month === -1) return false; // No valid month found
-      
+
       // Extract day number using regex
       const dayMatches = dateStr.match(/\d+/g);
       if (dayMatches && dayMatches.length >= 1) {
@@ -506,23 +529,23 @@ const ResourceTracker = () => {
       } else {
         return false; // No valid day found
       }
-      
+
       // Create leave start date
       const leaveStartDate = new Date(currentYear, month, leaveDay);
-      
+
       // Add 7 days to get leave end date
       const leaveEndDate = new Date(leaveStartDate);
       leaveEndDate.setDate(leaveStartDate.getDate() + 7);
-      
+
       // If leave period has passed this year, check next year
       if (leaveEndDate < currentDate) {
         leaveStartDate.setFullYear(currentYear + 1);
         leaveEndDate.setFullYear(currentYear + 1);
       }
-      
+
       // Check if current date falls within the 7-day leave period
       return currentDate >= leaveStartDate && currentDate <= leaveEndDate;
-      
+
     } catch (error) {
       console.log('Error parsing leave date:', leaveDates, error);
       return false;
@@ -546,7 +569,7 @@ const ResourceTracker = () => {
 
     weeks.forEach(week => {
       const weekStartDate = formatDateToYYYYMMDD(week.weekStartDate);
-      const weekUtil = utilizations.find(util => 
+      const weekUtil = utilizations.find(util =>
         util.Timesheet?.date === weekStartDate
       );
 
@@ -562,7 +585,7 @@ const ResourceTracker = () => {
           chargeablePercentageSum += percentage / 100;
           stats.chargeableWork++;
         } else {
-          switch(workTypeKey) {
+          switch (workTypeKey) {
             case 'nonChargeable':
               stats.nonChargeableWork++;
               break;
@@ -579,12 +602,12 @@ const ResourceTracker = () => {
     });
 
     // Calculate average billable utilization (average chargeable percentage across all weeks)
-    stats.averageBillableUtilization = totalWeeksWithData > 0 ? 
+    stats.averageBillableUtilization = totalWeeksWithData > 0 ?
       ((chargeablePercentageSum / totalWeeksWithData) * 100).toFixed(1) : 0;
 
     // Calculate overall average utilization (all utilization percentages averaged)
     stats.averageUtilization = totalEntries > 0 ? (totalUtilization / totalEntries).toFixed(1) : 0;
-    
+
     return stats;
   };
 
@@ -641,10 +664,10 @@ const ResourceTracker = () => {
           }
         `
       }} />
-      
+
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
-      
+
       {/* Header Section */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -655,12 +678,12 @@ const ResourceTracker = () => {
               <p className="text-sm text-gray-600">{employee.position} • {employee.department}</p>
             </div>
           </div>
-          
+
           {/* Month and Year Selection */}
           <div className="flex items-center gap-4">
             <div className="flex gap-2 items-center bg-gray-50 p-2 rounded-lg">
               <select
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 value={selectedMonth1}
                 onChange={(e) => setSelectedMonth1(e.target.value)}
               >
@@ -670,7 +693,7 @@ const ResourceTracker = () => {
               </select>
               <span className="text-gray-500 font-medium">to</span>
               <select
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 value={selectedMonth2}
                 onChange={(e) => setSelectedMonth2(e.target.value)}
               >
@@ -680,7 +703,7 @@ const ResourceTracker = () => {
               </select>
             </div>
             <select
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -693,18 +716,14 @@ const ResourceTracker = () => {
 
         {/* Statistics Row */}
         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-6 rounded-lg mb-4 shadow-xl">
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-2 gap-4 text-center">
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <div className="text-sm opacity-90 font-medium">Average Billable Utilization - Per Week</div>
+              <div className="text-sm opacity-90 font-medium">Average Billable Utilization - Per Selected Month</div>
               <div className="text-3xl font-bold mt-2">{stats.averageBillableUtilization}%</div>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <div className="text-sm opacity-90 font-medium">Average Utilization - Per Week</div>
+              <div className="text-sm opacity-90 font-medium">Average Utilization - Per Selected Month</div>
               <div className="text-3xl font-bold mt-2">{stats.averageUtilization}%</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-              <div className="text-sm opacity-90 font-medium">Available Hours - Per Week</div>
-              <div className="text-3xl font-bold mt-2">40</div>
             </div>
           </div>
         </div>
@@ -735,6 +754,9 @@ const ResourceTracker = () => {
                 onClick={() => {
                   setUnsavedChanges({});
                   setEmployeeChanges({});
+                  setEditingCellId(null);
+                  setEditingPercentage('');
+                  setSelectedCell(null);
                 }}
                 className="px-6 py-2 text-gray-700 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg hover:from-gray-200 hover:to-gray-300 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
               >
@@ -800,7 +822,7 @@ const ResourceTracker = () => {
                   const isSelected = selectedCell?.weekLabel === week.label;
                   const isEditing = editingCellId === cellId;
                   const hasUnsavedChanges = unsavedChanges[cellId];
-                  
+
                   const displayData = hasUnsavedChanges ? {
                     percentage: hasUnsavedChanges.percentage,
                     worktype: hasUnsavedChanges.worktype
@@ -808,7 +830,7 @@ const ResourceTracker = () => {
                     percentage: util.percentage,
                     worktype: util.Worktype?.worktype
                   };
-                  
+
                   const workType = getWorkTypeKey(displayData.worktype);
                   const hasData = displayData.percentage > 0 || displayData.worktype;
                   const cellBgColor = hasData ? workTypes[workType]?.bgColor || 'bg-white' : 'bg-white';
@@ -839,9 +861,8 @@ const ResourceTracker = () => {
                             setEditingPercentage(String(displayData.percentage || ''));
                             e.target.select();
                           }}
-                          className={`w-full bg-transparent text-center focus:outline-none text-sm font-bold cursor-text ${
-                            hasUnsavedChanges ? 'text-orange-600' : ''
-                          }`}
+                          className={`w-full bg-transparent text-center focus:outline-none text-sm font-bold cursor-text ${hasUnsavedChanges ? 'text-orange-600' : ''
+                            }`}
                           placeholder="0"
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -852,13 +873,12 @@ const ResourceTracker = () => {
                           </span>
                         </div>
                       ) : (
-                        <div className={`w-full text-center text-sm py-2 ${
-                          isSelected ? 'text-blue-600 font-medium' : 'text-gray-400'
-                        }`}>
+                        <div className={`w-full text-center text-sm py-2 ${isSelected ? 'text-blue-600 font-medium' : 'text-gray-400'
+                          }`}>
                           {isSelected ? 'Select type ↓' : '0%'}
                         </div>
                       )}
-                      
+
                       {hasUnsavedChanges && (
                         <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full"></div>
                       )}
@@ -870,9 +890,8 @@ const ResourceTracker = () => {
                     type="text"
                     value={employeeChanges.chargeableProjects ?? utilizations[0]?.projectname ?? ''}
                     onChange={(e) => handleEmployeeFieldChange('chargeableProjects', e.target.value)}
-                    className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 ${
-                      employeeChanges.chargeableProjects !== undefined ? 'bg-yellow-50 text-orange-600' : ''
-                    }`}
+                    className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 ${employeeChanges.chargeableProjects !== undefined ? 'bg-yellow-50 text-orange-600' : ''
+                      }`}
                     placeholder="Enter project/comments"
                   />
                 </td>
@@ -881,21 +900,19 @@ const ResourceTracker = () => {
                     type="text"
                     value={employeeChanges.expectedLeave ?? employee.leaves_expected ?? ''}
                     onChange={(e) => handleEmployeeFieldChange('expectedLeave', e.target.value)}
-                    className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${
-                      employeeChanges.expectedLeave !== undefined ? 'bg-yellow-50 text-orange-600' : ''
-                    }`}
+                    className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${employeeChanges.expectedLeave !== undefined ? 'bg-yellow-50 text-orange-600' : ''
+                      }`}
                     placeholder="e.g. 15 to 20 Aug"
                   />
                 </td>
                 <td className="border border-gray-200 p-3 text-sm text-center">
                   <select
-                    value={employeeChanges.ableToWorkInKSA !== undefined ? 
-                      (employeeChanges.ableToWorkInKSA ? 'Yes' : 'No') : 
+                    value={employeeChanges.ableToWorkInKSA !== undefined ?
+                      (employeeChanges.ableToWorkInKSA ? 'Yes' : 'No') :
                       (employee.ksa_status || 'No')}
                     onChange={(e) => handleEmployeeFieldChange('ableToWorkInKSA', e.target.value === 'Yes')}
-                    className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${
-                      employeeChanges.ableToWorkInKSA !== undefined ? 'bg-yellow-50 text-orange-600' : ''
-                    }`}
+                    className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${employeeChanges.ableToWorkInKSA !== undefined ? 'bg-yellow-50 text-orange-600' : ''
+                      }`}
                   >
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
@@ -906,9 +923,8 @@ const ResourceTracker = () => {
                     type="text"
                     value={employeeChanges.duration ?? utilizations[0]?.expected_finish_date ?? ''}
                     onChange={(e) => handleEmployeeFieldChange('duration', e.target.value)}
-                    className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${
-                      employeeChanges.duration !== undefined ? 'bg-yellow-50 text-orange-600' : ''
-                    }`}
+                    className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${employeeChanges.duration !== undefined ? 'bg-yellow-50 text-orange-600' : ''
+                      }`}
                     placeholder="e.g. 6 Months"
                   />
                 </td>
@@ -922,8 +938,8 @@ const ResourceTracker = () => {
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex flex-col gap-4">
           <div className="text-sm text-gray-600 font-medium">
-            {selectedCell ? 
-              `Select work type for week ${selectedCell.weekLabel}` : 
+            {selectedCell ?
+              `Select work type for week ${selectedCell.weekLabel}` :
               'Click on any week above to select work type'
             }
           </div>
@@ -931,9 +947,8 @@ const ResourceTracker = () => {
             {Object.entries(workTypes).map(([key, { label, color }]) => (
               <button
                 key={key}
-                className={`px-4 py-2 border border-gray-200 ${color} rounded-md shadow-sm transition-all duration-200 text-sm font-medium ${
-                  selectedCell ? 'hover:shadow-md cursor-pointer transform hover:scale-105' : 'opacity-50 cursor-not-allowed'
-                }`}
+                className={`px-4 py-2 border border-gray-200 ${color} rounded-md shadow-sm transition-all duration-200 text-sm font-medium ${selectedCell ? 'hover:shadow-md cursor-pointer transform hover:scale-105' : 'opacity-50 cursor-not-allowed'
+                  }`}
                 onClick={() => handleWorkTypeChange(key)}
                 disabled={!selectedCell}
               >
@@ -958,11 +973,10 @@ const ResourceTracker = () => {
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-4 right-4 px-4 py-2 rounded-md shadow-lg z-50 ${
-          toast.type === 'success' ? 'bg-green-500 text-black' : 
-          toast.type === 'error' ? 'bg-red-500 text-black' : 
-          'bg-blue-500 text-white'
-        }`}>
+        <div className={`fixed top-4 right-4 px-4 py-2 rounded-md shadow-lg z-50 ${toast.type === 'success' ? 'bg-green-500 text-black' :
+          toast.type === 'error' ? 'bg-red-500 text-black' :
+            'bg-blue-500 text-white'
+          }`}>
           {toast.message}
         </div>
       )}

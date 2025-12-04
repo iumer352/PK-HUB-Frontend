@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import SidebarToggle from './SidebarToggle';
 
@@ -11,331 +11,519 @@ const StatCard = ({ title, value, icon }) => (
         <p className="text-xs font-semibold text-gray-500 mb-1 sm:mb-2 tracking-wide uppercase truncate">{title}</p>
         <h3 className="text-lg sm:text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">{value}</h3>
       </div>
-      <div className="ml-2 sm:ml-3 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center group-hover:from-blue-100 group-hover:to-indigo-100 transition-all duration-300 group-hover:scale-105 flex-shrink-0">
-        <span className="text-sm sm:text-lg">{icon}</span>
-      </div>
     </div>
   </div>
 );
 
 const UtilizationBarChart = ({ utilizationData }) => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  // Calculate monthly averages
-  const monthlyData = months.map((month, index) => {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+
+  // Generate year options (previous year, current year, next year)
+  const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
+
+  // Calculate monthly data for each work type
+  let monthlyData = months.map((month, index) => {
     const monthIndex = index;
     const monthUtils = utilizationData.filter(util => {
       const utilDate = new Date(util.Timesheet?.date || util.createdAt);
-      return utilDate.getMonth() === monthIndex;
+      return utilDate.getMonth() === monthIndex && utilDate.getFullYear() === selectedYear;
     });
-    
-    if (monthUtils.length === 0) return { month, average: 0, count: 0 };
-    
-    const total = monthUtils.reduce((sum, util) => sum + (util.percentage || 0), 0);
-    const average = total / monthUtils.length;
-    
-    return { month, average: Math.round(average), count: monthUtils.length };
+
+    if (monthUtils.length === 0) {
+      return {
+        month,
+        chargeable: 0,
+        nonChargeable: 0,
+        leave: 0,
+        count: 0
+      };
+    }
+
+    // Helper function to normalize worktype strings for comparison
+    const normalizeWorktype = (worktype) => {
+      if (!worktype) return '';
+      return worktype.toString().toLowerCase().trim();
+    };
+
+    // Calculate totals for each work type with flexible matching
+    let chargeableTotal = 0;
+    let nonChargeableTotal = 0;
+    let leaveTotal = 0;
+
+    monthUtils.forEach(util => {
+      const worktype = normalizeWorktype(util.Worktype?.worktype);
+      const percentage = util.percentage || 0;
+
+      // Handle "chargeable and non-chargeable" - split 50/50
+      if (worktype === 'chargeable and non-chargeable' ||
+        worktype === 'chargeable and non chargeable' ||
+        worktype === 'chargeable & non-chargeable') {
+        chargeableTotal += percentage * 0.5;
+        nonChargeableTotal += percentage * 0.5;
+      }
+      // Pure chargeable
+      else if (worktype === 'chargeable' || worktype === 'billable') {
+        chargeableTotal += percentage;
+      }
+      // Pure non-chargeable
+      else if (worktype === 'non-chargeable' || worktype === 'non chargeable' ||
+        worktype === 'nonchargeable' || worktype === 'internal') {
+        nonChargeableTotal += percentage;
+      }
+      // Leave
+      else if (worktype === 'annual leave' || worktype === 'leave' ||
+        worktype === 'annual-leave' || worktype === 'annualleave') {
+        leaveTotal += percentage;
+      }
+      // Log unmatched types
+      else if (worktype !== '') {
+        console.warn(`⚠️ Unknown worktype: "${worktype}" for entry ID ${util.id}`);
+      }
+    });
+
+    // Calculate the total of all utilizations for the month
+    const totalUtilization = chargeableTotal + nonChargeableTotal + leaveTotal;
+
+    // Debug: Uncomment to see monthly breakdown
+    // if (monthUtils.length > 0 && index === new Date().getMonth()) {
+    //   console.log(`✅ ${month} Breakdown:`, {
+    //     chargeableTotal: chargeableTotal.toFixed(1),
+    //     nonChargeableTotal: nonChargeableTotal.toFixed(1),
+    //     leaveTotal: leaveTotal.toFixed(1),
+    //     totalUtilization: totalUtilization,
+    //     entriesProcessed: monthUtils.length
+    //   });
+    // }
+
+    // If no utilization data, return zeros
+    if (totalUtilization === 0) {
+      return {
+        month,
+        chargeable: 0,
+        nonChargeable: 0,
+        leave: 0,
+        count: 0
+      };
+    }
+
+    // Calculate percentages as proportion of total utilization
+    const chargeable = Math.round((chargeableTotal / totalUtilization) * 100);
+    const nonChargeable = Math.round((nonChargeableTotal / totalUtilization) * 100);
+    const leave = Math.round((leaveTotal / totalUtilization) * 100);
+
+    return {
+      month,
+      chargeable,
+      nonChargeable,
+      leave,
+      count: monthUtils.length,
+      total: chargeable + nonChargeable + leave
+    };
   });
-  
-  const maxValue = Math.max(...monthlyData.map(d => d.average), 100);
+
+
+  const maxValue = Math.max(...monthlyData.map(d => d.total), 100);
   const yAxisSteps = [0, 20, 40, 60, 80, 100];
-  
-  // Chart dimensions for proper scaling
-  const chartHeights = {
-    mobile: 96,    // h-24 = 96px
-    tablet: 128,   // h-32 = 128px  
-    desktop: 160   // h-40 = 160px
-  };
-  
-    return (
-    <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 w-full">
-      <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Monthly Utilization Overview</h2>
-      
+
+  return (
+    <div className="bg-white rounded-lg p-4 sm:p-6 shadow-lg border border-gray-200 w-full">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Monthly Utilization Breakdown</h2>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Year:</label>
+          <select
+            className="pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+          >
+            {yearOptions.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Chart Container */}
       <div className="relative">
         {/* Y-Axis Labels and Grid Lines */}
-                 <div className="absolute left-0 top-0 h-32 sm:h-40 lg:h-48 flex flex-col justify-between text-right pr-1 sm:pr-2 text-xs text-gray-500 font-medium">
-           {yAxisSteps.reverse().map((step) => (
-             <div key={step} className="relative">
-               <span className="bg-white pr-1">{step}%</span>
-               {/* Horizontal Grid Lines */}
-               <div 
-                 className="absolute left-10 top-1/2 transform -translate-y-1/2 border-t border-gray-100"
-                 style={{ width: 'calc(100% + 200px)' }}
-               />
-            </div>
-          ))}
-        </div>
-        
-        {/* Chart Area */}
-                 <div className="ml-6 sm:ml-8 lg:ml-10 relative">
-           {/* Y-Axis Line */}
-           <div className="absolute left-0 top-0 h-32 sm:h-40 lg:h-48 w-px bg-gray-300"></div>
-           
-           {/* Bar Chart */}
-           <div className="flex items-end justify-center space-x-1 sm:space-x-2 lg:space-x-3 h-32 sm:h-40 lg:h-48 px-1 sm:px-2 relative w-full">
-            {monthlyData.map((data, index) => (
-              <div key={index} className="flex flex-col items-center group">
-                {/* Bar Container */}
-                                 <div className="relative flex items-end h-24 sm:h-32 lg:h-40 mb-1">
-                   <div 
-                     className="bg-gradient-to-t from-blue-500 via-blue-400 to-blue-300 rounded-t-md shadow-sm transition-all duration-300 hover:shadow-md group-hover:from-blue-600 group-hover:via-blue-500 group-hover:to-blue-400 cursor-pointer relative transform hover:scale-105 w-3 sm:w-4"
-                     style={{ 
-                       height: `${Math.max((data.average / 100) * 100, 2)}%`
-                     }}
-                  >
-                                         {/* Value Label on Top of Bar (only for larger values) */}
-                     {data.average > 15 && (
-                       <div className="absolute -top-5 sm:-top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 bg-white/90 px-1 py-0.5 rounded text-center shadow-sm hidden sm:block">
-                         {data.average}%
-                       </div>
-                     )}
-                    
-                    {/* Enhanced Tooltip */}
-                                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 sm:mb-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 pointer-events-none">
-                       <div className="bg-gray-900 text-white text-xs rounded-md py-1 sm:py-1.5 px-1.5 sm:px-2 whitespace-nowrap shadow-lg">
-                         <div className="font-medium">{data.month}</div>
-                         <div className="text-gray-300">{data.average}% avg</div>
-                         <div className="text-gray-300">{data.count} entries</div>
-                       </div>
-                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-3 border-transparent border-t-gray-900"></div>
-                     </div>
-                  </div>
-                </div>
-                
-                {/* X-Axis Labels */}
-                                 <div className="text-center">
-                   <div className="text-xs font-medium text-gray-600">{data.month}</div>
-                   {data.count > 0 && (
-                     <div className="text-xs text-gray-400 hidden sm:block">{data.count}</div>
-                   )}
-                 </div>
-              </div>
-            ))}
-          </div>
-          
-          {/* X-Axis Line */}
-                     <div className="h-px bg-gray-300 mt-1"></div>
-         </div>
-         
-         {/* Axis Titles */}
-         <div className="flex justify-between items-end mt-1 sm:mt-2 ml-6 sm:ml-8 lg:ml-10">
-           <span className="text-xs text-gray-500 hidden sm:block">Months</span>
-         </div>
-         
-         {/* Y-Axis Title */}
-         <div className="absolute left-0.5 sm:left-1 top-1/2 transform -translate-y-1/2 -rotate-90">
-           <span className="text-xs text-gray-500">%</span>
-         </div>
-      </div>
-      
-             {/* Compact Legend and Stats */}
-       <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-100">
-         <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-2 sm:gap-0 text-xs">
-           <div className="flex items-center space-x-2 sm:space-x-4">
-             <div className="flex items-center space-x-1">
-               <div className="w-2 h-2 sm:w-3 sm:h-3 bg-gradient-to-r from-blue-500 to-blue-300 rounded-sm"></div>
-               <span className="text-gray-600">Monthly Averages</span>
-             </div>
-           </div>
-           
-           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
-             <span className="text-gray-500">
-               Peak: <span className="font-medium text-gray-700">
-                 {monthlyData.reduce((max, curr) => curr.average > max.average ? curr : max, { month: 'N/A', average: 0 }).month}
-               </span>
-             </span>
-             <span className="text-gray-500">
-               Overall: <span className="font-medium text-gray-700">
-                 {utilizationData.length > 0 
-                   ? Math.round(utilizationData.reduce((sum, util) => sum + (util.percentage || 0), 0) / utilizationData.length)
-                   : 0}%
-               </span>
-             </span>
-           </div>
-         </div>
-       </div>
-      
-             {/* No Data State */}
-       {utilizationData.length === 0 && (
-         <div className="absolute inset-0 flex items-center justify-center bg-gray-50/90 rounded-lg">
-           <div className="text-center">
-             <div className="text-gray-400 text-xl sm:text-2xl mb-1">📈</div>
-             <p className="text-gray-500 text-xs sm:text-sm font-medium">No data available</p>
-           </div>
-         </div>
-       )}
-    </div>
-  );
-};
-
-const UtilizationLineChart = ({ utilizationData }) => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  // Calculate monthly averages
-  const monthlyData = months.map((month, index) => {
-    const monthIndex = index;
-    const monthUtils = utilizationData.filter(util => {
-      const utilDate = new Date(util.Timesheet?.date || util.createdAt);
-      return utilDate.getMonth() === monthIndex;
-    });
-    
-    if (monthUtils.length === 0) return { month, average: 0, count: 0 };
-    
-    const total = monthUtils.reduce((sum, util) => sum + (util.percentage || 0), 0);
-    const average = total / monthUtils.length;
-    
-    return { month, average: Math.round(average), count: monthUtils.length };
-  });
-  
-  const yAxisSteps = [0, 20, 40, 60, 80, 100];
-  
-  // Generate SVG path for the line graph
-  const generateLinePath = () => {
-    const validData = monthlyData.filter(data => data.average > 0);
-    if (validData.length === 0) return '';
-    
-    const points = validData.map((data) => {
-      const monthIndex = monthlyData.findIndex(m => m.month === data.month);
-      const x = (monthIndex * 90 / (monthlyData.length - 1)) + 5; // 5% padding on each side
-      const y = 90 - (data.average / 100 * 80); // Align with 0-100% scale, 10% padding top
-      return `${x},${y}`;
-    });
-    
-    return `M ${points.join(' L ')}`;
-  };
-  
-  return (
-    <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gray-200 w-full">
-      <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Utilization Trend Analysis</h2>
-      
-      {/* Chart Container */}
-      <div className="relative">
-        {/* Y-Axis Labels */}
-        <div className="absolute left-0 top-0 h-32 sm:h-40 lg:h-48 flex flex-col justify-between text-right pr-1 sm:pr-2 text-xs text-gray-500 font-medium">
+        <div className="absolute left-0 top-0 h-48 sm:h-56 lg:h-64 flex flex-col justify-between text-right pr-2 sm:pr-3 text-xs text-gray-500 font-medium">
           {yAxisSteps.reverse().map((step) => (
             <div key={step} className="relative">
               <span className="bg-white pr-1">{step}%</span>
-              <div 
-                className="absolute left-10 top-1/2 transform -translate-y-1/2 border-t border-gray-100"
-                style={{ width: 'calc(100% + 200px)' }}
+              {/* Horizontal Grid Lines */}
+              <div
+                className="absolute left-12 top-1/2 transform -translate-y-1/2 border-t border-gray-100"
+                style={{ width: 'calc(100% + 300px)' }}
               />
             </div>
           ))}
         </div>
-        
+
         {/* Chart Area */}
-        <div className="ml-6 sm:ml-8 lg:ml-10 relative">
+        <div className="ml-8 sm:ml-10 lg:ml-12 relative">
           {/* Y-Axis Line */}
-          <div className="absolute left-0 top-0 h-32 sm:h-40 lg:h-48 w-px bg-gray-300"></div>
-          
-          {/* SVG Line Graph */}
-          <svg 
-            className="w-full h-32 sm:h-40 lg:h-48"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <linearGradient id="trendGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#EF4444" />
-                <stop offset="50%" stopColor="#F59E0B" />
-                <stop offset="100%" stopColor="#10B981" />
-              </linearGradient>
-              <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="rgba(59, 130, 246, 0.3)" />
-                <stop offset="100%" stopColor="rgba(59, 130, 246, 0.05)" />
-              </linearGradient>
-            </defs>
-            
-            {/* Area under curve */}
-            <path
-              d={`${generateLinePath()} L 95,90 L 5,90 Z`}
-              fill="url(#areaGradient)"
-              className="opacity-70"
-            />
-            
-            {/* Main line */}
-            <path
-              d={generateLinePath()}
-              fill="none"
-              stroke="url(#trendGradient)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="drop-shadow-sm"
-            />
-            
-            {/* Data points */}
-            {monthlyData.map((data, index) => {
-              if (data.average === 0) return null;
-              const x = (index * 90 / (monthlyData.length - 1)) + 5;
-              const y = 90 - (data.average / 100 * 80); // Match line chart calculation
-              return (
-                <circle
-                  key={index}
-                  cx={x}
-                  cy={y}
-                  r="1.5"
-                  fill="#3B82F6"
-                  className="drop-shadow-sm"
-                />
-              );
-            })}
-          </svg>
-          
-          {/* X-Axis Labels */}
-          <div className="flex justify-between mt-1 sm:mt-2 px-1 sm:px-2">
+          <div className="absolute left-0 top-0 h-48 sm:h-56 lg:h-64 w-px bg-gray-300"></div>
+
+          {/* Bar Chart */}
+          <div className="flex items-end justify-between h-48 sm:h-56 lg:h-64 px-2 sm:px-3 relative w-full">
             {monthlyData.map((data, index) => (
-              <div key={index} className="text-center">
-                <div className="text-xs font-medium text-gray-600">{data.month}</div>
+              <div key={index} className="flex flex-col items-center group relative h-full flex-1">
+                {/* Bar Group Container - aligned to bottom */}
+                <div className="flex items-end justify-center gap-0.5 h-full">
+                  {/* Chargeable Bar */}
+                  <div
+                    className="bg-gradient-to-t from-green-600 to-green-400 rounded-t-sm shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer relative w-2 sm:w-3 lg:w-4"
+                    style={{
+                      height: data.chargeable > 0
+                        ? `${data.chargeable}%`
+                        : '2px',
+                      minHeight: '2px'
+                    }}
+                  >
+                    {/* Value Label on Top of Bar */}
+                    {data.chargeable > 10 && (
+                      <div className="absolute -top-5 sm:-top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 bg-white/90 px-1 py-0.5 rounded text-center shadow-sm hidden lg:block whitespace-nowrap">
+                        {data.chargeable}%
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Non-Chargeable Bar */}
+                  <div
+                    className="bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-sm shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer relative w-2 sm:w-3 lg:w-4"
+                    style={{
+                      height: data.nonChargeable > 0
+                        ? `${data.nonChargeable}%`
+                        : '2px',
+                      minHeight: '2px'
+                    }}
+                  >
+                    {/* Value Label on Top of Bar */}
+                    {data.nonChargeable > 10 && (
+                      <div className="absolute -top-5 sm:-top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 bg-white/90 px-1 py-0.5 rounded text-center shadow-sm hidden lg:block whitespace-nowrap">
+                        {data.nonChargeable}%
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Leave Bar */}
+                  <div
+                    className="bg-gradient-to-t from-gray-700 to-gray-500 rounded-t-sm shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer relative w-2 sm:w-3 lg:w-4"
+                    style={{
+                      height: data.leave > 0
+                        ? `${data.leave}%`
+                        : '2px',
+                      minHeight: '2px'
+                    }}
+                  >
+                    {/* Value Label on Top of Bar */}
+                    {data.leave > 10 && (
+                      <div className="absolute -top-5 sm:-top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 bg-white/90 px-1 py-0.5 rounded text-center shadow-sm hidden lg:block whitespace-nowrap">
+                        {data.leave}%
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Enhanced Tooltip */}
+                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 pointer-events-none">
+                  <div className="bg-gray-900 text-white text-xs rounded-md py-2 px-3 whitespace-nowrap shadow-lg mb-2">
+                    <div className="font-medium text-center mb-1">{data.month}</div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-gray-300">Chargeable:</span>
+                        </div>
+                        <span className="text-white font-medium">{data.chargeable}%</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          <span className="text-gray-300">Non-Chargeable:</span>
+                        </div>
+                        <span className="text-white font-medium">{data.nonChargeable}%</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                          <span className="text-gray-300">Leave:</span>
+                        </div>
+                        <span className="text-white font-medium">{data.leave}%</span>
+                      </div>
+                      <div className="border-t border-gray-600 pt-1 mt-1">
+                        <div className="text-gray-300 text-center">{data.count} entries</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-3 border-transparent border-t-gray-900"></div>
+                </div>
               </div>
             ))}
           </div>
-          
+
           {/* X-Axis Line */}
-          <div className="h-px bg-gray-300 mt-1"></div>
+          <div className="h-px bg-gray-300"></div>
+
+          {/* X-Axis Labels - Below the axis line */}
+          <div className="flex justify-between mt-2 px-2 sm:px-3">
+            {monthlyData.map((data, index) => (
+              <div key={index} className="text-center flex-1">
+                <div className="text-xs font-medium text-gray-600">{data.month}</div>
+                {data.count > 0 && (
+                  <div className="text-xs text-gray-400 hidden sm:block">{data.count}</div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-        
+
         {/* Y-Axis Title */}
-        <div className="absolute left-0.5 sm:left-1 top-1/2 transform -translate-y-1/2 -rotate-90">
-          <span className="text-xs text-gray-500">%</span>
+        <div className="absolute left-1 sm:left-2 top-1/2 transform -translate-y-1/2 -rotate-90">
+          <span className="text-xs text-gray-500">Utilization %</span>
         </div>
       </div>
-      
-      {/* Legend and Stats */}
-      <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-gray-100">
-        <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-2 sm:gap-0 text-xs">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
+
+      {/* Enhanced Legend and Stats */}
+      <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100">
+        <div className="flex flex-col lg:flex-row lg:justify-between items-start lg:items-center gap-3 lg:gap-0 text-xs">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <div className="flex items-center space-x-1">
-              <div className="w-2 h-1 sm:w-3 sm:h-1 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
-              <span className="text-gray-600">Performance Trend</span>
+              <div className="w-3 h-3 bg-gradient-to-r from-green-600 to-green-400 rounded-sm"></div>
+              <span className="text-gray-600 font-medium"> Chargeable</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-500 rounded-full opacity-30"></div>
-              <span className="text-gray-600">Area Fill</span>
+              <div className="w-3 h-3 bg-gradient-to-r from-orange-600 to-orange-400 rounded-sm"></div>
+              <span className="text-gray-600 font-medium"> Non-Chargeable</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-gradient-to-r from-gray-700 to-gray-500 rounded-sm"></div>
+              <span className="text-gray-600 font-medium">Leave</span>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-2 sm:space-x-4">
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
             <span className="text-gray-500">
-              Trend: <span className="font-medium text-gray-700">
-                {monthlyData.length > 6 && monthlyData[monthlyData.length-1].average > monthlyData[5].average ? '↗ Improving' : 
-                 monthlyData.length > 6 && monthlyData[monthlyData.length-1].average < monthlyData[5].average ? '↘ Declining' : '→ Stable'}
+              Peak Month: <span className="font-medium text-gray-700">
+                {monthlyData.reduce((max, curr) => curr.total > max.total ? curr : max, { month: 'N/A', total: 0 }).month}
+              </span>
+            </span>
+            <span className="text-gray-500">
+              Total Entries: <span className="font-medium text-gray-700">
+                {monthlyData.reduce((sum, m) => sum + m.count, 0)}
               </span>
             </span>
           </div>
         </div>
       </div>
-      
+
       {/* No Data State */}
-      {utilizationData.length === 0 && (
+      {monthlyData.every(m => m.count === 0) && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50/90 rounded-lg">
           <div className="text-center">
-            <div className="text-gray-400 text-xl sm:text-2xl mb-1">📈</div>
-            <p className="text-gray-500 text-xs sm:text-sm font-medium">No trend data available</p>
+            <div className="text-gray-400 text-2xl sm:text-3xl mb-2"></div>
+            <p className="text-gray-500 text-sm sm:text-base font-medium">No utilization data available for {selectedYear}</p>
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Three Smaller Charts Component for Last 3 Months
+const ThreeMonthCharts = ({ utilizationData }) => {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+
+  // Get last 3 months from current date (may cross year boundaries)
+  const getLastThreeMonths = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const lastThree = [];
+
+    for (let i = 2; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const year = monthIndex > currentMonth ? currentYear - 1 : currentYear;
+      lastThree.push({ month: months[monthIndex], monthIndex, year });
+    }
+    return lastThree;
+  };
+
+  const lastThreeMonths = getLastThreeMonths();
+
+  // Helper function to normalize worktype strings
+  const normalizeWorktype = (worktype) => {
+    if (!worktype) return '';
+    return worktype.toString().toLowerCase().trim();
+  };
+
+  // Calculate data for each month
+  const calculateMonthData = (monthIndex, year, type) => {
+    const monthUtils = utilizationData.filter(util => {
+      const utilDate = new Date(util.Timesheet?.date || util.createdAt);
+      return utilDate.getMonth() === monthIndex && utilDate.getFullYear() === year;
+    });
+
+    if (monthUtils.length === 0) return 0;
+
+    let total = 0;
+    monthUtils.forEach(util => {
+      const worktype = normalizeWorktype(util.Worktype?.worktype);
+      const percentage = util.percentage || 0;
+
+      if (type === 'chargeable') {
+        if (worktype === 'chargeable and non-chargeable' ||
+          worktype === 'chargeable and non chargeable' ||
+          worktype === 'chargeable & non-chargeable') {
+          total += percentage * 0.5;
+        } else if (worktype === 'chargeable' || worktype === 'billable') {
+          total += percentage;
+        }
+      } else if (type === 'nonChargeable') {
+        if (worktype === 'chargeable and non-chargeable' ||
+          worktype === 'chargeable and non chargeable' ||
+          worktype === 'chargeable & non-chargeable') {
+          total += percentage * 0.5;
+        } else if (worktype === 'non-chargeable' || worktype === 'non chargeable' ||
+          worktype === 'nonchargeable' || worktype === 'internal') {
+          total += percentage;
+        }
+      } else if (type === 'leave') {
+        if (worktype === 'annual leave' || worktype === 'leave' ||
+          worktype === 'annual-leave' || worktype === 'annualleave') {
+          total += percentage;
+        }
+      }
+    });
+
+    // Calculate percentage of total utilization
+    const totalUtilization = monthUtils.reduce((sum, util) => sum + (util.percentage || 0), 0);
+    return totalUtilization > 0 ? Math.round((total / totalUtilization) * 100) : 0;
+  };
+
+  // Single Chart Component
+  const MiniChart = ({ title, data, color, bgColor }) => {
+    const maxValue = Math.max(...data.map(d => d.value), 100);
+    const yAxisSteps = [0, 25, 50, 75, 100];
+
+    return (
+      <div className="bg-white rounded-lg p-3 sm:p-4 shadow-md border border-gray-200 h-full">
+        <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-800">{title}</h3>
+
+        <div className="relative">
+          {/* Y-Axis Labels */}
+          <div className="absolute left-0 top-0 h-32 sm:h-40 flex flex-col justify-between text-right pr-2 text-xs text-gray-500 font-medium">
+            {yAxisSteps.reverse().map((step) => (
+              <div key={step}>
+                <span className="bg-white pr-1">{step}%</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Chart Area */}
+          <div className="ml-6 sm:ml-8 relative">
+            {/* Y-Axis Line */}
+            <div className="absolute left-0 top-0 h-32 sm:h-40 w-px bg-gray-300"></div>
+
+            {/* Bar Chart */}
+            <div className="flex items-end justify-between h-32 sm:h-40 px-2 relative">
+              {data.map((item, index) => (
+                <div key={index} className="flex flex-col items-center group relative h-full flex-1">
+                  <div className="flex items-end justify-center h-full w-full">
+                    <div
+                      className={`${bgColor} rounded-t-sm shadow-sm transition-all duration-300 hover:shadow-md cursor-pointer relative w-3 sm:w-4 lg:w-5`}
+                      style={{
+                        height: item.value > 0 ? `${(item.value / maxValue) * 100}%` : '2px',
+                        minHeight: '2px'
+                      }}
+                    >
+                      {item.value > 10 && (
+                        <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 bg-white/90 px-1 py-0.5 rounded text-center shadow-sm hidden sm:block whitespace-nowrap">
+                          {item.value}%
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Tooltip */}
+                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 pointer-events-none">
+                    <div className="bg-gray-900 text-white text-xs rounded-md py-2 px-3 whitespace-nowrap shadow-lg mb-2">
+                      <div className="font-medium text-center mb-1">{item.month}</div>
+                      <div className="text-center font-medium">{item.value}%</div>
+                    </div>
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-3 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* X-Axis Line */}
+            <div className="h-px bg-gray-300"></div>
+
+            {/* X-Axis Labels */}
+            <div className="flex justify-between mt-2 px-2">
+              {data.map((item, index) => (
+                <div key={index} className="text-center flex-1">
+                  <div className="text-xs font-medium text-gray-600">{item.month}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Prepare data for each chart
+  const chargeableData = lastThreeMonths.map(({ month, monthIndex, year }) => ({
+    month,
+    value: calculateMonthData(monthIndex, year, 'chargeable')
+  }));
+
+  const nonChargeableData = lastThreeMonths.map(({ month, monthIndex, year }) => ({
+    month,
+    value: calculateMonthData(monthIndex, year, 'nonChargeable')
+  }));
+
+  const leaveData = lastThreeMonths.map(({ month, monthIndex, year }) => ({
+    month,
+    value: calculateMonthData(monthIndex, year, 'leave')
+  }));
+
+  return (
+    <div className="bg-white rounded-lg p-4 sm:p-6 shadow-lg border border-gray-200 w-full">
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Last 3 Months Breakdown</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          {lastThreeMonths.map(m => m.month).join(', ')} {lastThreeMonths[0].year !== lastThreeMonths[2].year
+            ? `${lastThreeMonths[0].year}-${lastThreeMonths[2].year}`
+            : lastThreeMonths[0].year}
+        </p>
+      </div>
+
+      {/* Three Charts Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MiniChart
+          title=" Chargeable"
+          data={chargeableData}
+          color="from-green-600 to-green-400"
+          bgColor="bg-gradient-to-t from-green-600 to-green-400"
+        />
+        <MiniChart
+          title=" Non-Chargeable"
+          data={nonChargeableData}
+          color="from-orange-600 to-orange-400"
+          bgColor="bg-gradient-to-t from-orange-600 to-orange-400"
+        />
+        <MiniChart
+          title=" Leave"
+          data={leaveData}
+          color="from-gray-700 to-gray-500"
+          bgColor="bg-gradient-to-t from-gray-700 to-gray-500"
+        />
+      </div>
     </div>
   );
 };
@@ -349,13 +537,14 @@ const EmployeeDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chartView, setChartView] = useState('full'); // 'full' or 'three-month'
 
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
         // Check if employee data was passed from EmployeeList
         const passedEmployee = location.state?.employee;
-        
+
         // Get user data from localStorage
         const userData = localStorage.getItem('user');
         if (!userData) {
@@ -367,7 +556,7 @@ const EmployeeDetails = () => {
         setUser(parsedUser);
 
         let targetEmployee;
-        
+
         if (passedEmployee) {
           // Use the employee data passed from EmployeeList
           targetEmployee = passedEmployee;
@@ -381,7 +570,7 @@ const EmployeeDetails = () => {
           targetEmployee = response.data;
           setEmployee(response.data);
         }
-        
+
         // Fetch utilization data for this employee
         if (targetEmployee?.id) {
           try {
@@ -389,13 +578,6 @@ const EmployeeDetails = () => {
               `/rt/utilization/employee/${targetEmployee.id}`
             );
             setUtilizations(utilizationResponse.data || []);
-            
-            // Debug logging to see the data structure
-            console.log('Utilizations data:', utilizationResponse.data);
-            if (utilizationResponse.data && utilizationResponse.data.length > 0) {
-              console.log('First utilization item:', utilizationResponse.data[0]);
-              console.log('Keys in first item:', Object.keys(utilizationResponse.data[0]));
-            }
           } catch (utilError) {
             console.error('Error fetching utilization data:', utilError);
             // Don't set error for utilization, just log it
@@ -417,56 +599,10 @@ const EmployeeDetails = () => {
     fetchEmployeeData();
   }, [navigate, location.state]);
 
-  // Calculate current utilization stats
-  const calculateUtilizationStats = () => {
-    if (utilizations.length === 0) {
-      return { chargeable: 0, nonChargeable: 0, leave: 0 };
-    }
-
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const currentMonthUtils = utilizations.filter(util => {
-      const utilDate = new Date(util.Timesheet?.date || util.createdAt);
-      return utilDate.getMonth() === currentMonth && utilDate.getFullYear() === currentYear;
-    });
-
-    if (currentMonthUtils.length === 0) {
-      return { chargeable: 0, nonChargeable: 0, leave: 0 };
-    }
-
-    // Calculate total percentages for each work type
-    const chargeableTotal = currentMonthUtils
-      .filter(util => util.Worktype?.worktype === 'chargeable')
-      .reduce((sum, util) => sum + (util.percentage || 0), 0);
-    
-    const nonChargeableTotal = currentMonthUtils
-      .filter(util => util.Worktype?.worktype === 'non-chargeable')
-      .reduce((sum, util) => sum + (util.percentage || 0), 0);
-    
-    const leaveTotal = currentMonthUtils
-      .filter(util => util.Worktype?.worktype === 'annual leave')
-      .reduce((sum, util) => sum + (util.percentage || 0), 0);
-
-    // Calculate the total of all utilizations for the month
-    const totalUtilization = chargeableTotal + nonChargeableTotal + leaveTotal;
-
-    // If no utilization data, return zeros
-    if (totalUtilization === 0) {
-      return { chargeable: 0, nonChargeable: 0, leave: 0 };
-    }
-
-    // Calculate percentages as proportion of total utilization
-    const chargeable = Math.round((chargeableTotal / totalUtilization) * 100);
-    const nonChargeable = Math.round((nonChargeableTotal / totalUtilization) * 100);
-    const leave = Math.round((leaveTotal / totalUtilization) * 100);
-
-    return { chargeable, nonChargeable, leave };
-  };
 
   // Get current project information
   const getCurrentProjectInfo = () => {
     if (utilizations.length === 0) {
-      console.log('No utilizations found');
       return { projectName: 'No Project Assigned', expectedFinishDate: 'N/A', workType: 'none' };
     }
 
@@ -478,21 +614,16 @@ const EmployeeDetails = () => {
     });
 
     const latestUtil = sortedUtils[0];
-    
+
     // Check if projectname is valid (not empty, not just spaces, and not 'Resource Tracker' as default)
     const projectName = latestUtil.projectname?.trim();
     const isDefaultProject = projectName === 'Resource Tracker' || projectName === 'resource tracker';
-    
+
     // If it's the default project name and employee has no actual project, show "No Project Assigned"
-    const displayProjectName = (!projectName || projectName === '' || isDefaultProject) 
-      ? 'No Project Assigned' 
+    const displayProjectName = (!projectName || projectName === '' || isDefaultProject)
+      ? 'No Project Assigned'
       : projectName;
-    
-    // Debug logging
-    console.log('Latest utilization:', latestUtil);
-    console.log('Project name raw:', latestUtil.projectname);
-    console.log('Display project name:', displayProjectName);
-    
+
     return {
       projectName: displayProjectName,
       expectedFinishDate: latestUtil.expected_finish_date || 'N/A',
@@ -503,7 +634,6 @@ const EmployeeDetails = () => {
   };
 
 
-  const utilizationStats = calculateUtilizationStats();
   const currentProject = getCurrentProjectInfo();
 
   const toggleSidebar = () => {
@@ -555,7 +685,7 @@ const EmployeeDetails = () => {
     <div className="w-screen h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 overflow-auto">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
-      
+
       {/* Enhanced Header Section */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -576,8 +706,8 @@ const EmployeeDetails = () => {
                     {employee.name}
                   </h1>
                   <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-2 truncate">
-                  
-                    
+
+
                   </p>
                 </div>
                 <div className="flex items-center gap-2 mt-1 sm:mt-2">
@@ -596,53 +726,41 @@ const EmployeeDetails = () => {
         {/* Prominent Project Status Section */}
         <div className="mb-6">
           <div className="bg-gradient-to-r from-blue-500 via-purple-600 to-indigo-600 rounded-2xl p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5">
-            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6">
-              <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-xl sm:text-2xl">🚀</span>
+            <div className="text-white">
+              <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">Current Project Status</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                {/* Project Name */}
+                <div className="min-w-0">
+                  <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-2">Project Name</p>
+                  <p className="text-sm sm:text-base font-bold truncate">{currentProject.projectName}</p>
                 </div>
-                <div className="text-white flex-1 min-w-0">
-                  <h2 className="text-lg sm:text-xl font-bold mb-2">Current Project Status</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="min-w-0">
-                      <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Project Name</p>
-                      <p className="text-sm sm:text-base font-bold truncate">{currentProject.projectName}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Utilization</p>
-                      <p className="text-sm sm:text-base font-bold truncate">{currentProject.percentage || 0}%</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Project Type</p>
-                      <p className="text-sm sm:text-base font-bold text-white truncate">
-                        {currentProject.workType === 'chargeable' ? 'Billable' :
-                         currentProject.workType === 'non-chargeable' ? 'Non-Billable' :
-                         currentProject.workType === 'annual leave' ? 'Leave' :
-                         'Other'}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Last Updated</p>
-                      <p className="text-sm sm:text-base font-bold truncate">
-                        {currentProject.date ? new Date(currentProject.date).toLocaleDateString() : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
+
+                {/* Utilization */}
+                <div className="min-w-0">
+                  <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-2">Utilization</p>
+                  <p className="text-sm sm:text-base font-bold truncate">{currentProject.percentage || 0}%</p>
                 </div>
-              </div>
-              <div className="w-full lg:w-auto lg:text-right text-white">
-                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-                  <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-1">Work Type</p>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                    currentProject.workType === 'chargeable' ? 'bg-green-500/90 text-white' :
-                    currentProject.workType === 'non-chargeable' ? 'bg-yellow-500/90 text-white' :
-                    currentProject.workType === 'annual leave' ? 'bg-red-500/90 text-white' :
-                    'bg-gray-500/90 text-white'
-                  }`}>
-                    {currentProject.workType === 'chargeable' ? '💰 Billable' :
-                     currentProject.workType === 'non-chargeable' ? '⚡ Internal' :
-                     currentProject.workType === 'annual leave' ? '🏖️ Leave' :
-                     '📋 Other'}
+
+                {/* Work Type */}
+                <div className="min-w-0">
+                  <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-2">Work Type</p>
+                  <span
+                    className={`inline-flex items-center px-4 py-1 rounded-full text-xs font-bold ${currentProject.workType === 'chargeable'
+                      ? 'bg-green-500/90 text-white'
+                      : currentProject.workType === 'non-chargeable'
+                        ? 'bg-yellow-500/90 text-white'
+                        : currentProject.workType === 'annual leave'
+                          ? 'bg-red-500/90 text-white'
+                          : 'bg-gray-500/90 text-white'
+                      }`}
+                  >
+                    {currentProject.workType === 'chargeable'
+                      ? ' Billable'
+                      : currentProject.workType === 'non-chargeable'
+                        ? ' Internal'
+                        : currentProject.workType === 'annual leave'
+                          ? ' Leave'
+                          : ' Billable'}
                   </span>
                 </div>
               </div>
@@ -655,25 +773,25 @@ const EmployeeDetails = () => {
           <p className="text-sm sm:text-base text-gray-600">Quick insights about the employee</p>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <StatCard 
-            title="Department"
-            value={employee.department || 'Not Assigned'}
-            icon="🏢"
+          <StatCard
+            title="Solution"
+            value={employee.solution || 'Not Assigned'}
+            icon=""
           />
-          <StatCard 
+          <StatCard
             title="Position"
             value={employee.position || employee.role || 'Employee'}
-            icon="💼"
+            icon=""
           />
-                  <StatCard 
+          <StatCard
             title="Expected Leave Status"
-            value={employee.leaves_expected === "0" ? "No Leave Expected" : employee.leaves_expected}
-            icon="📅"
-        />
-          <StatCard 
-            title="Status"
+            value={employee.leaves_expected === "0" ? "No Leave Expected" : (employee.leaves_expected ?? "leaves expected")}
+            icon=""
+          />
+          <StatCard
+            title="Employment Status"
             value={employee.employmentStatus || 'Active'}
-            icon="✅"
+            icon=""
           />
         </div>
 
@@ -682,11 +800,11 @@ const EmployeeDetails = () => {
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Analytics Dashboard</h2>
           <p className="text-sm sm:text-base text-gray-600">Detailed utilization metrics and performance insights</p>
         </div>
-        
+
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-lg hover:shadow-xl transition-all duration-300 p-4 sm:p-6 mb-6 sm:mb-8">
-          <div className="flex flex-col xl:flex-row items-start gap-4 sm:gap-6">
+          <div className="flex flex-col lg:flex-row items-start gap-4 sm:gap-6">
             {/* Employee Information - Enhanced */}
-            <div className="w-full xl:w-80 xl:flex-shrink-0">
+            <div className="w-full lg:w-80 lg:flex-shrink-0">
               <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/30 rounded-xl p-4 sm:p-5 border border-blue-100/50">
                 <h2 className="text-lg font-bold mb-4 text-gray-900 flex items-center gap-2">
                   <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
@@ -702,8 +820,8 @@ const EmployeeDetails = () => {
                     <p className="text-sm text-gray-900 font-semibold truncate group-hover:text-blue-600 transition-colors">{employee.email}</p>
                   </div>
                   <div className="group">
-                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Department</p>
-                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors truncate">{employee.department || 'Not Assigned'}</p>
+                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Location</p>
+                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors truncate">{employee.location || 'Not Assigned'}</p>
                   </div>
                   <div className="group">
                     <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Current Project</p>
@@ -716,66 +834,46 @@ const EmployeeDetails = () => {
                   <div className="group">
                     <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Project Status</p>
                     <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">
-                      {currentProject.workType === 'chargeable' ? '💰 Billable' :
-                       currentProject.workType === 'non-chargeable' ? '⚡ Internal' :
-                       currentProject.workType === 'annual leave' ? '🏖️ Leave' :
-                       '📋 Other'}
-                    </p>
-                  </div>
-                  <div className="group">
-                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Last Updated</p>
-                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">
-                      {currentProject.date ? new Date(currentProject.date).toLocaleDateString() : 'N/A'}
+                      {currentProject.workType === 'chargeable' ? 'Billable' :
+                        currentProject.workType === 'non-chargeable' ? 'Internal' :
+                          currentProject.workType === 'annual leave' ? ' Leave' :
+                            'Chargeable + non chargeable'}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Charts Section - Enhanced */}
-            <div className="flex-1 w-full xl:px-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {/* Chart Section - Enhanced and Larger */}
+            <div className="flex-1 w-full lg:px-4">
+              {/* Toggle Buttons */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <button
+                  onClick={() => setChartView('full')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${chartView === 'full'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  Full Year View
+                </button>
+                <button
+                  onClick={() => setChartView('three-month')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${chartView === 'three-month'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  Last 3 Months
+                </button>
+              </div>
+
+              {/* Chart Display */}
+              {chartView === 'full' ? (
                 <UtilizationBarChart utilizationData={utilizations} />
-                <UtilizationLineChart utilizationData={utilizations} />
-              </div>
-            </div>
-
-            {/* Current Month Utilization - Enhanced */}
-            <div className="w-full xl:w-80 xl:flex-shrink-0">
-              <div className="bg-gradient-to-br from-green-50/50 to-emerald-50/30 rounded-xl p-4 sm:p-5 border border-green-100/50">
-                <h2 className="text-lg font-bold mb-4 text-gray-900 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                  Current Month
-                </h2>
-                <div className="space-y-4">
-                  {[
-                    { type: 'Chargeable', value: utilizationStats.chargeable, color: 'bg-gradient-to-r from-green-400 to-green-500', icon: '💰' },
-                    { type: 'Non-Chargeable', value: utilizationStats.nonChargeable, color: 'bg-gradient-to-r from-yellow-400 to-yellow-500', icon: '⚡' },
-                    { type: 'Leave', value: utilizationStats.leave, color: 'bg-gradient-to-r from-red-400 to-red-500', icon: '🏖️' }
-                  ].map(({ type, value, color, icon }) => (
-                    <div key={type} className="group">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs">{icon}</span>
-                          <span className="text-xs font-bold text-gray-700">{type}</span>
-                        </div>
-                        <span className="text-xs font-bold text-gray-900">{value}%</span>
-                      </div>
-                      <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
-                        <div 
-                          className={`h-2 rounded-full ${color} transition-all duration-700 ease-out shadow-sm`}
-                          style={{width: `${Math.min(value, 100)}%`}}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {utilizations.length === 0 && (
-                  <div className="text-center mt-4 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-gray-500 text-xs font-medium">No utilization data available</p>
-                  </div>
-                )}
-              </div>
+              ) : (
+                <ThreeMonthCharts utilizationData={utilizations} />
+              )}
             </div>
           </div>
         </div>
