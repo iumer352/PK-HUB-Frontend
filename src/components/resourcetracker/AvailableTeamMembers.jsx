@@ -69,57 +69,48 @@ const AvailableTeamMembers = () => {
     navigate('/employee-dashboard');
   };
 
-  // Helper function to check if employee has non-chargeable work in selected month
-  const hasNonChargeableInSelectedMonth = (employeeId) => {
+  // Helper function to check if employee is non-chargeable in CURRENT WEEK
+  const isNonChargeableThisWeek = (employeeId) => {
     const utilizations = employeeUtilizations[employeeId] || [];
-    if (utilizations.length === 0) {
+
+    // 1. Calculate the start date of the current week (Sunday)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const day = today.getDay(); // 0 is Sunday
+    const diff = today.getDate() - day; // Adjust to Sunday
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(diff);
+
+    // Format to YYYY-MM-DD to match backend string comparison
+    const yyyy = startOfWeek.getFullYear();
+    const mm = String(startOfWeek.getMonth() + 1).padStart(2, '0');
+    const dd = String(startOfWeek.getDate()).padStart(2, '0');
+    const currentWeekStartDate = `${yyyy}-${mm}-${dd}`;
+
+    // 2. Find all records for this specific date
+    const weekUtils = utilizations.filter(util =>
+      util.Timesheet?.date === currentWeekStartDate
+    );
+
+    if (weekUtils.length === 0) {
+      // If no data exists for this week, we assume they are NOT strictly "available/non-chargeable"
+      // or we can assume they are available. Usually "Available" list implies "Explicitly Internal/Bench".
+      // Let's assume false to be safe, only showing those explicitly marked non-chargeable.
       return false;
     }
 
-    const selectedMonthIndex = months.indexOf(selectedMonth);
-
-    // Filter utilizations for the selected month and year
-    const monthUtils = utilizations.filter(util => {
-      const utilDate = new Date(util.Timesheet?.date || util.createdAt);
-      return utilDate.getMonth() === selectedMonthIndex &&
-        utilDate.getFullYear() === selectedYear;
+    // 3. Strict "Max ID" Logic: Find the utilization record with the highest ID
+    const latestUtil = weekUtils.reduce((latest, current) => {
+      return current.id > latest.id ? current : latest;
     });
 
-    // Check if any utilization in selected month is non-chargeable
-    return monthUtils.some(util =>
-      util.Worktype?.worktype === 'non-chargeable'
-    );
+    // 4. Check if the LATEST record is 'non-chargeable'
+    return latestUtil.Worktype?.worktype === 'non-chargeable';
   };
 
-  // Helper function to check if employee has any chargeable projects in selected month
-  const hasChargeableProjectsInSelectedMonth = (employeeId) => {
-    const utilizations = employeeUtilizations[employeeId] || [];
-    if (utilizations.length === 0) {
-      return false;
-    }
-
-    const selectedMonthIndex = months.indexOf(selectedMonth);
-
-    // Filter utilizations for the selected month and year
-    const monthUtils = utilizations.filter(util => {
-      const utilDate = new Date(util.Timesheet?.date || util.createdAt);
-      return utilDate.getMonth() === selectedMonthIndex &&
-        utilDate.getFullYear() === selectedYear;
-    });
-
-    // Check if any utilization in selected month is chargeable
-    return monthUtils.some(util =>
-      util.Worktype?.worktype === 'chargeable'
-    );
-  };
-
-  // Filter for non-billable employees only and group by department
+  // Filter for non-billable employees only (Current Week)
   const nonBillableEmployees = employees.filter(employee => {
-    const hasNonChargeable = hasNonChargeableInSelectedMonth(employee.id);
-    const hasChargeable = hasChargeableProjectsInSelectedMonth(employee.id);
-
-    // Employee should have non-chargeable work in selected month AND no chargeable projects
-    return hasNonChargeable && !hasChargeable;
+    return isNonChargeableThisWeek(employee.id);
   });
 
   // Group employees by department
@@ -190,28 +181,26 @@ const AvailableTeamMembers = () => {
               </div>
             </div>
 
-            {/* Month and Year Selection */}
+            {/* Current Week Indicator */}
             <div className="flex items-center gap-4">
-              <div className="flex gap-2 items-center bg-gray-50 p-2 rounded-lg">
-                <label className="text-sm font-medium text-gray-700">Filter by:</label>
-                <select
-                  className="pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                >
-                  {months.map(month => (
-                    <option key={month} value={month}>{month}</option>
-                  ))}
-                </select>
-                <select
-                  className="pl-3 pr-8 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                >
-                  {[selectedYear - 1, selectedYear, selectedYear + 1].map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
+              <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
+                <span className="text-sm font-medium text-blue-800">
+                  Showing data for current week: {(() => {
+                    const today = new Date();
+                    const day = today.getDay(); // 0 is Sunday
+                    const diff = today.getDate() - day; // Adjust to Sunday
+                    const startOfWeek = new Date(today);
+                    startOfWeek.setDate(diff);
+                    return startOfWeek.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  })()} - {(() => {
+                    const today = new Date();
+                    const day = today.getDay();
+                    const diff = today.getDate() - day + 6; // Adjust to Saturday
+                    const endOfWeek = new Date(today);
+                    endOfWeek.setDate(diff);
+                    return endOfWeek.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  })()}
+                </span>
               </div>
             </div>
           </div>
@@ -223,7 +212,7 @@ const AvailableTeamMembers = () => {
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Available Resources by Department</h2>
           <p className="text-gray-600">
-            Showing non-billable resources for {selectedMonth} {selectedYear} · Click on any team member to view their details
+            Showing team members who are non-billable for the current week · Click on any team member to view their details
           </p>
         </div>
 
