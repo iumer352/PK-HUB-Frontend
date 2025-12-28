@@ -40,12 +40,12 @@ const Sidebar = ({ isOpen, onToggle }) => {
       icon: '',
       description: 'Team Utilization Overview'
     },
-    {
+    /*{
       name: 'Utilization Report',
       path: '/report',
       icon: '',
       description: 'Analytics & Reports'
-    },
+    },*/
     {
       name: 'Available Team',
       path: '/available',

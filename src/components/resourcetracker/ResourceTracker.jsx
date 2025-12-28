@@ -7,8 +7,7 @@ import SidebarToggle from './SidebarToggle';
 const workTypes = {
   chargeable: { label: 'Project Work (Chargeable)', color: 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-green-100 to-emerald-200 border-l-4 border-green-500' },
   nonChargeable: { label: 'Non-chargeable Work', color: 'bg-gradient-to-r from-orange-600 to-amber-500 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-orange-100 to-amber-200 border-l-4 border-orange-500' },
-  leave: { label: 'Annual Leave', color: 'bg-gradient-to-r from-slate-500 to-gray-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-slate-200 to-gray-300 border-l-4 border-slate-400' },
-  training: { label: 'Chargeable+non chargeable', color: 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-purple-50 to-purple-100 border-l-4 border-purple-400' }
+  leave: { label: 'Leave', color: 'bg-gradient-to-r from-slate-500 to-gray-600 text-white shadow-lg', bgColor: 'bg-gradient-to-br from-slate-200 to-gray-300 border-l-4 border-slate-400' }
 };
 
 const months = [
@@ -307,6 +306,48 @@ const ResourceTracker = () => {
     }, 100);
   };
 
+  // Handler for deleting a utilization
+  const handleDeleteUtilization = async (week) => {
+    // Find the utilization to delete
+    const util = findUtilization(week);
+
+    if (!util || !util.id) {
+      showToast('No saved utilization found to delete', 'error');
+      return;
+    }
+
+    // Confirm deletion
+    if (!window.confirm('Are you sure you want to delete this utilization entry?')) {
+      return;
+    }
+
+    try {
+      // Call the DELETE API
+      await axios.delete(`http://localhost:5001/api/utilization/${util.id}`);
+
+      // Remove from local state
+      setUtilizations(prev => prev.filter(u => u.id !== util.id));
+
+      // Clear all selection and editing states
+      setSelectedCell(null);
+      setEditingCellId(null);
+      setEditingPercentage('');
+
+      // Clear any unsaved changes for this cell
+      const cellId = `${week.year}-${week.month}-${getWeekOfMonth(week.weekStartDate)}`;
+      setUnsavedChanges(prev => {
+        const newChanges = { ...prev };
+        delete newChanges[cellId];
+        return newChanges;
+      });
+
+      showToast('Utilization deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error deleting utilization:', error);
+      showToast('Failed to delete utilization', 'error');
+    }
+  };
+
   // Handle employee field changes
   const handleEmployeeFieldChange = (fieldName, value) => {
     setEmployeeChanges(prev => ({
@@ -386,6 +427,38 @@ const ResourceTracker = () => {
     }
   };
 
+  // Helper functions to get latest data
+  const getLatestProjectName = () => {
+    if (utilizations.length === 0) return '';
+    const sortedUtils = [...utilizations].sort((a, b) => {
+      const dateA = new Date(a.Timesheet?.date || a.createdAt);
+      const dateB = new Date(b.Timesheet?.date || b.createdAt);
+      return dateB - dateA;
+    });
+    const latestUtil = sortedUtils.find(util =>
+      util.projectname &&
+      util.projectname !== 'Resource Tracker' &&
+      util.projectname.toLowerCase() !== 'non project assigned' &&
+      util.projectname.toLowerCase() !== 'no project'
+    );
+    return latestUtil?.projectname || '';
+  };
+
+  const getLatestDuration = () => {
+    if (utilizations.length === 0) return '';
+    const sortedUtils = [...utilizations].sort((a, b) => {
+      const dateA = new Date(a.Timesheet?.date || a.createdAt);
+      const dateB = new Date(b.Timesheet?.date || b.createdAt);
+      return dateB - dateA;
+    });
+    const latestUtil = sortedUtils.find(util =>
+      util.expected_finish_date &&
+      util.expected_finish_date !== ' ' &&
+      util.expected_finish_date.toLowerCase() !== 'tbd'
+    );
+    return latestUtil?.expected_finish_date || '';
+  };
+
   // Save all utilization changes
   const saveAllChanges = async () => {
     const changeEntries = Object.entries(unsavedChanges);
@@ -408,13 +481,20 @@ const ResourceTracker = () => {
         const existingUtil = findUtilization(change.week);
         const isUpdate = !!existingUtil;
 
+        const chargeableProjects = employeeChanges.chargeableProjects !== undefined
+          ? employeeChanges.chargeableProjects
+          : getLatestProjectName();
+        const duration = employeeChanges.duration !== undefined
+          ? employeeChanges.duration
+          : getLatestDuration();
+
         const updateData = {
           employeeId: employee.id,
           date: formatDateToYYYYMMDD(change.week.weekStartDate),
           worktypeId: change.worktypeId,
           percentage: change.percentage,
-          projectname: employeeChanges.chargeableProjects || change.projectname || 'Resource Tracker',
-          expected_finish_date: employeeChanges.duration || change.expected_finish_date || ' '
+          projectname: chargeableProjects || 'Resource Tracker',
+          expected_finish_date: duration || ' '
         };
 
         const response = await axios[isUpdate ? 'put' : 'post'](
@@ -459,6 +539,12 @@ const ResourceTracker = () => {
 
     if (savedCount > 0) {
       setUnsavedChanges({});
+
+      // Clear selection states to hide delete section
+      setSelectedCell(null);
+      setEditingCellId(null);
+      setEditingPercentage('');
+
       showToast(`${savedCount} utilization records updated successfully!`, 'success');
     }
 
@@ -580,7 +666,7 @@ const ResourceTracker = () => {
         totalEntries++;
 
         const workTypeKey = getWorkTypeKey(weekUtil.Worktype?.worktype);
-        if (workTypeKey === 'chargeable') {
+        if (workTypeKey === 'chargeable' || workTypeKey === 'leave') {
           // Add the actual percentage of chargeability (e.g., 50% = 0.5)
           chargeablePercentageSum += percentage / 100;
           stats.chargeableWork++;
@@ -588,10 +674,6 @@ const ResourceTracker = () => {
           switch (workTypeKey) {
             case 'nonChargeable':
               stats.nonChargeableWork++;
-              break;
-            case 'leave':
-              // Note: This counts leave entries in utilization data,
-              // separate from current leave status
               break;
             case 'training':
               stats.inTraining++;
@@ -601,12 +683,12 @@ const ResourceTracker = () => {
       }
     });
 
-    // Calculate average billable utilization (average chargeable percentage across all weeks)
-    stats.averageBillableUtilization = totalWeeksWithData > 0 ?
-      ((chargeablePercentageSum / totalWeeksWithData) * 100).toFixed(1) : 0;
+    // Calculate average billable utilization (average chargeable percentage across ALL weeks in the period)
+    stats.averageBillableUtilization = weeks.length > 0 ?
+      ((chargeablePercentageSum / weeks.length) * 100).toFixed(1) : 0;
 
-    // Calculate overall average utilization (all utilization percentages averaged)
-    stats.averageUtilization = totalEntries > 0 ? (totalUtilization / totalEntries).toFixed(1) : 0;
+    // Calculate overall average utilization (weighted across ALL weeks in the period)
+    stats.averageUtilization = weeks.length > 0 ? (totalUtilization / weeks.length).toFixed(1) : 0;
 
     return stats;
   };
@@ -738,6 +820,31 @@ const ResourceTracker = () => {
           ))}
         </div>
       </div>
+
+      {/* Delete Selected Entry Section - appears when a cell with saved data is selected */}
+      {selectedCell && (() => {
+        const util = findUtilization(selectedCell.weekData);
+
+        // Only show if there's saved data (not just unsaved changes)
+        return util && util.id ? (
+          <div className="bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl p-6 mb-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 bg-gradient-to-r from-red-400 to-pink-400 rounded-full shadow-lg"></div>
+                <span className="text-red-800 font-semibold">
+                  Selected week has saved utilization data
+                </span>
+              </div>
+              <button
+                onClick={() => handleDeleteUtilization(selectedCell.weekData)}
+                className="px-6 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
+              >
+                Delete Selected Entry
+              </button>
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {/* Save Changes Section */}
       {(Object.keys(unsavedChanges).length > 0 || Object.keys(employeeChanges).length > 0) && (
@@ -888,7 +995,7 @@ const ResourceTracker = () => {
                 <td className="border border-gray-200 p-3 text-sm">
                   <input
                     type="text"
-                    value={employeeChanges.chargeableProjects ?? utilizations[0]?.projectname ?? ''}
+                    value={employeeChanges.chargeableProjects ?? getLatestProjectName()}
                     onChange={(e) => handleEmployeeFieldChange('chargeableProjects', e.target.value)}
                     className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 ${employeeChanges.chargeableProjects !== undefined ? 'bg-yellow-50 text-orange-600' : ''
                       }`}
@@ -921,7 +1028,7 @@ const ResourceTracker = () => {
                 <td className="border border-gray-200 p-3 text-sm text-center">
                   <input
                     type="text"
-                    value={employeeChanges.duration ?? utilizations[0]?.expected_finish_date ?? ''}
+                    value={employeeChanges.duration ?? getLatestDuration()}
                     onChange={(e) => handleEmployeeFieldChange('duration', e.target.value)}
                     className={`w-full bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 text-center ${employeeChanges.duration !== undefined ? 'bg-yellow-50 text-orange-600' : ''
                       }`}

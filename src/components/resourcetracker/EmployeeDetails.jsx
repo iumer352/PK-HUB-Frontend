@@ -537,7 +537,7 @@ const EmployeeDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [chartView, setChartView] = useState('full'); // 'full' or 'three-month'
+  const [chartView, setChartView] = useState('three-month'); // 'full' or 'three-month'
 
   useEffect(() => {
     const fetchEmployeeData = async () => {
@@ -606,27 +606,40 @@ const EmployeeDetails = () => {
       return { projectName: 'No Project Assigned', expectedFinishDate: 'N/A', workType: 'none' };
     }
 
-    // Sort utilizations by date (most recent first) and get the latest entry
+    // Sort utilizations by date (most recent first)
     const sortedUtils = [...utilizations].sort((a, b) => {
       const dateA = new Date(a.Timesheet?.date || a.createdAt);
       const dateB = new Date(b.Timesheet?.date || b.createdAt);
       return dateB - dateA;
     });
 
+    // Find the first utilization with a non-empty projectname, ignoring placeholders
+    // This matches the logic in ConsolidatedTracker and ResourceTracker
+    const validProjectUtil = sortedUtils.find(util => {
+      const name = util.projectname?.trim();
+      return name &&
+        name !== '' &&
+        name !== 'Resource Tracker' &&
+        name.toLowerCase() !== 'resource tracker' &&
+        name.toLowerCase() !== 'non project assigned' &&
+        name.toLowerCase() !== 'no project';
+    });
+
+    // Use the latest util for date/worktype, but the valid project util for the name
     const latestUtil = sortedUtils[0];
 
-    // Check if projectname is valid (not empty, not just spaces, and not 'Resource Tracker' as default)
-    const projectName = latestUtil.projectname?.trim();
-    const isDefaultProject = projectName === 'Resource Tracker' || projectName === 'resource tracker';
+    // If we found a valid project in history, use it. Otherwise default.
+    const displayProjectName = validProjectUtil?.projectname || 'No Project Assigned';
 
-    // If it's the default project name and employee has no actual project, show "No Project Assigned"
-    const displayProjectName = (!projectName || projectName === '' || isDefaultProject)
-      ? 'No Project Assigned'
-      : projectName;
+    // Find expected finish date similarly (ignoring empty or ' ')
+    const validDurationUtil = sortedUtils.find(util => {
+      const duration = util.expected_finish_date;
+      return duration && duration !== ' ' && duration.toLowerCase() !== 'tbd';
+    });
 
     return {
       projectName: displayProjectName,
-      expectedFinishDate: latestUtil.expected_finish_date || 'N/A',
+      expectedFinishDate: validDurationUtil?.expected_finish_date || latestUtil.expected_finish_date || 'N/A',
       workType: latestUtil.Worktype?.worktype || 'unknown',
       percentage: latestUtil.percentage || 0,
       date: latestUtil.Timesheet?.date || latestUtil.createdAt
@@ -735,11 +748,6 @@ const EmployeeDetails = () => {
                   <p className="text-sm sm:text-base font-bold truncate">{currentProject.projectName}</p>
                 </div>
 
-                {/* Utilization */}
-                <div className="min-w-0">
-                  <p className="text-blue-100 text-xs font-medium uppercase tracking-wider mb-2">Utilization</p>
-                  <p className="text-sm sm:text-base font-bold truncate">{currentProject.percentage || 0}%</p>
-                </div>
 
                 {/* Work Type */}
                 <div className="min-w-0">
@@ -827,10 +835,7 @@ const EmployeeDetails = () => {
                     <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Current Project</p>
                     <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors truncate">{currentProject.projectName}</p>
                   </div>
-                  <div className="group">
-                    <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Project Utilization</p>
-                    <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">{currentProject.percentage || 0}%</p>
-                  </div>
+
                   <div className="group">
                     <p className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Project Status</p>
                     <p className="text-sm text-gray-900 font-semibold group-hover:text-blue-600 transition-colors">
